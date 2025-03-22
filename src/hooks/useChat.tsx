@@ -17,7 +17,6 @@ export function useChat() {
   const [userBots, setUserBots] = useState<ChatBot[]>([]);
   const [chatView, setChatView] = useState<'individual' | 'group'>('individual');
 
-  // Fetch user bots
   const fetchUserBots = useCallback(async () => {
     if (!token) return;
     
@@ -60,7 +59,6 @@ export function useChat() {
     }
   }, [token, currentBot]);
 
-  // Fetch chats
   const fetchChats = useCallback(async (bot_id?: string) => {
     if (!token) return;
     
@@ -123,7 +121,6 @@ export function useChat() {
     }
   }, [fetchChats, currentBot, token]);
 
-  // Create new chat
   const createChat = useCallback(async (isGroupChat = false) => {
     if (!token) return;
     
@@ -172,12 +169,10 @@ export function useChat() {
     }
   }, [currentBot, toast, token]);
 
-  // Create group chat
   const createGroupChat = useCallback(() => {
     return createChat(true);
   }, [createChat]);
 
-  // Send message with optional files
   const sendChatMessage = useCallback(
     async (message: string, files?: IFile[]) => {
       if (!currentChatId) return;
@@ -191,20 +186,16 @@ export function useChat() {
           return;
         }
 
-        // Process file uploads if any
         let uploadedFiles: IFile[] = [];
         if (files && files.length > 0) {
           try {
-            // Get files with the actual File object
             const filesToUpload = files
               .filter(f => f.file instanceof File)
               .map(f => f.file as File);
             
             if (filesToUpload.length > 0) {
-              // Upload files to storage
               uploadedFiles = await uploadFiles(filesToUpload);
             } else {
-              // If no new files to upload (e.g. already uploaded), just use the passed files
               uploadedFiles = files;
             }
 
@@ -231,7 +222,6 @@ export function useChat() {
 
         const updatedMessages = [...currentChat.messages, userMessage];
 
-        // Update chat with user message
         const { error: updateError } = await supabase
           .from("protalk_chats")
           .update({ 
@@ -244,7 +234,6 @@ export function useChat() {
           throw updateError;
         }
 
-        // Update local state with user message
         setChats((prevChats) =>
           prevChats.map((chat) =>
             chat.id === currentChatId
@@ -258,11 +247,9 @@ export function useChat() {
         );
 
         try {
-          // Handle group chat message
           if (currentChat.is_group_chat && currentChat.bots_ids && currentChat.bots_ids.length > 0) {
             console.log("Processing group chat message for bots:", currentChat.bots_ids);
             
-            // Send message to multiple bots and get their responses
             const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids, uploadedFiles);
             console.log("Received bot responses:", botResponses);
             
@@ -280,7 +267,6 @@ export function useChat() {
 
             const messagesWithBotResponses = [...updatedMessages, ...botMessages];
             
-            // Update the database with bot responses
             const { error: botUpdateError } = await supabase
               .from("protalk_chats")
               .update({ 
@@ -294,7 +280,6 @@ export function useChat() {
               throw botUpdateError;
             }
 
-            // Update title for first message
             if (currentChat.messages.length === 0) {
               const shortTitle =
                 message.length > 30 ? message.substring(0, 30) + "..." : message;
@@ -334,7 +319,6 @@ export function useChat() {
               );
             }
           } else {
-            // Handle individual chat message
             const botResponse = await sendMessage(currentChatId, message, uploadedFiles, currentChat.bot_id);
             
             const botMessage: IMessage = {
@@ -358,7 +342,6 @@ export function useChat() {
               throw botUpdateError;
             }
 
-            // Update title for first message
             if (currentChat.messages.length === 0) {
               const shortTitle =
                 message.length > 30 ? message.substring(0, 30) + "..." : message;
@@ -450,7 +433,6 @@ export function useChat() {
     [chats, currentChatId, toast, userBots]
   );
 
-  // Delete chat
   const deleteChat = useCallback(
     async (chatId: string) => {
       try {
@@ -481,7 +463,6 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
-  // Rename chat
   const renameChat = useCallback(
     async (chatId: string, newTitle: string) => {
       try {
@@ -511,7 +492,6 @@ export function useChat() {
     [toast]
   );
 
-  // Add bot to group chat
   const addBotToGroupChat = useCallback(
     async (botId: string) => {
       if (!currentChatId) return;
@@ -573,7 +553,6 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
-  // Remove bot from group chat
   const removeBotFromGroupChat = useCallback(
     async (botId: string) => {
       if (!currentChatId) return;
@@ -630,16 +609,13 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
-  // Get current chat
   const currentChat = chats.find((chat) => chat.id === currentChatId) || null;
 
-  // Set current bot
   const setCurrentBotId = useCallback((botId: string | null) => {
     setCurrentBot(botId);
     setCurrentChatId(null);
   }, []);
 
-  // Switch chat view
   const switchChatView = useCallback((view: 'individual' | 'group') => {
     setChatView(view);
     setCurrentChatId(null);
