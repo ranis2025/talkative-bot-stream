@@ -1,8 +1,15 @@
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PlusCircle, Menu, MessageSquare, Users } from "lucide-react";
+import { PlusCircle, Menu, MessageSquare, Users, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { 
+  NavigationMenu, 
+  NavigationMenuContent, 
+  NavigationMenuItem, 
+  NavigationMenuList, 
+  NavigationMenuTrigger 
+} from "@/components/ui/navigation-menu";
 
 interface HeaderProps {
   onNewChat: () => void;
@@ -68,17 +75,29 @@ export function Header({
           </Button>
         )}
         
-        {!isMobile && (
-          <Button 
-            variant="destructive" 
-            size="sm" 
-            onClick={logout}
-          >
-            Выйти
-          </Button>
-        )}
-        
-        <ThemeToggle />
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger>
+                <Settings className="h-4 w-4" />
+                <span className="sr-only">Настройки</span>
+              </NavigationMenuTrigger>
+              <NavigationMenuContent className="min-w-[200px]">
+                <div className="p-2 flex flex-col gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={logout}
+                    className="justify-start"
+                  >
+                    Выйти
+                  </Button>
+                  <ThemeToggle />
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
       </div>
     </div>
   );
