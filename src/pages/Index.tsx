@@ -8,6 +8,7 @@ import { Chat } from "@/components/Chat";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const {
@@ -23,6 +24,7 @@ const Index = () => {
     renameChat,
   } = useChat();
 
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileView, setIsMobileView] = useState(false);
