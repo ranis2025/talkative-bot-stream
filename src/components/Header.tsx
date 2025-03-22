@@ -31,7 +31,7 @@ export function Header({
     if (!token) return "U";
     return token.substring(0, 2).toUpperCase();
   };
-  return <div className="w-full flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-md z-10">
+  return <div className="w-full flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-md z-10 px-[69px] py-[22px]">
       <div className="flex items-center">
         {isMobile && onToggleSidebar && <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="mr-2">
             <span className="sr-only">Меню</span>
@@ -42,8 +42,8 @@ export function Header({
             </div>
           </Button>}
         <div className="flex items-center">
-          <img src="/lovable-uploads/bf49cbb2-32bd-471b-9256-7db1562592e2.png" alt="Bizo Logo" className="h-12 w-auto mr--2 object-scale-down" />
-          <span className="text-[#d8b92a] mx--8 text-4xl py-px my-[6px] px-[5px] font-semibold text-left">BIZO/ЧАТ</span>
+          
+          <span className="mx--8 text-4xl py-px my-[6px] px-[5px] font-semibold text-left text-gray-800">BIZO/ЧАТ</span>
         </div>
       </div>
       <div className="flex space-x-2 items-center">
