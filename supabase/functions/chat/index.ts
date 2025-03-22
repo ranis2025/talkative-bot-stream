@@ -12,7 +12,26 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { bot_id, chat_id, message } = await req.json();
+    // Parse request body
+    let reqBody;
+    try {
+      reqBody = await req.json();
+      console.log("Request body:", JSON.stringify(reqBody));
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      return new Response(
+        JSON.stringify({ 
+          ok: false, 
+          done: "Invalid request format: Unable to parse JSON body" 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    const { bot_id, chat_id, message } = reqBody;
     
     if (!bot_id || !chat_id || !message) {
       console.error("Missing required parameters:", { bot_id, chat_id, message: message ? "provided" : "missing" });
@@ -31,34 +50,73 @@ Deno.serve(async (req) => {
     console.log(`Received request with bot_id: ${bot_id}, chat_id: ${chat_id}`);
 
     // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? '',
-      Deno.env.get("SUPABASE_ANON_KEY") ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    );
-
-    // Retrieve bot details from database
-    const { data: botData, error: botError } = await supabaseClient
-      .from('chat_bots')
-      .select('*')
-      .eq('bot_id', bot_id)
-      .maybeSingle();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     
-    if (botError || !botData) {
-      console.error("Error fetching bot data:", botError || "Bot not found");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Supabase environment variables not set");
       return new Response(
         JSON.stringify({ 
           ok: false, 
-          done: botError ? `Error retrieving bot information: ${botError.message}` : `Bot with ID ${bot_id} not found` 
+          done: "Server configuration error: Missing Supabase credentials" 
         }),
         { 
-          status: 404, 
+          status: 500, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
         }
       );
     }
+    
+    // Create Supabase client
+    const supabaseClient = createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    );
 
-    console.log(`Bot found: ${botData.name}, has OpenAI key: ${!!botData.openai_key}, has Bot token: ${!!botData.bot_token}`);
+    // Retrieve bot details from database
+    let botData;
+    try {
+      const { data, error } = await supabaseClient
+        .from('chat_bots')
+        .select('*')
+        .eq('bot_id', bot_id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Database query error:", error);
+        throw new Error(`Error querying database: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.error(`Bot not found with ID: ${bot_id}`);
+        return new Response(
+          JSON.stringify({ 
+            ok: false, 
+            done: `Bot with ID ${bot_id} not found` 
+          }),
+          { 
+            status: 404, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
+      
+      botData = data;
+      console.log(`Bot found: ${botData.name}, has OpenAI key: ${!!botData.openai_key}, has Bot token: ${!!botData.bot_token}`);
+    } catch (dbError) {
+      console.error("Error retrieving bot data:", dbError);
+      return new Response(
+        JSON.stringify({ 
+          ok: false, 
+          done: `Error retrieving bot information: ${dbError.message}` 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
 
     let response;
 
@@ -181,23 +239,27 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     
     const apiUrl = `${API_BASE_URL}/ask/${botToken}`;
     console.log(`Sending request to Pro-Talk API: ${apiUrl}`);
-    console.log(`Request payload: bot_id=${numericBotId}, chat_id=${chatId}`);
+    
+    const payload = {
+      bot_id: numericBotId,  // Send as integer per API spec
+      chat_id: chatId,
+      message: message
+    };
+    
+    console.log(`Request payload: ${JSON.stringify(payload)}`);
     
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        bot_id: numericBotId,  // Send as integer per API spec
-        chat_id: chatId,
-        message: message
-      }),
+      body: JSON.stringify(payload),
     });
 
     // Safely handle the response even if it's not JSON
     const responseText = await response.text();
     console.log(`Pro-Talk API response status: ${response.status}`);
+    console.log(`Pro-Talk API response body: ${responseText}`);
     
     if (!response.ok) {
       console.error(`Pro-Talk API error: ${response.status} - ${responseText}`);
@@ -215,6 +277,7 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     }
 
     if (!parsedResponse.done) {
+      console.error("API response missing 'done' field:", parsedResponse);
       throw new Error("API response missing 'done' field");
     }
 

@@ -23,6 +23,7 @@ export async function sendMessage(chatId: string, message: string, specificBotId
     };
 
     // Call our Supabase Edge Function
+    console.log(`Sending payload to edge function:`, payload);
     const { data, error } = await supabase.functions.invoke('chat', {
       body: payload
     });
@@ -31,6 +32,9 @@ export async function sendMessage(chatId: string, message: string, specificBotId
       console.error("Error calling chat function:", error);
       throw new Error(`Edge function error: ${error.message}`);
     }
+
+    // Log the response for debugging
+    console.log("Edge function response:", data);
 
     // Check if the data is in the expected format
     if (!data || typeof data !== 'object') {
@@ -49,16 +53,36 @@ export async function sendMessage(chatId: string, message: string, specificBotId
     console.error("Error sending message:", error);
     
     // Check if error is from EdgeFunction directly
-    if (error instanceof Error && error.message.includes("Edge Function returned a non-2xx status code")) {
-      throw new Error("Сервер вернул ошибку. Пожалуйста, попробуйте позже или обратитесь к администратору.");
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+      
+      // Handle Edge Function non-2xx status code
+      if (errorMessage.includes("Edge Function returned a non-2xx status code")) {
+        console.error("Edge Function returned a non-2xx status code. This could be due to a server-side issue.");
+        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
+      }
+      
+      // Handle JSON parsing errors
+      if (error instanceof SyntaxError && errorMessage.includes("JSON")) {
+        console.error("JSON parse error - Got non-JSON response from server");
+        return "Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.";
+      }
+      
+      // Return a user-friendly error message based on the error
+      if (errorMessage.includes("Bot ID is required")) {
+        return "Ошибка: ID бота не указан. Пожалуйста, проверьте URL или настройки.";
+      }
+      
+      if (errorMessage.includes("Bot not found") || errorMessage.includes("Bot with ID")) {
+        return "Ошибка: Указанный бот не найден. Пожалуйста, проверьте ID бота.";
+      }
+      
+      if (errorMessage.includes("Bot is not properly configured")) {
+        return "Ошибка: Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.";
+      }
     }
     
-    // If the error is related to JSON parsing, provide a more helpful message
-    if (error instanceof SyntaxError && error.message.includes("JSON")) {
-      console.error("JSON parse error - Got non-JSON response from server");
-      throw new Error("Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.");
-    }
-    
-    throw error;
+    // Default error message
+    return "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.";
   }
 }
