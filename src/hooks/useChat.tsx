@@ -1,10 +1,10 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { IChat, IMessage, ApiResponse, Json, ChatBot, UserSettings } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { sendMessage } from "@/lib/chatApi";
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
@@ -199,89 +199,108 @@ export function useChat() {
           )
         );
 
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            bot_id: currentChat.bot_id,
-            chat_id: currentChatId,
-            message,
-          }),
-        });
+        try {
+          const botResponse = await sendMessage(currentChatId, message, currentChat.bot_id);
+          
+          const botMessage: IMessage = {
+            id: uuidv4(),
+            content: botResponse,
+            role: "bot",
+            timestamp: Date.now(),
+          };
 
-        if (!response.ok) {
-          throw new Error("Failed to get response from API");
-        }
-
-        const data: ApiResponse = await response.json();
-
-        if (!data.ok) {
-          throw new Error(data.done || "Unknown error");
-        }
-
-        const botMessage: IMessage = {
-          id: uuidv4(),
-          content: data.done,
-          role: "bot",
-          timestamp: Date.now(),
-        };
-
-        const messagesWithBotResponse = [...updatedMessages, botMessage];
-
-        const { error: botUpdateError } = await supabase
-          .from("protalk_chats")
-          .update({ 
-            messages: messagesWithBotResponse as unknown as Json,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", currentChatId);
-
-        if (botUpdateError) {
-          throw botUpdateError;
-        }
-
-        if (currentChat.messages.length === 0) {
-          const shortTitle =
-            message.length > 30 ? message.substring(0, 30) + "..." : message;
-
-          const { error: titleError } = await supabase
+          const messagesWithBotResponse = [...updatedMessages, botMessage];
+          
+          const { error: botUpdateError } = await supabase
             .from("protalk_chats")
-            .update({ title: shortTitle })
+            .update({ 
+              messages: messagesWithBotResponse as unknown as Json,
+              updated_at: new Date().toISOString()
+            })
             .eq("id", currentChatId);
 
-          if (titleError) {
-            throw titleError;
+          if (botUpdateError) {
+            throw botUpdateError;
           }
 
+          if (currentChat.messages.length === 0) {
+            const shortTitle =
+              message.length > 30 ? message.substring(0, 30) + "..." : message;
+
+            const { error: titleError } = await supabase
+              .from("protalk_chats")
+              .update({ title: shortTitle })
+              .eq("id", currentChatId);
+
+            if (titleError) {
+              throw titleError;
+            }
+
+            setChats((prevChats) =>
+              prevChats.map((chat) =>
+                chat.id === currentChatId
+                  ? {
+                      ...chat,
+                      title: shortTitle,
+                      messages: messagesWithBotResponse,
+                      updatedAt: Date.now(),
+                    }
+                  : chat
+              )
+            );
+          } else {
+            setChats((prevChats) =>
+              prevChats.map((chat) =>
+                chat.id === currentChatId
+                  ? {
+                      ...chat,
+                      messages: messagesWithBotResponse,
+                      updatedAt: Date.now(),
+                    }
+                  : chat
+              )
+            );
+          }
+        } catch (apiError) {
+          console.error("API error:", apiError);
+          
+          const errorMessage: IMessage = {
+            id: uuidv4(),
+            content: `Ошибка: ${apiError.message || "Не удалось получить ответ от бота."}`,
+            role: "bot",
+            timestamp: Date.now(),
+          };
+          
+          const messagesWithError = [...updatedMessages, errorMessage];
+          
+          await supabase
+            .from("protalk_chats")
+            .update({ 
+              messages: messagesWithError as unknown as Json,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", currentChatId);
+            
           setChats((prevChats) =>
             prevChats.map((chat) =>
               chat.id === currentChatId
                 ? {
                     ...chat,
-                    title: shortTitle,
-                    messages: messagesWithBotResponse,
+                    messages: messagesWithError,
                     updatedAt: Date.now(),
                   }
                 : chat
             )
           );
-        } else {
-          setChats((prevChats) =>
-            prevChats.map((chat) =>
-              chat.id === currentChatId
-                ? {
-                    ...chat,
-                    messages: messagesWithBotResponse,
-                    updatedAt: Date.now(),
-                  }
-                : chat
-            )
-          );
+          
+          toast({
+            title: "Ошибка при отправке сообщения",
+            description: apiError.message || "Не удалось получить ответ от бота.",
+            variant: "destructive",
+          });
         }
       } catch (error) {
-        console.error("Error sending message:", error);
+        console.error("Error in message flow:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось отправить сообщение",

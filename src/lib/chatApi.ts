@@ -32,13 +32,28 @@ export async function sendMessage(chatId: string, message: string, specificBotId
       throw new Error(`API error: ${error.message}`);
     }
 
+    // Check if the data is in the expected format
+    if (!data || typeof data !== 'object') {
+      console.error("Invalid response format:", data);
+      throw new Error("Received invalid response format from server");
+    }
+
     if (!data.ok) {
-      throw new Error(data.done || "Unknown error");
+      const errorMessage = data.done || "Unknown error";
+      console.error("API returned error:", errorMessage);
+      throw new Error(errorMessage);
     }
 
     return data.done;
   } catch (error) {
     console.error("Error sending message:", error);
+    
+    // If the error is related to JSON parsing, provide a more helpful message
+    if (error instanceof SyntaxError && error.message.includes("JSON")) {
+      console.error("JSON parse error - Got non-JSON response from server");
+      throw new Error("Server returned an invalid response format. This could be due to network issues or server configuration problems.");
+    }
+    
     throw error;
   }
 }

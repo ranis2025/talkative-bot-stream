@@ -170,8 +170,17 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
       throw new Error(`API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log("Successfully received response from Pro-Talk API");
+    // Try to safely parse the JSON response
+    let data;
+    try {
+      const responseText = await response.text();
+      data = JSON.parse(responseText);
+      console.log("Successfully received and parsed response from Pro-Talk API");
+    } catch (parseError) {
+      console.error("Error parsing response from Pro-Talk API:", parseError);
+      throw new Error(`Failed to parse API response: ${parseError.message}`);
+    }
+
     return data.done;
   } catch (error) {
     console.error("Error sending message to external API:", error);
