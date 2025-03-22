@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { v4 as uuidv4 } from "uuid";
 
 const Auth = () => {
   const [tokenLoading, setTokenLoading] = useState(false);
@@ -43,13 +44,15 @@ const Auth = () => {
       
       if (!existingSettings) {
         // If no settings found for this token, create new settings
+        const userId = uuidv4();
         const { error: createError } = await supabase
           .from("user_settings")
           .insert({ 
             token: token,
             theme: 'dark',
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            user_id: userId
           });
         
         if (createError) throw createError;

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ChatBot {
   id: string;
@@ -16,6 +17,7 @@ interface ChatBot {
   openai_key: string | null;
   created_at: string;
   updated_at: string;
+  token: string | null;
 }
 
 const Admin = () => {
@@ -24,18 +26,24 @@ const Admin = () => {
   const [newBot, setNewBot] = useState({ name: "", bot_id: "", bot_token: "", openai_key: "" });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   // Fetch bots data
   useEffect(() => {
-    fetchBots();
-  }, []);
+    if (token) {
+      fetchBots();
+    }
+  }, [token]);
 
   const fetchBots = async () => {
+    if (!token) return;
+    
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('chat_bots')
         .select('*')
+        .eq('token', token)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -71,7 +79,8 @@ const Admin = () => {
           name: bot.name,
           bot_id: bot.bot_id,
           bot_token: bot.bot_token,
-          openai_key: bot.openai_key
+          openai_key: bot.openai_key,
+          token: token
         })
         .eq('id', bot.id);
 
@@ -94,6 +103,8 @@ const Admin = () => {
   };
 
   const addNewBot = async () => {
+    if (!token) return;
+    
     if (!newBot.name || !newBot.bot_id) {
       toast({
         title: "Ошибка",
@@ -110,7 +121,8 @@ const Admin = () => {
           name: newBot.name,
           bot_id: newBot.bot_id,
           bot_token: newBot.bot_token || null,
-          openai_key: newBot.openai_key || null
+          openai_key: newBot.openai_key || null,
+          token: token
         }]);
 
       if (error) throw error;
