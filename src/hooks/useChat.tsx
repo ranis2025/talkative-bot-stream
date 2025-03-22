@@ -14,9 +14,60 @@ export function useChat() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [currentBot, setCurrentBot] = useState<string | null>(null);
+  const [userBots, setUserBots] = useState<any[]>([]);
+
+  // Fetch user's bots
+  const fetchUserBots = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      // First check if user has custom settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (settingsError && settingsError.code !== "PGRST116") {
+        // PGRST116 is "no rows returned" error
+        console.error("Error fetching user settings:", settingsError);
+      }
+
+      // Fetch bots assigned to this user
+      const { data: botsData, error: botsError } = await supabase
+        .from("chat_bots")
+        .select("*")
+        .eq("user_id", user.id);
+      
+      if (botsError) {
+        console.error("Error fetching user bots:", botsError);
+        return;
+      }
+      
+      // If we have bots, set them and default to the first one
+      if (botsData && botsData.length > 0) {
+        setUserBots(botsData);
+        if (!currentBot) {
+          setCurrentBot(botsData[0].bot_id);
+        }
+      }
+
+      // Apply any user settings
+      if (settingsData) {
+        // If there's a default bot in settings, use it
+        if (settingsData.default_bot_id && !currentBot) {
+          setCurrentBot(settingsData.default_bot_id);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user bots and settings:", error);
+    }
+  }, [user, currentBot]);
 
   // Получаем все чаты из базы данных
   const fetchChats = useCallback(async (bot_id?: string) => {
+    if (!user) return;
+    
     try {
       let query = supabase
         .from("protalk_chats")
@@ -26,7 +77,7 @@ export function useChat() {
         query = query.eq('bot_id', bot_id);
       }
       
-      const { data, error } = await query.order("updatedAt", { ascending: false });
+      const { data, error } = await query.order("updated_at", { ascending: false });
       
       if (error) {
         throw error;
@@ -59,7 +110,14 @@ export function useChat() {
     } finally {
       setIsInitialized(true);
     }
-  }, [currentChatId, toast]);
+  }, [currentChatId, toast, user]);
+
+  // Load user bots and settings when user changes
+  useEffect(() => {
+    if (user) {
+      fetchUserBots();
+    }
+  }, [fetchUserBots, user]);
 
   // Устанавливаем бота и загружаем чаты при изменении 
   useEffect(() => {
@@ -341,5 +399,6 @@ export function useChat() {
     renameChat,
     currentBot,
     setCurrentBotId,
+    userBots
   };
 }
