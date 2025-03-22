@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      chat_bots: {
+        Row: {
+          bot_id: string
+          bot_token: string | null
+          created_at: string
+          id: string
+          name: string
+          openai_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          bot_id: string
+          bot_token?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          openai_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bot_id?: string
+          bot_token?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          openai_key?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       protalk_chats: {
         Row: {
           created_at: string

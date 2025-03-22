@@ -8,8 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
+interface ChatBot {
+  id: string;
+  name: string;
+  bot_id: string;
+  bot_token: string | null;
+  openai_key: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const Admin = () => {
-  const [bots, setBots] = useState<any[]>([]);
+  const [bots, setBots] = useState<ChatBot[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBot, setNewBot] = useState({ name: "", bot_id: "", bot_token: "", openai_key: "" });
   const navigate = useNavigate();
@@ -53,7 +63,7 @@ const Admin = () => {
     setBots(updatedBots);
   };
 
-  const saveBot = async (bot: any) => {
+  const saveBot = async (bot: ChatBot) => {
     try {
       const { error } = await supabase
         .from('chat_bots')
@@ -99,8 +109,8 @@ const Admin = () => {
         .insert([{
           name: newBot.name,
           bot_id: newBot.bot_id,
-          bot_token: newBot.bot_token,
-          openai_key: newBot.openai_key
+          bot_token: newBot.bot_token || null,
+          openai_key: newBot.openai_key || null
         }]);
 
       if (error) throw error;
