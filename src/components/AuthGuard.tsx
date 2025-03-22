@@ -1,6 +1,6 @@
 
 import { ReactNode, useEffect } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -10,7 +10,16 @@ interface AuthGuardProps {
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, setToken } = useAuth();
+  const [searchParams] = useSearchParams();
+  
+  // Check if there's a token in the URL that needs to be set in context
+  useEffect(() => {
+    const urlToken = searchParams.get("token");
+    if (urlToken && urlToken !== token) {
+      setToken(urlToken);
+    }
+  }, [searchParams, token, setToken]);
   
   // If loading, show loading state
   if (isLoading) {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +24,7 @@ export function useChat() {
         .from("user_settings")
         .select("*")
         .eq("token", token)
-        .single();
+        .maybeSingle();
       
       if (settingsError && settingsError.code !== "PGRST116") {
         console.error("Error fetching user settings:", settingsError);

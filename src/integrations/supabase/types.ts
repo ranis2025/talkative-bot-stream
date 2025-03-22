@@ -17,6 +17,7 @@ export type Database = {
           id: string
           name: string
           openai_key: string | null
+          token: string | null
           updated_at: string
           user_id: string | null
         }
@@ -27,6 +28,7 @@ export type Database = {
           id?: string
           name: string
           openai_key?: string | null
+          token?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -37,6 +39,7 @@ export type Database = {
           id?: string
           name?: string
           openai_key?: string | null
+          token?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -44,24 +47,30 @@ export type Database = {
       }
       protalk_chats: {
         Row: {
+          bot_id: string | null
           created_at: string
           id: string
           messages: Json
           title: string
+          token: string | null
           updated_at: string
         }
         Insert: {
+          bot_id?: string | null
           created_at?: string
           id?: string
           messages?: Json
           title: string
+          token?: string | null
           updated_at?: string
         }
         Update: {
+          bot_id?: string | null
           created_at?: string
           id?: string
           messages?: Json
           title?: string
+          token?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -73,6 +82,7 @@ export type Database = {
           email: string | null
           id: string
           theme: string | null
+          token: string | null
           updated_at: string
           user_id: string
         }
@@ -82,6 +92,7 @@ export type Database = {
           email?: string | null
           id?: string
           theme?: string | null
+          token?: string | null
           updated_at?: string
           user_id: string
         }
@@ -91,6 +102,7 @@ export type Database = {
           email?: string | null
           id?: string
           theme?: string | null
+          token?: string | null
           updated_at?: string
           user_id?: string
         }

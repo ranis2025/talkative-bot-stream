@@ -39,9 +39,9 @@ const Auth = () => {
         .from("user_settings")
         .select("*")
         .eq("token", token)
-        .single();
+        .maybeSingle();
       
-      if (settingsError && settingsError.code !== "PGRST116") {
+      if (!existingSettings) {
         // If no settings found for this token, create new settings
         const { error: createError } = await supabase
           .from("user_settings")
