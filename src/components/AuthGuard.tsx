@@ -1,6 +1,6 @@
 
-import { ReactNode, useEffect, useState } from "react";
-import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { ReactNode, useEffect } from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -10,26 +10,8 @@ interface AuthGuardProps {
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const [isLoading, setIsLoading] = useState(true);
-  const { token, setToken } = useAuth();
+  const { token, isLoading } = useAuth();
   
-  useEffect(() => {
-    // Get token from URL
-    const urlToken = searchParams.get("token");
-    
-    if (urlToken) {
-      setToken(urlToken);
-    }
-    
-    // Simple timeout to simulate token validation
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [searchParams, setToken]);
-
   // If loading, show loading state
   if (isLoading) {
     return (

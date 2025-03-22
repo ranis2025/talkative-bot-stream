@@ -1,19 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
-import { IChat, IMessage, ApiResponse, Json } from "@/types/chat";
+import { IChat, IMessage, ApiResponse, Json, ChatBot, UserSettings } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
-import { useSearchParams } from "react-router-dom";
-
-type UserSettings = {
-  id: string;
-  token: string;
-  email?: string;
-  default_bot_id?: string;
-  theme?: string;
-  created_at: string;
-  updated_at: string;
-};
+import { useAuth } from "@/hooks/useAuth";
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
@@ -21,10 +11,9 @@ export function useChat() {
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const { token } = useAuth();
   const [currentBot, setCurrentBot] = useState<string | null>(null);
-  const [userBots, setUserBots] = useState<any[]>([]);
+  const [userBots, setUserBots] = useState<ChatBot[]>([]);
 
   const fetchUserBots = useCallback(async () => {
     if (!token) return;
@@ -51,14 +40,14 @@ export function useChat() {
       }
       
       if (botsData && botsData.length > 0) {
-        setUserBots(botsData);
+        setUserBots(botsData as ChatBot[]);
         if (!currentBot) {
           setCurrentBot(botsData[0].bot_id);
         }
       }
 
       if (settingsData) {
-        const settings = settingsData as UserSettings;
+        const settings = settingsData as unknown as UserSettings;
         if (settings.default_bot_id && !currentBot) {
           setCurrentBot(settings.default_bot_id);
         }

@@ -43,16 +43,14 @@ const Auth = () => {
       
       if (settingsError && settingsError.code !== "PGRST116") {
         // If no settings found for this token, create new settings
-        const { data: newSettings, error: createError } = await supabase
+        const { error: createError } = await supabase
           .from("user_settings")
           .insert({ 
             token: token,
             theme: 'dark',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          })
-          .select("*")
-          .single();
+          });
         
         if (createError) throw createError;
       }
