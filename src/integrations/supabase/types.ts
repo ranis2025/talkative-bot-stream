@@ -9,7 +9,102 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      chat_bots: {
+        Row: {
+          bot_id: string
+          bot_token: string | null
+          created_at: string | null
+          id: string
+          name: string
+          openai_key: string | null
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          bot_id: string
+          bot_token?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          openai_key?: string | null
+          token: string
+          updated_at?: string | null
+        }
+        Update: {
+          bot_id?: string
+          bot_token?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          openai_key?: string | null
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      protalk_chats: {
+        Row: {
+          bot_id: string | null
+          created_at: string | null
+          id: string
+          messages: Json | null
+          title: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          bot_id?: string | null
+          created_at?: string | null
+          id: string
+          messages?: Json | null
+          title: string
+          token: string
+          updated_at?: string | null
+        }
+        Update: {
+          bot_id?: string | null
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          title?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string | null
+          default_bot_id: string | null
+          email: string | null
+          id: string
+          theme: string | null
+          token: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_bot_id?: string | null
+          email?: string | null
+          id?: string
+          theme?: string | null
+          token: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_bot_id?: string | null
+          email?: string | null
+          id?: string
+          theme?: string | null
+          token?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
