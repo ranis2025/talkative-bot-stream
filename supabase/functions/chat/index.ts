@@ -74,21 +74,22 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
-    // Retrieve bot details from database
+    // Retrieve bot details from database - fix for the multiple rows issue
     let botData;
     try {
-      const { data, error } = await supabaseClient
+      // First try to get an exact match with eq
+      let { data, error } = await supabaseClient
         .from('chat_bots')
         .select('*')
         .eq('bot_id', bot_id)
-        .maybeSingle();
+        .limit(1);
       
       if (error) {
         console.error("Database query error:", error);
         throw new Error(`Error querying database: ${error.message}`);
       }
       
-      if (!data) {
+      if (!data || data.length === 0) {
         console.error(`Bot not found with ID: ${bot_id}`);
         return new Response(
           JSON.stringify({ 
@@ -102,7 +103,8 @@ Deno.serve(async (req) => {
         );
       }
       
-      botData = data;
+      // Take the first match if multiple are found
+      botData = data[0];
       console.log(`Bot found: ${botData.name}, has OpenAI key: ${!!botData.openai_key}, has Bot token: ${!!botData.bot_token}`);
     } catch (dbError) {
       console.error("Error retrieving bot data:", dbError);

@@ -1,12 +1,16 @@
+
 import { useRef, useEffect } from "react";
 import { Message } from "./Message";
 import { MessageInput } from "./MessageInput";
 import { IChat } from "@/types/chat";
+import { AlertTriangle } from "lucide-react";
+
 interface ChatProps {
   chat: IChat | undefined;
   onSendMessage: (message: string) => void;
   isLoading: boolean;
 }
+
 export function Chat({
   chat,
   onSendMessage,
@@ -34,6 +38,12 @@ export function Chat({
         </div>
       </div>;
   }
+  
+  const hasErrorMessage = chat.messages.length > 0 && 
+    chat.messages[chat.messages.length - 1].role === "bot" && 
+    (chat.messages[chat.messages.length - 1].content.includes("Ошибка:") || 
+     chat.messages[chat.messages.length - 1].content.includes("Сервер временно недоступен"));
+
   return <div className="flex-1 flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {chat.messages.length === 0 ? <div className="flex-1 flex flex-col items-center justify-center h-full text-center">
@@ -45,6 +55,12 @@ export function Chat({
             </div>
           </div> : <>
             {chat.messages.map(message => <Message key={message.id} message={message} />)}
+            {hasErrorMessage && (
+              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Произошла ошибка при обработке запроса. Если проблема повторяется, обратитесь в службу поддержки.</span>
+              </div>
+            )}
             {isLoading && <div className="bot-message">
                 <div className="flex space-x-2">
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse"></div>
