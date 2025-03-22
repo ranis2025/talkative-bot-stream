@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Settings, LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -21,12 +21,18 @@ interface HeaderProps {
 }
 
 export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
-  const { user, signOut } = useAuth();
+  const { token } = useAuth();
+  const navigate = useNavigate();
+
+  // Function to sign out - just redirects to auth page
+  const signOut = () => {
+    navigate("/auth");
+  };
 
   // Function to get user initials for avatar
   const getUserInitials = () => {
-    if (!user?.email) return "U";
-    return user.email.substring(0, 2).toUpperCase();
+    if (!token) return "U";
+    return token.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -72,7 +78,7 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
           <span>Новый чат</span>
         </Button>
         
-        {user && (
+        {token && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -84,14 +90,14 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.email}</p>
+                  <p className="text-sm font-medium leading-none">Пользователь</p>
                   <p className="text-xs leading-none text-muted-foreground">
                     Аккаунт ProTalk
                   </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()}>
+              <DropdownMenuItem onClick={signOut}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Выйти</span>
               </DropdownMenuItem>

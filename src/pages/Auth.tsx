@@ -1,15 +1,17 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
   const [tokenLoading, setTokenLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+  const { setToken } = useAuth();
   
   // Check for token in URL
   useEffect(() => {
@@ -26,7 +28,7 @@ const Auth = () => {
       // Redirect to chat with a demo token
       navigate("/chat?token=demo-token");
     }
-  }, [searchParams, navigate, toast]);
+  }, [searchParams, navigate, toast, setToken]);
 
   // Handle token-based authentication
   const handleTokenAuth = async (token: string) => {
@@ -54,6 +56,9 @@ const Auth = () => {
         
         if (createError) throw createError;
       }
+      
+      // Set token in context
+      setToken(token);
       
       // Navigate to chat page with token
       toast({
