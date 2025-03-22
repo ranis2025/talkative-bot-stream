@@ -7,6 +7,7 @@ import { ChatList } from "@/components/ChatList";
 import { Chat } from "@/components/Chat";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
   const {
@@ -14,6 +15,7 @@ const Index = () => {
     currentChat,
     currentChatId,
     loading,
+    isInitialized,
     setCurrentChatId,
     createChat,
     sendChatMessage,
@@ -56,6 +58,16 @@ const Index = () => {
   const handleBackToList = () => {
     setSidebarOpen(true);
   };
+
+  // Отображаем загрузку, пока данные инициализируются
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Загрузка чатов...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-background">

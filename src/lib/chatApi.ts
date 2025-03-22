@@ -2,7 +2,7 @@
 import { ApiRequest, ApiResponse } from "@/types/chat";
 
 const API_BASE_URL = "https://api.pro-talk.ru/api/v1.0";
-const BOT_ID = 14896; // Пример ID бота, замените на реальный
+const BOT_ID = 14896; // ID бота
 const BOT_TOKEN = "your_bot_token"; // Замените на ваш токен
 
 export async function sendMessage(chatId: string, message: string): Promise<string> {

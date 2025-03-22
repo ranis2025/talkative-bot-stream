@@ -4,56 +4,105 @@ import { IChat, IMessage } from "@/types/chat";
 import { v4 as uuidv4 } from "uuid";
 import { sendMessage } from "@/lib/chatApi";
 import { useToast } from "@/components/ui/use-toast";
-
-// Ключ для хранения чатов в localStorage
-const STORAGE_KEY = 'ai_chat_threads';
+import { supabase } from "@/integrations/supabase/client";
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Загрузка чатов из localStorage при инициализации
+  // Загрузка чатов из Supabase при инициализации
   useEffect(() => {
-    const storedChats = localStorage.getItem(STORAGE_KEY);
-    if (storedChats) {
-      const parsedChats = JSON.parse(storedChats);
-      setChats(parsedChats);
-      
-      // Если есть чаты, устанавливаем последний активный
-      if (parsedChats.length > 0) {
-        setCurrentChatId(parsedChats[0].id);
-      }
-    }
-  }, []);
+    const fetchChats = async () => {
+      try {
+        setLoading(true);
+        
+        const { data, error } = await supabase
+          .from('protalk_chats')
+          .select('*')
+          .order('updated_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
 
-  // Сохранение чатов в localStorage при их изменении
-  useEffect(() => {
-    if (chats.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-    }
-  }, [chats]);
+        // Преобразование данных из Supabase в формат IChat
+        const formattedChats: IChat[] = data.map((chat) => ({
+          id: chat.id,
+          title: chat.title,
+          messages: chat.messages as IMessage[],
+          createdAt: new Date(chat.created_at).getTime(),
+          updatedAt: new Date(chat.updated_at).getTime()
+        }));
+        
+        setChats(formattedChats);
+        
+        // Если есть чаты, устанавливаем последний активный
+        if (formattedChats.length > 0) {
+          setCurrentChatId(formattedChats[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching chats:", error);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось загрузить чаты из базы данных.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+        setIsInitialized(true);
+      }
+    };
+
+    fetchChats();
+  }, [toast]);
 
   // Получение текущего чата
   const currentChat = chats.find(chat => chat.id === currentChatId);
   
   // Создание нового чата
-  const createChat = useCallback(() => {
-    const newChatId = uuidv4();
-    const newChat: IChat = {
-      id: newChatId,
-      title: `Новый чат ${chats.length + 1}`,
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    
-    setChats(prev => [newChat, ...prev]);
-    setCurrentChatId(newChatId);
-    
-    return newChatId;
-  }, [chats]);
+  const createChat = useCallback(async () => {
+    try {
+      const newChatId = uuidv4();
+      const newChat: IChat = {
+        id: newChatId,
+        title: `Новый чат ${chats.length + 1}`,
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      // Сохраняем в Supabase
+      const { error } = await supabase
+        .from('protalk_chats')
+        .insert({
+          id: newChatId,
+          title: newChat.title,
+          messages: [],
+          created_at: new Date(newChat.createdAt).toISOString(),
+          updated_at: new Date(newChat.updatedAt).toISOString()
+        });
+        
+      if (error) {
+        throw error;
+      }
+      
+      setChats(prev => [newChat, ...prev]);
+      setCurrentChatId(newChatId);
+      
+      return newChatId;
+    } catch (error) {
+      console.error("Error creating chat:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать новый чат.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }, [chats, toast]);
 
   // Отправка сообщения
   const sendChatMessage = useCallback(async (message: string) => {
@@ -63,7 +112,8 @@ export function useChat() {
       // Если нет активного чата, создаем новый
       let chatId = currentChatId;
       if (!chatId) {
-        chatId = createChat();
+        chatId = await createChat();
+        if (!chatId) return; // Если не удалось создать чат
       }
       
       // Создаем сообщение пользователя
@@ -74,28 +124,28 @@ export function useChat() {
         timestamp: Date.now()
       };
       
+      // Находим текущий чат
+      const currentChatIndex = chats.findIndex(chat => chat.id === chatId);
+      if (currentChatIndex === -1) return;
+      
+      const updatedChat = { ...chats[currentChatIndex] };
+      
+      // Обновляем заголовок чата на основе первого сообщения
+      const shouldUpdateTitle = updatedChat.messages.length === 0;
+      if (shouldUpdateTitle) {
+        updatedChat.title = message.length > 30 
+          ? `${message.substring(0, 30)}...` 
+          : message;
+      }
+      
+      // Добавляем сообщение пользователя
+      updatedChat.messages = [...updatedChat.messages, userMessage];
+      updatedChat.updatedAt = Date.now();
+      
       // Обновляем состояние чата с сообщением пользователя
-      setChats(prevChats => {
-        return prevChats.map(chat => {
-          if (chat.id === chatId) {
-            // Обновляем заголовок чата на основе первого сообщения
-            const shouldUpdateTitle = chat.messages.length === 0;
-            const title = shouldUpdateTitle 
-              ? message.length > 30 
-                ? `${message.substring(0, 30)}...` 
-                : message
-              : chat.title;
-              
-            return {
-              ...chat,
-              title,
-              messages: [...chat.messages, userMessage],
-              updatedAt: Date.now()
-            };
-          }
-          return chat;
-        });
-      });
+      const updatedChats = [...chats];
+      updatedChats[currentChatIndex] = updatedChat;
+      setChats(updatedChats);
       
       // Отправляем запрос к API
       setLoading(true);
@@ -109,19 +159,31 @@ export function useChat() {
         timestamp: Date.now()
       };
       
-      // Обновляем состояние чата с ответом бота
-      setChats(prevChats => {
-        return prevChats.map(chat => {
-          if (chat.id === chatId) {
-            return {
-              ...chat,
-              messages: [...chat.messages, botMessage],
-              updatedAt: Date.now()
-            };
-          }
-          return chat;
-        });
-      });
+      // Добавляем сообщение бота
+      const finalChat = { 
+        ...updatedChat,
+        messages: [...updatedChat.messages, botMessage],
+        updatedAt: Date.now()
+      };
+      
+      // Обновляем состояние с ответом бота
+      const finalChats = [...updatedChats];
+      finalChats[currentChatIndex] = finalChat;
+      setChats(finalChats);
+      
+      // Сохраняем обновленный чат в Supabase
+      const { error } = await supabase
+        .from('protalk_chats')
+        .update({
+          title: finalChat.title,
+          messages: finalChat.messages,
+          updated_at: new Date(finalChat.updatedAt).toISOString()
+        })
+        .eq('id', chatId);
+        
+      if (error) {
+        throw error;
+      }
     } catch (error) {
       toast({
         title: "Ошибка",
@@ -132,40 +194,80 @@ export function useChat() {
     } finally {
       setLoading(false);
     }
-  }, [currentChatId, createChat, toast]);
+  }, [currentChatId, chats, createChat, toast]);
 
   // Удаление чата
-  const deleteChat = useCallback((chatId: string) => {
-    setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
-    
-    // Если удаляем текущий чат, выбираем следующий доступный
-    if (currentChatId === chatId) {
-      setCurrentChatId(prevChats => {
-        const filteredChats = prevChats.filter(chat => chat.id !== chatId);
-        return filteredChats.length > 0 ? filteredChats[0].id : null;
+  const deleteChat = useCallback(async (chatId: string) => {
+    try {
+      // Удаляем из Supabase
+      const { error } = await supabase
+        .from('protalk_chats')
+        .delete()
+        .eq('id', chatId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
+      
+      // Если удаляем текущий чат, выбираем следующий доступный
+      if (currentChatId === chatId) {
+        setCurrentChatId(prevChats => {
+          const filteredChats = prevChats.filter(chat => chat.id !== chatId);
+          return filteredChats.length > 0 ? filteredChats[0].id : null;
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить чат.",
+        variant: "destructive"
       });
     }
-  }, [currentChatId]);
+  }, [currentChatId, toast]);
 
   // Переименование чата
-  const renameChat = useCallback((chatId: string, newTitle: string) => {
+  const renameChat = useCallback(async (chatId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
     
-    setChats(prevChats => {
-      return prevChats.map(chat => {
-        if (chat.id === chatId) {
-          return { ...chat, title: newTitle };
-        }
-        return chat;
+    try {
+      // Обновляем локальное состояние
+      setChats(prevChats => {
+        return prevChats.map(chat => {
+          if (chat.id === chatId) {
+            return { ...chat, title: newTitle };
+          }
+          return chat;
+        });
       });
-    });
-  }, []);
+      
+      // Обновляем в Supabase
+      const { error } = await supabase
+        .from('protalk_chats')
+        .update({ title: newTitle })
+        .eq('id', chatId);
+        
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error renaming chat:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось переименовать чат.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
 
   return {
     chats,
     currentChat,
     currentChatId,
     loading,
+    isInitialized,
     setCurrentChatId,
     createChat,
     sendChatMessage,
