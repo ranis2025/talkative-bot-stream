@@ -43,7 +43,7 @@ export function Header({
           </Button>}
         <div className="flex items-center">
           <img src="/lovable-uploads/bf49cbb2-32bd-471b-9256-7db1562592e2.png" alt="Bizo Logo" className="h-12 w-auto mr--2 object-scale-down" />
-          <span className="text-[#d8b92a] mx--8 text-4xl py-px my-[6px] px-[5px] font-semibold text-left">ЧАТ</span>
+          <span className="text-[#d8b92a] mx--8 text-4xl py-px my-[6px] px-[5px] font-semibold text-left">BIZO/ЧАТ</span>
         </div>
       </div>
       <div className="flex space-x-2 items-center">
