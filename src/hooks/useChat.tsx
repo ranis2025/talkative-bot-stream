@@ -13,16 +13,31 @@ export function useChat() {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const { toast } = useToast();
 
+  // Get the bot_id from URL parameters
+  const getBotId = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const botId = urlParams.get('bot_id');
+    return botId ? botId : null;
+  };
+
   // Загрузка чатов из Supabase при инициализации
   useEffect(() => {
     const fetchChats = async () => {
       try {
         setLoading(true);
         
-        const { data, error } = await supabase
+        const botId = getBotId();
+        
+        // Build query to filter by bot_id if it exists
+        let query = supabase
           .from('protalk_chats')
-          .select('*')
-          .order('updated_at', { ascending: false });
+          .select('*');
+          
+        if (botId) {
+          query = query.eq('bot_id', botId);
+        }
+        
+        const { data, error } = await query.order('updated_at', { ascending: false });
           
         if (error) {
           throw error;
@@ -40,6 +55,7 @@ export function useChat() {
                 timestamp: msg.timestamp || Date.now()
               }))
             : [],
+          botId: chat.bot_id || getBotId(),
           createdAt: new Date(chat.created_at).getTime(),
           updatedAt: new Date(chat.updated_at).getTime()
         }));
@@ -73,10 +89,13 @@ export function useChat() {
   const createChat = useCallback(async () => {
     try {
       const newChatId = uuidv4();
+      const botId = getBotId();
+      
       const newChat: IChat = {
         id: newChatId,
         title: `Новый чат ${chats.length + 1}`,
         messages: [],
+        botId: botId || undefined,
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -88,6 +107,7 @@ export function useChat() {
           id: newChatId,
           title: newChat.title,
           messages: [],
+          bot_id: botId || null,
           created_at: new Date(newChat.createdAt).toISOString(),
           updated_at: new Date(newChat.updatedAt).toISOString()
         });
@@ -136,6 +156,7 @@ export function useChat() {
       if (currentChatIndex === -1) return;
       
       const updatedChat = { ...chats[currentChatIndex] };
+      const botId = updatedChat.botId || getBotId();
       
       // Обновляем заголовок чата на основе первого сообщения
       const shouldUpdateTitle = updatedChat.messages.length === 0;
@@ -156,7 +177,7 @@ export function useChat() {
       
       // Отправляем запрос к API
       setLoading(true);
-      const response = await sendMessage(chatId, message);
+      const response = await sendMessage(chatId, message, botId);
       
       // Создаем сообщение от бота
       const botMessage: IMessage = {
@@ -192,6 +213,7 @@ export function useChat() {
         .update({
           title: finalChat.title,
           messages: messagesForSupabase,
+          bot_id: botId || null,
           updated_at: new Date(finalChat.updatedAt).toISOString()
         })
         .eq('id', chatId);

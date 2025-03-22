@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface HeaderProps {
   onNewChat: () => void;
@@ -11,7 +12,7 @@ interface HeaderProps {
 
 export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
   return (
-    <div className="w-full flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-md z-10">
+    <div className="w-full flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-md z-10">
       <div className="flex items-center">
         {isMobile && onToggleSidebar && (
           <Button 
@@ -35,6 +36,7 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
         />
       </div>
       <div className="flex space-x-2">
+        <ThemeToggle />
         <Link to="/admin">
           <Button variant="outline" size="icon">
             <Settings className="h-4 w-4" />

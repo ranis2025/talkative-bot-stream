@@ -17,18 +17,20 @@ function getUrlParameters() {
   }
   
   return {
-    botId: botId ? parseInt(botId) : 14896, // Используем дефолтное значение, если параметр не указан
-    botToken: botToken || 'your_bot_token'  // Используем дефолтное значение, если параметр не указан
+    botId: botId || null,
+    botToken: botToken || null
   };
 }
 
 // Функция для получения данных бота из Supabase
-async function getBotData(botId: number) {
+async function getBotData(botId: string | null) {
+  if (!botId) return null;
+  
   try {
     const { data, error } = await supabase
       .from('chat_bots')
       .select('*')
-      .eq('bot_id', botId.toString())
+      .eq('bot_id', botId)
       .single();
       
     if (error) {
@@ -75,10 +77,15 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
   }
 }
 
-export async function sendMessage(chatId: string, message: string): Promise<string> {
+export async function sendMessage(chatId: string, message: string, specificBotId?: string | null): Promise<string> {
   try {
-    // Получаем параметры из URL при каждом вызове функции
-    const { botId, botToken } = getUrlParameters();
+    // Use provided bot ID or get from URL
+    const { botId: urlBotId, botToken: urlBotToken } = getUrlParameters();
+    const botId = specificBotId || urlBotId;
+    
+    if (!botId) {
+      throw new Error("Bot ID is required");
+    }
     
     // Получаем данные бота из Supabase
     const botData = await getBotData(botId);
@@ -92,10 +99,17 @@ export async function sendMessage(chatId: string, message: string): Promise<stri
     // Если OpenAI ключа нет, используем стандартный API
     console.log("Using standard API for bot:", botId);
     const payload: ApiRequest = {
-      bot_id: botId,
-      chat_id: chatId, // Используем ID чата из истории переписок
+      bot_id: parseInt(botId),
+      chat_id: chatId,
       message: message
     };
+
+    // Use botToken from botData if available, otherwise from URL
+    const botToken = botData?.bot_token || urlBotToken;
+    
+    if (!botToken) {
+      throw new Error("Bot token is required");
+    }
 
     const response = await fetch(`${API_BASE_URL}/ask/${botToken}`, {
       method: "POST",

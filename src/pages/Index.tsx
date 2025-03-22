@@ -62,7 +62,7 @@ const Index = () => {
   // Отображаем загрузку, пока данные инициализируются
   if (!isInitialized) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-background text-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2 text-lg">Загрузка чатов...</span>
       </div>
@@ -70,10 +70,10 @@ const Index = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       {/* Мобильная версия заголовка */}
       {isMobileView && !sidebarOpen && (
-        <div className="w-full flex items-center p-4 border-b bg-white/80 backdrop-blur-md z-10">
+        <div className="w-full flex items-center p-4 border-b bg-background/80 backdrop-blur-md z-10">
           <button 
             onClick={handleBackToList}
             className="flex items-center text-foreground hover:text-primary transition-colors"
