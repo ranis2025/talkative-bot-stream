@@ -1,7 +1,6 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 
@@ -9,6 +8,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   setToken: (token: string | null) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,13 +18,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // Get token from URL
     const urlToken = searchParams.get("token");
     
     if (urlToken) {
-      // Check if user settings exist for this token
       checkOrCreateUserSettings(urlToken);
       setToken(urlToken);
     } else {
@@ -38,17 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, [searchParams, toast]);
 
-  // Check if user settings exist for this token or create them
   const checkOrCreateUserSettings = async (token: string) => {
     try {
-      // Check if settings exist
       const { data: existingSettings, error: checkError } = await supabase
         .from("user_settings")
         .select("*")
         .eq("token", token)
         .maybeSingle();
       
-      // If no settings found, create new settings
       if (!existingSettings && checkError?.code === "PGRST116") {
         const userId = uuidv4();
         const { error: createError } = await supabase
@@ -70,11 +66,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Provide the context value
+  const logout = () => {
+    setToken(null);
+    toast({
+      title: "Выход выполнен",
+      description: "Вы успешно вышли из системы",
+    });
+    navigate("/auth");
+  };
+
   const value = {
     token,
     isLoading,
-    setToken
+    setToken,
+    logout
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
