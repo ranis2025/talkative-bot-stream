@@ -1,8 +1,9 @@
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PlusCircle, Menu, MessageSquare, Users, Settings } from "lucide-react";
+import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { 
   NavigationMenu, 
   NavigationMenuContent, 
@@ -26,7 +27,12 @@ export function Header({
   onToggleSidebar,
   chatView = 'individual'
 }: HeaderProps) {
-  const { logout } = useAuth();
+  const { logout, token } = useAuth();
+  const navigate = useNavigate();
+
+  const handleAdminClick = () => {
+    navigate(token ? `/admin?token=${token}` : '/admin');
+  };
 
   return (
     <div className="w-full flex items-center p-4 border-b bg-background/80 backdrop-blur-md z-10">
@@ -74,30 +80,28 @@ export function Header({
             <span>Новый групповой чат</span>
           </Button>
         )}
+
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={handleAdminClick}
+          title="Панель администратора"
+        >
+          <Settings className="h-5 w-5" />
+          <span className="sr-only">Настройки</span>
+        </Button>
+
+        <ThemeToggle />
         
-        <NavigationMenu>
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>
-                <Settings className="h-4 w-4" />
-                <span className="sr-only">Настройки</span>
-              </NavigationMenuTrigger>
-              <NavigationMenuContent className="min-w-[200px]">
-                <div className="p-2 flex flex-col gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={logout}
-                    className="justify-start"
-                  >
-                    Выйти
-                  </Button>
-                  <ThemeToggle />
-                </div>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={logout}
+          title="Выйти из системы"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="sr-only">Выйти</span>
+        </Button>
       </div>
     </div>
   );
