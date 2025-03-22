@@ -10,7 +10,7 @@ export interface IChat {
   id: string;
   title: string;
   messages: IMessage[];
-  botId?: string | null;
+  bot_id?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -24,4 +24,14 @@ export interface ApiRequest {
 export interface ApiResponse {
   ok: boolean;
   done: string;
+}
+
+export interface ChatBot {
+  id: string;
+  name: string;
+  bot_id: string;
+  bot_token?: string;
+  openai_key?: string;
+  created_at: string;
+  updated_at: string;
 }
