@@ -13,9 +13,11 @@ export async function sendMessage(chatId: string, message: string, specificBotId
       throw new Error("Bot ID is required");
     }
     
+    console.log(`Sending message to bot: ${botId}, chat: ${chatId}`);
+    
     // Create the payload for the API
     const payload: ApiRequest = {
-      bot_id: botId,  // This should be a string, not a number
+      bot_id: botId,  // This is passed as a string to the edge function
       chat_id: chatId,
       message: message
     };

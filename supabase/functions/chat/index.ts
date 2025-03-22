@@ -55,18 +55,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log(`Bot configuration: ID=${bot_id}, has OpenAI key: ${!!botData.openai_key}, has Bot token: ${!!botData.bot_token}`);
+
     let response;
 
     // Option 1: Use OpenAI if key is available
     if (botData.openai_key) {
+      console.log("Using OpenAI API for response");
       response = await sendToOpenAI(message, botData.openai_key);
     } 
     // Option 2: Use external API with bot token
     else if (botData.bot_token) {
+      console.log("Using Pro-Talk API for response");
       response = await sendToExternalAPI(bot_id, chat_id, message, botData.bot_token);
     } 
     // No valid configuration
     else {
+      console.error("Bot is not properly configured - missing both OpenAI key and bot token");
       return new Response(
         JSON.stringify({ 
           ok: false, 
@@ -103,6 +108,7 @@ Deno.serve(async (req) => {
 
 async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
   try {
+    console.log("Sending request to OpenAI API");
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
@@ -121,10 +127,12 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
 
     if (!response.ok) {
       const errorData = await response.text();
+      console.error(`OpenAI API error: ${response.status} - ${errorData}`);
       throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
     }
 
     const data = await response.json();
+    console.log("Successfully received response from OpenAI");
     return data.choices[0].message.content;
   } catch (error) {
     console.error("Error calling OpenAI:", error);
@@ -134,15 +142,23 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
 
 async function sendToExternalAPI(botId: string, chatId: string, message: string, botToken: string): Promise<string> {
   try {
-    // When using the external API, we might need to convert the bot_id to a number
-    // if that's what the external API expects
-    const response = await fetch(`${API_BASE_URL}/ask/${botToken}`, {
+    // Per the OpenAPI spec, bot_id should be an integer
+    const numericBotId = parseInt(botId);
+    if (isNaN(numericBotId)) {
+      throw new Error("Invalid bot_id: must be convertible to an integer");
+    }
+    
+    const apiUrl = `${API_BASE_URL}/ask/${botToken}`;
+    console.log(`Sending request to Pro-Talk API: ${apiUrl}`);
+    console.log(`Request payload: bot_id=${numericBotId}, chat_id=${chatId}`);
+    
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        bot_id: parseInt(botId),  // Convert to number for external API
+        bot_id: numericBotId,  // Send as integer per API spec
         chat_id: chatId,
         message: message
       }),
@@ -150,10 +166,12 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`Pro-Talk API error: ${response.status} - ${errorText}`);
       throw new Error(`API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log("Successfully received response from Pro-Talk API");
     return data.done;
   } catch (error) {
     console.error("Error sending message to external API:", error);
