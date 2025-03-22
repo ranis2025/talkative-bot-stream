@@ -32,7 +32,14 @@ export function useChat() {
         const formattedChats: IChat[] = data.map((chat) => ({
           id: chat.id,
           title: chat.title,
-          messages: chat.messages as IMessage[],
+          messages: Array.isArray(chat.messages) 
+            ? chat.messages.map((msg: any) => ({
+                id: msg.id || uuidv4(),
+                content: msg.content || "",
+                role: msg.role || "user",
+                timestamp: msg.timestamp || Date.now()
+              }))
+            : [],
           createdAt: new Date(chat.created_at).getTime(),
           updatedAt: new Date(chat.updated_at).getTime()
         }));
@@ -171,12 +178,20 @@ export function useChat() {
       finalChats[currentChatIndex] = finalChat;
       setChats(finalChats);
       
+      // Преобразуем сообщения в формат, соответствующий Json для Supabase
+      const messagesForSupabase = finalChat.messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        role: msg.role,
+        timestamp: msg.timestamp
+      }));
+      
       // Сохраняем обновленный чат в Supabase
       const { error } = await supabase
         .from('protalk_chats')
         .update({
           title: finalChat.title,
-          messages: finalChat.messages,
+          messages: messagesForSupabase,
           updated_at: new Date(finalChat.updatedAt).toISOString()
         })
         .eq('id', chatId);
@@ -209,14 +224,12 @@ export function useChat() {
         throw error;
       }
       
-      setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
+      const updatedChats = chats.filter(chat => chat.id !== chatId);
+      setChats(updatedChats);
       
       // Если удаляем текущий чат, выбираем следующий доступный
       if (currentChatId === chatId) {
-        setCurrentChatId(prevChats => {
-          const filteredChats = prevChats.filter(chat => chat.id !== chatId);
-          return filteredChats.length > 0 ? filteredChats[0].id : null;
-        });
+        setCurrentChatId(updatedChats.length > 0 ? updatedChats[0].id : null);
       }
     } catch (error) {
       console.error("Error deleting chat:", error);
@@ -226,7 +239,7 @@ export function useChat() {
         variant: "destructive"
       });
     }
-  }, [currentChatId, toast]);
+  }, [currentChatId, chats, toast]);
 
   // Переименование чата
   const renameChat = useCallback(async (chatId: string, newTitle: string) => {
