@@ -18,6 +18,7 @@ export type Database = {
           name: string
           openai_key: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           bot_id: string
@@ -27,6 +28,7 @@ export type Database = {
           name: string
           openai_key?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           bot_id?: string
@@ -36,6 +38,7 @@ export type Database = {
           name?: string
           openai_key?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -60,6 +63,60 @@ export type Database = {
           messages?: Json
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          default_bot_id: string | null
+          email: string | null
+          id: string
+          theme: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_bot_id?: string | null
+          email?: string | null
+          id?: string
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_bot_id?: string | null
+          email?: string | null
+          id?: string
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          user_id?: string
         }
         Relationships: []
       }

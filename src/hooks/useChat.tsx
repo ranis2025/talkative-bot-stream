@@ -1,10 +1,19 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { IChat, IMessage, ApiResponse } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+
+type UserSettings = {
+  id: string;
+  user_id: string;
+  email?: string;
+  default_bot_id?: string;
+  theme?: string;
+  created_at: string;
+  updated_at: string;
+};
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
@@ -16,12 +25,10 @@ export function useChat() {
   const [currentBot, setCurrentBot] = useState<string | null>(null);
   const [userBots, setUserBots] = useState<any[]>([]);
 
-  // Fetch user's bots
   const fetchUserBots = useCallback(async () => {
     if (!user) return;
     
     try {
-      // First check if user has custom settings
       const { data: settingsData, error: settingsError } = await supabase
         .from("user_settings")
         .select("*")
@@ -29,11 +36,9 @@ export function useChat() {
         .single();
       
       if (settingsError && settingsError.code !== "PGRST116") {
-        // PGRST116 is "no rows returned" error
         console.error("Error fetching user settings:", settingsError);
       }
 
-      // Fetch bots assigned to this user
       const { data: botsData, error: botsError } = await supabase
         .from("chat_bots")
         .select("*")
@@ -44,7 +49,6 @@ export function useChat() {
         return;
       }
       
-      // If we have bots, set them and default to the first one
       if (botsData && botsData.length > 0) {
         setUserBots(botsData);
         if (!currentBot) {
@@ -52,9 +56,7 @@ export function useChat() {
         }
       }
 
-      // Apply any user settings
       if (settingsData) {
-        // If there's a default bot in settings, use it
         if (settingsData.default_bot_id && !currentBot) {
           setCurrentBot(settingsData.default_bot_id);
         }
@@ -64,7 +66,6 @@ export function useChat() {
     }
   }, [user, currentBot]);
 
-  // Получаем все чаты из базы данных
   const fetchChats = useCallback(async (bot_id?: string) => {
     if (!user) return;
     
@@ -95,7 +96,6 @@ export function useChat() {
 
         setChats(formattedChats);
 
-        // Если нет текущего чата, устанавливаем первый чат как текущий
         if (formattedChats.length > 0 && !currentChatId) {
           setCurrentChatId(formattedChats[0].id);
         }
@@ -112,21 +112,18 @@ export function useChat() {
     }
   }, [currentChatId, toast, user]);
 
-  // Load user bots and settings when user changes
   useEffect(() => {
     if (user) {
       fetchUserBots();
     }
   }, [fetchUserBots, user]);
 
-  // Устанавливаем бота и загружаем чаты при изменении 
   useEffect(() => {
     if (user) {
       fetchChats(currentBot);
     }
   }, [fetchChats, currentBot, user]);
 
-  // Создаем новый чат
   const createChat = useCallback(async () => {
     const newChatId = uuidv4();
     const newChat: IChat = {
@@ -162,7 +159,6 @@ export function useChat() {
     }
   }, [currentBot, toast]);
 
-  // Отправляем сообщение в чат
   const sendChatMessage = useCallback(
     async (message: string) => {
       if (!currentChatId || !message.trim()) return;
@@ -170,11 +166,9 @@ export function useChat() {
       setLoading(true);
 
       try {
-        // Находим текущий чат
         const currentChat = chats.find((chat) => chat.id === currentChatId);
         if (!currentChat) return;
 
-        // Создаем новое сообщение пользователя
         const userMessage: IMessage = {
           id: uuidv4(),
           content: message,
@@ -182,10 +176,8 @@ export function useChat() {
           timestamp: Date.now(),
         };
 
-        // Обновляем список сообщений чата
         const updatedMessages = [...currentChat.messages, userMessage];
 
-        // Сохраняем сообщение пользователя в базу данных
         const { error: updateError } = await supabase
           .from("protalk_chats")
           .update({ 
@@ -198,7 +190,6 @@ export function useChat() {
           throw updateError;
         }
 
-        // Обновляем список чатов
         setChats((prevChats) =>
           prevChats.map((chat) =>
             chat.id === currentChatId
@@ -211,7 +202,6 @@ export function useChat() {
           )
         );
 
-        // Отправляем запрос к API для получения ответа от бота
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: {
@@ -234,7 +224,6 @@ export function useChat() {
           throw new Error(data.done || "Unknown error");
         }
 
-        // Создаем новое сообщение от бота
         const botMessage: IMessage = {
           id: uuidv4(),
           content: data.done,
@@ -242,10 +231,8 @@ export function useChat() {
           timestamp: Date.now(),
         };
 
-        // Обновляем список сообщений чата
         const messagesWithBotResponse = [...updatedMessages, botMessage];
 
-        // Сохраняем ответ бота в базу данных
         const { error: botUpdateError } = await supabase
           .from("protalk_chats")
           .update({ 
@@ -258,7 +245,6 @@ export function useChat() {
           throw botUpdateError;
         }
 
-        // Если это первое сообщение, обновляем заголовок чата
         if (currentChat.messages.length === 0) {
           const shortTitle =
             message.length > 30 ? message.substring(0, 30) + "..." : message;
@@ -272,7 +258,6 @@ export function useChat() {
             throw titleError;
           }
 
-          // Обновляем список чатов с новым заголовком
           setChats((prevChats) =>
             prevChats.map((chat) =>
               chat.id === currentChatId
@@ -286,7 +271,6 @@ export function useChat() {
             )
           );
         } else {
-          // Обновляем список чатов
           setChats((prevChats) =>
             prevChats.map((chat) =>
               chat.id === currentChatId
@@ -313,7 +297,6 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
-  // Удаляем чат
   const deleteChat = useCallback(
     async (chatId: string) => {
       try {
@@ -326,11 +309,9 @@ export function useChat() {
           throw error;
         }
 
-        // Обновляем список чатов
         const updatedChats = chats.filter((chat) => chat.id !== chatId);
         setChats(updatedChats);
 
-        // Если удаляемый чат был текущим, устанавливаем первый чат из списка как текущий
         if (chatId === currentChatId) {
           setCurrentChatId(updatedChats.length > 0 ? updatedChats[0].id : null);
         }
@@ -346,7 +327,6 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
-  // Переименовываем чат
   const renameChat = useCallback(
     async (chatId: string, newTitle: string) => {
       try {
@@ -359,7 +339,6 @@ export function useChat() {
           throw error;
         }
 
-        // Обновляем список чатов
         setChats((prevChats) =>
           prevChats.map((chat) =>
             chat.id === chatId ? { ...chat, title: newTitle } : chat
@@ -377,13 +356,11 @@ export function useChat() {
     [toast]
   );
 
-  // Находим текущий чат
   const currentChat = chats.find((chat) => chat.id === currentChatId) || null;
 
-  // Устанавливаем текущего бота
   const setCurrentBotId = useCallback((botId: string | null) => {
     setCurrentBot(botId);
-    setCurrentChatId(null); // Сбрасываем текущий чат при смене бота
+    setCurrentChatId(null);
   }, []);
 
   return {

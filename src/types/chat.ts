@@ -32,6 +32,25 @@ export interface ChatBot {
   bot_id: string;
   bot_token?: string;
   openai_key?: string;
+  user_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserToken {
+  id: string;
+  user_id: string;
+  token: string;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface UserSettings {
+  id: string;
+  user_id: string;
+  email?: string;
+  default_bot_id?: string;
+  theme?: string;
   created_at: string;
   updated_at: string;
 }
