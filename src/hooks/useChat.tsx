@@ -3,11 +3,11 @@ import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { IChat, IMessage, ApiResponse, Json } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "react-router-dom";
 
 type UserSettings = {
   id: string;
-  user_id: string;
+  token: string;
   email?: string;
   default_bot_id?: string;
   theme?: string;
@@ -21,18 +21,19 @@ export function useChat() {
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
   const [currentBot, setCurrentBot] = useState<string | null>(null);
   const [userBots, setUserBots] = useState<any[]>([]);
 
   const fetchUserBots = useCallback(async () => {
-    if (!user) return;
+    if (!token) return;
     
     try {
       const { data: settingsData, error: settingsError } = await supabase
         .from("user_settings")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("token", token)
         .single();
       
       if (settingsError && settingsError.code !== "PGRST116") {
@@ -42,7 +43,7 @@ export function useChat() {
       const { data: botsData, error: botsError } = await supabase
         .from("chat_bots")
         .select("*")
-        .eq("user_id", user.id);
+        .eq("token", token);
       
       if (botsError) {
         console.error("Error fetching user bots:", botsError);
@@ -65,15 +66,17 @@ export function useChat() {
     } catch (error) {
       console.error("Error loading user bots and settings:", error);
     }
-  }, [user, currentBot]);
+  }, [token, currentBot]);
 
   const fetchChats = useCallback(async (bot_id?: string) => {
-    if (!user) return;
+    if (!token) return;
     
     try {
       let query = supabase
         .from("protalk_chats")
         .select("*");
+      
+      query = query.eq('token', token);
       
       if (bot_id) {
         query = query.eq('bot_id', bot_id);
@@ -111,21 +114,23 @@ export function useChat() {
     } finally {
       setIsInitialized(true);
     }
-  }, [currentChatId, toast, user]);
+  }, [currentChatId, toast, token]);
 
   useEffect(() => {
-    if (user) {
+    if (token) {
       fetchUserBots();
     }
-  }, [fetchUserBots, user]);
+  }, [fetchUserBots, token]);
 
   useEffect(() => {
-    if (user) {
+    if (token) {
       fetchChats(currentBot);
     }
-  }, [fetchChats, currentBot, user]);
+  }, [fetchChats, currentBot, token]);
 
   const createChat = useCallback(async () => {
+    if (!token) return;
+    
     const newChatId = uuidv4();
     const newChat: IChat = {
       id: newChatId,
@@ -141,6 +146,7 @@ export function useChat() {
         id: newChatId,
         title: "Новый чат",
         bot_id: currentBot,
+        token: token,
         messages: [] as unknown as Json,
       });
 
@@ -158,7 +164,7 @@ export function useChat() {
         variant: "destructive",
       });
     }
-  }, [currentBot, toast]);
+  }, [currentBot, toast, token]);
 
   const sendChatMessage = useCallback(
     async (message: string) => {

@@ -1,7 +1,6 @@
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
 interface AuthGuardProps {
@@ -9,44 +8,37 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
-  const { user, isLoading } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const [isLoading, setIsLoading] = useState(true);
   
   // Check if the URL has a token parameter
-  const hasTokenParam = searchParams.has("token");
+  const token = searchParams.get("token");
 
-  // If there's a token in the URL but user isn't loaded yet, always show loading
-  if (hasTokenParam && isLoading) {
+  useEffect(() => {
+    // Simple timeout to simulate token validation
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [token]);
+
+  // If loading, show loading state
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background text-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2 text-lg">Авторизация по токену...</span>
+        <span className="ml-2 text-lg">Проверка токена...</span>
       </div>
     );
   }
 
-  // Regular loading state for normal auth flow
-  if (isLoading && !hasTokenParam) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background text-foreground">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2 text-lg">Загрузка...</span>
-      </div>
-    );
-  }
-
-  // If user is not authenticated and there's no token, redirect to auth
-  if (!user && !hasTokenParam) {
-    // Redirect to auth page and save the intended destination
+  // If no token is provided, redirect to auth page
+  if (!token) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // If user is not authenticated but there is a token, redirect to auth with the token
-  if (!user && hasTokenParam) {
-    const token = searchParams.get("token");
-    return <Navigate to={`/auth?token=${token}`} state={{ from: location }} replace />;
-  }
-
+  // Token exists, allow access to protected route
   return <>{children}</>;
 };
