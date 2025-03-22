@@ -23,6 +23,9 @@ const Index = () => {
     sendChatMessage,
     deleteChat,
     renameChat,
+    userBots,
+    currentBot,
+    setCurrentBotId
   } = useChat();
 
   const { token } = useAuth();
@@ -121,6 +124,9 @@ const Index = () => {
                 onSelectChat={handleSelectChat}
                 onDeleteChat={deleteChat}
                 onRenameChat={renameChat}
+                userBots={userBots}
+                currentBot={currentBot}
+                onSelectBot={setCurrentBotId}
               />
             </div>
           </div>

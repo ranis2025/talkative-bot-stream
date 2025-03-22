@@ -1,5 +1,5 @@
 
-import { IChat } from "@/types/chat";
+import { IChat, ChatBot } from "@/types/chat";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -7,6 +7,13 @@ import { ru } from "date-fns/locale";
 import { MessageSquare, Edit2, Trash2, Check, X } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ChatListProps {
   chats: IChat[];
@@ -14,6 +21,9 @@ interface ChatListProps {
   onSelectChat: (chatId: string) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
+  userBots: ChatBot[];
+  currentBot: string | null;
+  onSelectBot: (botId: string) => void;
 }
 
 export function ChatList({ 
@@ -21,7 +31,10 @@ export function ChatList({
   currentChatId, 
   onSelectChat, 
   onDeleteChat, 
-  onRenameChat 
+  onRenameChat,
+  userBots,
+  currentBot,
+  onSelectBot
 }: ChatListProps) {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -57,6 +70,26 @@ export function ChatList({
 
   return (
     <div className="w-full overflow-y-auto">
+      {userBots.length > 0 && (
+        <div className="p-3">
+          <Select
+            value={currentBot || ""}
+            onValueChange={(value) => onSelectBot(value)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Выберите бота" />
+            </SelectTrigger>
+            <SelectContent>
+              {userBots.map((bot) => (
+                <SelectItem key={bot.bot_id} value={bot.bot_id}>
+                  {bot.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {chats.length === 0 ? (
         <div className="p-4 text-center text-muted-foreground">
           Нет активных чатов
