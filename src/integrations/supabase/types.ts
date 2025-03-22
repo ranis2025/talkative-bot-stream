@@ -45,6 +45,7 @@ export type Database = {
       protalk_chats: {
         Row: {
           bot_id: string | null
+          bots_ids: string[] | null
           created_at: string | null
           id: string
           messages: Json | null
@@ -54,6 +55,7 @@ export type Database = {
         }
         Insert: {
           bot_id?: string | null
+          bots_ids?: string[] | null
           created_at?: string | null
           id: string
           messages?: Json | null
@@ -63,6 +65,7 @@ export type Database = {
         }
         Update: {
           bot_id?: string | null
+          bots_ids?: string[] | null
           created_at?: string | null
           id?: string
           messages?: Json | null

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -43,25 +42,21 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileView, setIsMobileView] = useState(false);
 
-  // Ensure token is preserved in URL
   useEffect(() => {
     if (token && !searchParams.get("token")) {
       navigate(`/chat?token=${token}`, { replace: true });
     }
   }, [token, searchParams, navigate]);
 
-  // Обработка изменения размера экрана
   useEffect(() => {
     setIsMobileView(!!isMobile);
     setSidebarOpen(!isMobile);
   }, [isMobile]);
 
-  // Переключение сайдбара
   const toggleSidebar = () => {
     setSidebarOpen(prev => !prev);
   };
 
-  // При выборе чата на мобильных устройствах скрываем сайдбар
   const handleSelectChat = (chatId: string) => {
     setCurrentChatId(chatId);
     if (isMobileView) {
@@ -69,7 +64,6 @@ const Index = () => {
     }
   };
 
-  // Объединяем создание нового чата с переключением на него
   const handleNewChat = () => {
     createChat();
     if (isMobileView) {
@@ -77,7 +71,6 @@ const Index = () => {
     }
   };
 
-  // Создание нового группового чата
   const handleNewGroupChat = () => {
     createGroupChat();
     if (isMobileView) {
@@ -85,20 +78,16 @@ const Index = () => {
     }
   };
 
-  // Возврат к списку чатов на мобильных устройствах
   const handleBackToList = () => {
     setSidebarOpen(true);
   };
 
-  // Фильтрация чатов по текущему представлению
   const filteredChats = chats.filter(chat => 
     chatView === 'group' ? chat.is_group_chat : !chat.is_group_chat
   );
 
-  // Получение активных ботов для текущего группового чата
   const activeBotsInChat = currentChat?.bots_ids || [];
 
-  // Отображаем загрузку, пока данные инициализируются
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-screen bg-background text-foreground">
@@ -110,7 +99,6 @@ const Index = () => {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      {/* Мобильная версия заголовка */}
       {isMobileView && !sidebarOpen && (
         <div className="w-full flex items-center p-4 border-b bg-background/80 backdrop-blur-md z-10">
           <button 
@@ -123,7 +111,6 @@ const Index = () => {
         </div>
       )}
 
-      {/* Десктопная версия заголовка или заголовок сайдбара на мобильных */}
       {(!isMobileView || sidebarOpen) && (
         <Header 
           onNewChat={handleNewChat} 
@@ -134,9 +121,7 @@ const Index = () => {
         />
       )}
 
-      {/* Основной контейнер */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Сайдбар с чатами */}
         <div className={cn(
           "border-r bg-card h-full",
           isMobileView ? "absolute inset-0 z-20 transition-transform duration-300" : "w-80",
@@ -186,7 +171,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Основная область с чатом */}
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden",
           isMobileView && sidebarOpen && "hidden"
