@@ -48,6 +48,7 @@ export type Database = {
           bots_ids: string[] | null
           created_at: string | null
           id: string
+          is_group_chat: boolean | null
           messages: Json | null
           title: string
           token: string
@@ -58,6 +59,7 @@ export type Database = {
           bots_ids?: string[] | null
           created_at?: string | null
           id: string
+          is_group_chat?: boolean | null
           messages?: Json | null
           title: string
           token: string
@@ -68,6 +70,7 @@ export type Database = {
           bots_ids?: string[] | null
           created_at?: string | null
           id?: string
+          is_group_chat?: boolean | null
           messages?: Json | null
           title?: string
           token?: string

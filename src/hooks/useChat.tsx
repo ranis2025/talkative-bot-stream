@@ -85,6 +85,8 @@ export function useChat() {
           title: chat.title,
           messages: chat.messages as IMessage[],
           bot_id: chat.bot_id || null,
+          bots_ids: chat.bots_ids || [],
+          is_group_chat: chat.is_group_chat || false,
           createdAt: chat.created_at ? new Date(chat.created_at).getTime() : Date.now(),
           updatedAt: chat.updated_at ? new Date(chat.updated_at).getTime() : Date.now(),
         }));
