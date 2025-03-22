@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
-import { IChat, IMessage, ApiResponse, Json, ChatBot, UserSettings } from "@/types/chat";
+import { IChat, IMessage, ApiResponse, Json, ChatBot, UserSettings, IFile } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { sendMessage, sendGroupMessage } from "@/lib/chatApi";
+import { sendMessage, sendGroupMessage, uploadFiles } from "@/lib/chatApi";
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
@@ -177,10 +177,10 @@ export function useChat() {
     return createChat(true);
   }, [createChat]);
 
-  // Send message
+  // Send message with optional files
   const sendChatMessage = useCallback(
-    async (message: string) => {
-      if (!currentChatId || !message.trim()) return;
+    async (message: string, files?: IFile[]) => {
+      if (!currentChatId) return;
 
       setLoading(true);
 
@@ -191,11 +191,42 @@ export function useChat() {
           return;
         }
 
+        // Process file uploads if any
+        let uploadedFiles: IFile[] = [];
+        if (files && files.length > 0) {
+          try {
+            // Get files with the actual File object
+            const filesToUpload = files
+              .filter(f => f.file instanceof File)
+              .map(f => f.file as File);
+            
+            if (filesToUpload.length > 0) {
+              // Upload files to storage
+              uploadedFiles = await uploadFiles(filesToUpload);
+            } else {
+              // If no new files to upload (e.g. already uploaded), just use the passed files
+              uploadedFiles = files;
+            }
+
+            console.log("Files uploaded successfully:", uploadedFiles);
+          } catch (uploadError) {
+            console.error("Error uploading files:", uploadError);
+            toast({
+              title: "Ошибка загрузки файлов",
+              description: "Не удалось загрузить файлы. Попробуйте снова.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+        }
+
         const userMessage: IMessage = {
           id: uuidv4(),
           content: message,
           role: "user",
           timestamp: Date.now(),
+          files: uploadedFiles.length > 0 ? uploadedFiles : undefined,
         };
 
         const updatedMessages = [...currentChat.messages, userMessage];
@@ -232,7 +263,7 @@ export function useChat() {
             console.log("Processing group chat message for bots:", currentChat.bots_ids);
             
             // Send message to multiple bots and get their responses
-            const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids);
+            const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids, uploadedFiles);
             console.log("Received bot responses:", botResponses);
             
             const botMessages: IMessage[] = botResponses.map(response => {
@@ -304,7 +335,7 @@ export function useChat() {
             }
           } else {
             // Handle individual chat message
-            const botResponse = await sendMessage(currentChatId, message, currentChat.bot_id);
+            const botResponse = await sendMessage(currentChatId, message, uploadedFiles, currentChat.bot_id);
             
             const botMessage: IMessage = {
               id: uuidv4(),

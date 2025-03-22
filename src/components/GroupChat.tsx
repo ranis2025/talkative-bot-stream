@@ -2,7 +2,7 @@
 import { useRef, useEffect, useState } from "react";
 import { Message } from "./Message";
 import { MessageInput } from "./MessageInput";
-import { IChat, ChatBot, IMessage } from "@/types/chat";
+import { IChat, ChatBot, IMessage, IFile } from "@/types/chat";
 import { AlertTriangle, UserPlus } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -17,7 +17,7 @@ import { X } from "lucide-react";
 
 interface GroupChatProps {
   chat: IChat | undefined;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, files?: IFile[]) => void;
   isLoading: boolean;
   userBots: ChatBot[];
   onAddBotToChat: (botId: string) => void;

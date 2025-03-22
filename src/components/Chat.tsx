@@ -2,12 +2,12 @@
 import { useRef, useEffect } from "react";
 import { Message } from "./Message";
 import { MessageInput } from "./MessageInput";
-import { IChat } from "@/types/chat";
+import { IChat, IFile } from "@/types/chat";
 import { AlertTriangle } from "lucide-react";
 
 interface ChatProps {
   chat: IChat | undefined;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, files?: IFile[]) => void;
   isLoading: boolean;
 }
 

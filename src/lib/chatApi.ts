@@ -2,11 +2,53 @@
 import { ApiRequest } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
-
-// Importing the toast function directly to avoid the hook in a non-component context
 import { toast } from "@/hooks/use-toast";
 
-export async function sendMessage(chatId: string, message: string, specificBotId?: string | null): Promise<string> {
+// Function to upload files and return their URLs
+export async function uploadFiles(files: File[]): Promise<{ name: string; size: number; type: string; url: string; }[]> {
+  try {
+    // Create a unique folder name based on timestamp and random string
+    const folderName = `uploads/${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    
+    // Upload each file to Supabase storage
+    const uploadPromises = files.map(async (file) => {
+      const filePath = `${folderName}/${file.name}`;
+      
+      const { data, error } = await supabase.storage
+        .from('chat-files')
+        .upload(filePath, file);
+      
+      if (error) {
+        console.error("Error uploading file:", error);
+        throw error;
+      }
+      
+      // Get public URL for the file
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-files')
+        .getPublicUrl(filePath);
+      
+      return {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        url: publicUrl
+      };
+    });
+    
+    return await Promise.all(uploadPromises);
+  } catch (error) {
+    console.error("Error in uploadFiles:", error);
+    toast({
+      title: "Ошибка загрузки файлов",
+      description: "Не удалось загрузить файлы. Пожалуйста, попробуйте еще раз.",
+      variant: "destructive",
+    });
+    throw error;
+  }
+}
+
+export async function sendMessage(chatId: string, message: string, files?: { name: string; size: number; type: string; url: string; file?: File }[], specificBotId?: string | null): Promise<string> {
   try {
     // Get bot ID from URL or use the specified one
     const urlParams = new URLSearchParams(window.location.search);
@@ -171,7 +213,7 @@ export async function sendMessage(chatId: string, message: string, specificBotId
   }
 }
 
-export async function sendGroupMessage(chatId: string, message: string, botIds: string[]): Promise<{botId: string, response: string}[]> {
+export async function sendGroupMessage(chatId: string, message: string, botIds: string[], files?: { name: string; size: number; type: string; url: string; }[]): Promise<{botId: string, response: string}[]> {
   try {
     if (!botIds || botIds.length === 0) {
       toast({
