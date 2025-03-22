@@ -33,7 +33,7 @@ const Auth = () => {
       // Check if the token exists in the database
       const { data: userData, error: userError } = await supabase
         .from("user_tokens")
-        .select("user_id")
+        .select("*")
         .eq("token", token)
         .single();
 
@@ -44,7 +44,7 @@ const Auth = () => {
       // Get the user's email using their ID
       const { data: userDetails, error: detailsError } = await supabase
         .from("user_settings")
-        .select("email")
+        .select("*")
         .eq("user_id", userData.user_id)
         .single();
 

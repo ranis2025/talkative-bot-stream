@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
-import { IChat, IMessage, ApiResponse } from "@/types/chat";
+import { IChat, IMessage, ApiResponse, Json } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -57,8 +57,9 @@ export function useChat() {
       }
 
       if (settingsData) {
-        if (settingsData.default_bot_id && !currentBot) {
-          setCurrentBot(settingsData.default_bot_id);
+        const settings = settingsData as UserSettings;
+        if (settings.default_bot_id && !currentBot) {
+          setCurrentBot(settings.default_bot_id);
         }
       }
     } catch (error) {
@@ -140,7 +141,7 @@ export function useChat() {
         id: newChatId,
         title: "Новый чат",
         bot_id: currentBot,
-        messages: [],
+        messages: [] as unknown as Json,
       });
 
       if (error) {
@@ -181,7 +182,7 @@ export function useChat() {
         const { error: updateError } = await supabase
           .from("protalk_chats")
           .update({ 
-            messages: updatedMessages,
+            messages: updatedMessages as unknown as Json,
             updated_at: new Date().toISOString()
           })
           .eq("id", currentChatId);
@@ -236,7 +237,7 @@ export function useChat() {
         const { error: botUpdateError } = await supabase
           .from("protalk_chats")
           .update({ 
-            messages: messagesWithBotResponse,
+            messages: messagesWithBotResponse as unknown as Json,
             updated_at: new Date().toISOString()
           })
           .eq("id", currentChatId);

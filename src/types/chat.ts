@@ -4,6 +4,7 @@ export interface IMessage {
   content: string;
   role: 'user' | 'bot';
   timestamp: number;
+  [key: string]: any; // Adding index signature to make it compatible with Json
 }
 
 export interface IChat {
@@ -54,3 +55,12 @@ export interface UserSettings {
   created_at: string;
   updated_at: string;
 }
+
+// Add this to make IMessage compatible with Supabase Json type
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
