@@ -134,13 +134,15 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
 
 async function sendToExternalAPI(botId: string, chatId: string, message: string, botToken: string): Promise<string> {
   try {
+    // When using the external API, we might need to convert the bot_id to a number
+    // if that's what the external API expects
     const response = await fetch(`${API_BASE_URL}/ask/${botToken}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        bot_id: parseInt(botId),
+        bot_id: parseInt(botId),  // Convert to number for external API
         chat_id: chatId,
         message: message
       }),

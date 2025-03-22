@@ -17,7 +17,7 @@ export interface IChat {
 }
 
 export interface ApiRequest {
-  bot_id: number;
+  bot_id: string;  // Changed from number to string to match our implementation
   chat_id: string;
   message: string;
 }

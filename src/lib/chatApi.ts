@@ -15,7 +15,7 @@ export async function sendMessage(chatId: string, message: string, specificBotId
     
     // Create the payload for the API
     const payload: ApiRequest = {
-      bot_id: botId,
+      bot_id: botId,  // This should be a string, not a number
       chat_id: chatId,
       message: message
     };
