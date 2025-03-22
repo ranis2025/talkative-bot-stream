@@ -46,16 +46,24 @@ export function GroupChat({
     }
   }, [chat?.messages]);
 
+  // Log for debugging
+  useEffect(() => {
+    console.log("GroupChat rendered with chat:", chat);
+    console.log("Active bots in chat:", activeBotsInChat);
+  }, [chat, activeBotsInChat]);
+
   // If no active chat
   if (!chat) {
-    return <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-4">
           <h2 className="text-2xl font-medium">Добро пожаловать в Групповой Чат</h2>
           <p className="text-muted-foreground">
             Создайте новый групповой чат или выберите существующий, чтобы начать общение с несколькими ботами.
           </p>
         </div>
-      </div>;
+      </div>
+    );
   }
   
   const hasErrorMessage = chat.messages.length > 0 && 
@@ -84,7 +92,8 @@ export function GroupChat({
     return bot?.name || "Бот";
   };
 
-  return <div className="flex-1 flex flex-col h-full overflow-hidden">
+  return (
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       <div className="p-3 border-b flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium mr-2">Боты в чате:</span>
         {activeBotsInChat.length === 0 ? (
@@ -143,14 +152,17 @@ export function GroupChat({
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {chat.messages.length === 0 ? <div className="flex-1 flex flex-col items-center justify-center h-full text-center">
+        {chat.messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center h-full text-center">
             <div className="max-w-md space-y-4">
               <h2 className="text-xl font-medium">Добавьте ботов и начните общение</h2>
               <p className="text-muted-foreground">
                 Добавьте нескольких ботов и введите сообщение в поле ниже, чтобы начать групповую беседу.
               </p>
             </div>
-          </div> : <>
+          </div>
+        ) : (
+          <>
             {chat.messages.map(message => (
               <Message 
                 key={message.id} 
@@ -163,15 +175,18 @@ export function GroupChat({
                 <span>Произошла ошибка при обработке запроса. Если проблема повторяется, обратитесь в службу поддержки.</span>
               </div>
             )}
-            {isLoading && <div className="bot-message">
+            {isLoading && (
+              <div className="bot-message">
                 <div className="flex space-x-2">
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse"></div>
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse delay-75"></div>
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse delay-150"></div>
                 </div>
-              </div>}
+              </div>
+            )}
             <div ref={messagesEndRef} />
-          </>}
+          </>
+        )}
       </div>
       <div className="p-4 bg-gradient-to-t from-background to-transparent pt-6">
         <MessageInput 
@@ -181,5 +196,6 @@ export function GroupChat({
           disabled={activeBotsInChat.length === 0}
         />
       </div>
-    </div>;
+    </div>
+  );
 }

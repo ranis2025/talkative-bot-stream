@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,6 +43,12 @@ const Index = () => {
   const [isMobileView, setIsMobileView] = useState(false);
 
   useEffect(() => {
+    console.log("Current chat:", currentChat);
+    console.log("Chat view:", chatView);
+    console.log("Current chat ID:", currentChatId);
+  }, [currentChat, chatView, currentChatId]);
+
+  useEffect(() => {
     if (token && !searchParams.get("token")) {
       navigate(`/chat?token=${token}`, { replace: true });
     }
@@ -59,6 +64,7 @@ const Index = () => {
   };
 
   const handleSelectChat = (chatId: string) => {
+    console.log("Selecting chat with ID:", chatId);
     setCurrentChatId(chatId);
     if (isMobileView) {
       setSidebarOpen(false);
@@ -83,12 +89,10 @@ const Index = () => {
     setSidebarOpen(true);
   };
 
-  // Filter chats based on the current view (individual or group)
   const filteredChats = chats.filter(chat => 
     chatView === 'group' ? chat.is_group_chat : !chat.is_group_chat
   );
 
-  // Get active bots in the current chat
   const activeBotsInChat = currentChat?.bots_ids || [];
 
   if (!isInitialized) {
@@ -99,6 +103,9 @@ const Index = () => {
       </div>
     );
   }
+
+  const shouldRenderGroupChat = currentChat?.is_group_chat === true;
+  const shouldRenderIndividualChat = currentChat && !currentChat.is_group_chat;
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
@@ -134,6 +141,7 @@ const Index = () => {
             <div className="p-3 border-b">
               <Tabs 
                 defaultValue={chatView} 
+                value={chatView}
                 onValueChange={(value) => switchChatView(value as 'individual' | 'group')}
                 className="w-full"
               >
@@ -178,7 +186,7 @@ const Index = () => {
           "flex-1 flex flex-col overflow-hidden",
           isMobileView && sidebarOpen && "hidden"
         )}>
-          {currentChat?.is_group_chat ? (
+          {shouldRenderGroupChat && (
             <GroupChat 
               chat={currentChat} 
               onSendMessage={sendChatMessage}
@@ -188,12 +196,31 @@ const Index = () => {
               onRemoveBotFromChat={removeBotFromGroupChat}
               activeBotsInChat={activeBotsInChat}
             />
-          ) : (
+          )}
+          
+          {shouldRenderIndividualChat && (
             <Chat 
               chat={currentChat} 
               onSendMessage={sendChatMessage}
               isLoading={loading}
             />
+          )}
+          
+          {!currentChat && (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className="max-w-md space-y-4">
+                <h2 className="text-2xl font-medium">
+                  {chatView === 'group' 
+                    ? 'Добро пожаловать в Групповые Чаты' 
+                    : 'Добро пожаловать в Чат'}
+                </h2>
+                <p className="text-muted-foreground">
+                  {chatView === 'group'
+                    ? 'Выберите или создайте групповой чат, чтобы начать общение с несколькими ботами одновременно.' 
+                    : 'Выберите или создайте чат, чтобы начать общение с ботом.'}
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>
