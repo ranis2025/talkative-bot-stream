@@ -78,6 +78,12 @@ export function GroupChat({
 
   const nonSelectedBots = userBots.filter(bot => !activeBotsInChat.includes(bot.bot_id));
 
+  // Map botIds to their names for display
+  const getBotNameById = (botId: string): string => {
+    const bot = userBots.find(b => b.bot_id === botId);
+    return bot?.name || "Бот";
+  };
+
   return <div className="flex-1 flex flex-col h-full overflow-hidden">
       <div className="p-3 border-b flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium mr-2">Боты в чате:</span>
@@ -88,7 +94,7 @@ export function GroupChat({
             const bot = userBots.find(b => b.bot_id === botId);
             return (
               <Badge key={botId} variant="secondary" className="flex items-center gap-1">
-                {bot?.name || "Бот"}
+                {bot?.name || "Бот"} (ID: {botId})
                 <Button 
                   variant="ghost" 
                   size="icon" 

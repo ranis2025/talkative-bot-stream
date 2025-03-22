@@ -38,7 +38,7 @@ export function Message({ message }: MessageProps) {
     >
       {isBot && message.bot_name && (
         <div className="text-xs font-medium mb-1 text-primary">
-          {message.bot_name}
+          {message.bot_name} {message.bot_id && `(ID: ${message.bot_id})`}
         </div>
       )}
       <div className="whitespace-pre-wrap">{message.content}</div>
