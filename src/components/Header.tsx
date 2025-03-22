@@ -56,11 +56,11 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
         )}
         <div className="flex items-center">
           <img 
-            src="/lovable-uploads/83e51342-b821-4bb3-8635-db4b3711fc2f.png" 
-            alt="ProTalk Logo" 
-            className="h-8 w-8 mr-2"
+            src="/lovable-uploads/bf49cbb2-32bd-471b-9256-7db1562592e2.png" 
+            alt="Bizo Logo" 
+            className="h-8 w-auto mr-2"
           />
-          <span className="text-lg font-medium text-foreground">ProTalk Чат</span>
+          <span className="text-lg font-medium text-foreground">Bizo Чат</span>
         </div>
       </div>
       <div className="flex space-x-2 items-center">
@@ -93,7 +93,7 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">Пользователь</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    Аккаунт ProTalk
+                    Аккаунт Bizo
                   </p>
                 </div>
               </DropdownMenuLabel>

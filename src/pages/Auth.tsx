@@ -97,9 +97,9 @@ const Auth = () => {
         <div className="text-center">
           <div className="flex justify-center mb-2">
             <img
-              src="/lovable-uploads/83e51342-b821-4bb3-8635-db4b3711fc2f.png"
-              alt="ProTalk Logo"
-              className="h-12 w-12"
+              src="/lovable-uploads/bf49cbb2-32bd-471b-9256-7db1562592e2.png"
+              alt="Bizo Logo"
+              className="h-12 w-auto"
             />
           </div>
           <h2 className="text-2xl font-bold">Вход по токену</h2>
