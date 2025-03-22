@@ -65,9 +65,15 @@ export function GroupChat({
 
   const handleAddBot = () => {
     if (selectedBot && !activeBotsInChat.includes(selectedBot)) {
+      console.log("Adding bot to chat:", selectedBot);
       onAddBotToChat(selectedBot);
       setSelectedBot(null);
     }
+  };
+
+  const handleRemoveBot = (botId: string) => {
+    console.log("Removing bot from chat:", botId);
+    onRemoveBotFromChat(botId);
   };
 
   const nonSelectedBots = userBots.filter(bot => !activeBotsInChat.includes(bot.bot_id));
@@ -87,7 +93,7 @@ export function GroupChat({
                   variant="ghost" 
                   size="icon" 
                   className="h-4 w-4 rounded-full" 
-                  onClick={() => onRemoveBotFromChat(botId)}
+                  onClick={() => handleRemoveBot(botId)}
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -139,7 +145,12 @@ export function GroupChat({
               </p>
             </div>
           </div> : <>
-            {chat.messages.map(message => <Message key={message.id} message={message} />)}
+            {chat.messages.map(message => (
+              <Message 
+                key={message.id} 
+                message={message} 
+              />
+            ))}
             {hasErrorMessage && (
               <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md">
                 <AlertTriangle className="h-4 w-4" />

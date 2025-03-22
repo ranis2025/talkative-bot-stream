@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -187,7 +186,10 @@ export function useChat() {
 
       try {
         const currentChat = chats.find((chat) => chat.id === currentChatId);
-        if (!currentChat) return;
+        if (!currentChat) {
+          console.error("Chat not found:", currentChatId);
+          return;
+        }
 
         const userMessage: IMessage = {
           id: uuidv4(),
@@ -198,6 +200,7 @@ export function useChat() {
 
         const updatedMessages = [...currentChat.messages, userMessage];
 
+        // Update chat with user message
         const { error: updateError } = await supabase
           .from("protalk_chats")
           .update({ 
@@ -210,6 +213,7 @@ export function useChat() {
           throw updateError;
         }
 
+        // Update local state with user message
         setChats((prevChats) =>
           prevChats.map((chat) =>
             chat.id === currentChatId
@@ -225,8 +229,11 @@ export function useChat() {
         try {
           // Handle group chat message
           if (currentChat.is_group_chat && currentChat.bots_ids && currentChat.bots_ids.length > 0) {
+            console.log("Processing group chat message for bots:", currentChat.bots_ids);
+            
             // Send message to multiple bots and get their responses
             const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids);
+            console.log("Received bot responses:", botResponses);
             
             const botMessages: IMessage[] = botResponses.map(response => {
               const bot = userBots.find(b => b.bot_id === response.botId);
@@ -242,6 +249,7 @@ export function useChat() {
 
             const messagesWithBotResponses = [...updatedMessages, ...botMessages];
             
+            // Update the database with bot responses
             const { error: botUpdateError } = await supabase
               .from("protalk_chats")
               .update({ 
@@ -251,6 +259,7 @@ export function useChat() {
               .eq("id", currentChatId);
 
             if (botUpdateError) {
+              console.error("Error updating chat with bot responses:", botUpdateError);
               throw botUpdateError;
             }
 
@@ -478,12 +487,19 @@ export function useChat() {
 
       try {
         const currentChat = chats.find((chat) => chat.id === currentChatId);
-        if (!currentChat || !currentChat.is_group_chat) return;
+        if (!currentChat || !currentChat.is_group_chat) {
+          console.error("Current chat is not a group chat or not found");
+          return;
+        }
 
         const currentBots = currentChat.bots_ids || [];
-        if (currentBots.includes(botId)) return;
+        if (currentBots.includes(botId)) {
+          console.log("Bot already in chat:", botId);
+          return;
+        }
 
         const updatedBots = [...currentBots, botId];
+        console.log("Adding bot to group chat:", botId, "Updated bots:", updatedBots);
         
         const { error } = await supabase
           .from("protalk_chats")
@@ -494,6 +510,7 @@ export function useChat() {
           .eq("id", currentChatId);
 
         if (error) {
+          console.error("Error updating chat with new bot:", error);
           throw error;
         }
 
@@ -532,10 +549,14 @@ export function useChat() {
 
       try {
         const currentChat = chats.find((chat) => chat.id === currentChatId);
-        if (!currentChat || !currentChat.is_group_chat) return;
+        if (!currentChat || !currentChat.is_group_chat) {
+          console.error("Current chat is not a group chat or not found");
+          return;
+        }
 
         const currentBots = currentChat.bots_ids || [];
         const updatedBots = currentBots.filter(id => id !== botId);
+        console.log("Removing bot from group chat:", botId, "Updated bots:", updatedBots);
         
         const { error } = await supabase
           .from("protalk_chats")
@@ -546,6 +567,7 @@ export function useChat() {
           .eq("id", currentChatId);
 
         if (error) {
+          console.error("Error updating chat after removing bot:", error);
           throw error;
         }
 
@@ -560,6 +582,11 @@ export function useChat() {
               : chat
           )
         );
+
+        toast({
+          title: "Бот удален",
+          description: "Бот успешно удален из группового чата",
+        });
       } catch (error) {
         console.error("Error removing bot from group chat:", error);
         toast({

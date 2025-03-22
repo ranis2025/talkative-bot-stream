@@ -9,22 +9,28 @@ interface MessageProps {
 }
 
 export function Message({ message }: MessageProps) {
-  const isUser = message.role === 'user';
-  const formattedTime = format(new Date(message.timestamp), 'HH:mm', { locale: ru });
-
+  const isBot = message.role === "bot";
+  const timestamp = new Date(message.timestamp);
+  const formattedTime = format(timestamp, "HH:mm", { locale: ru });
+  
   return (
-    <div className={cn(
-      "flex flex-col mb-4",
-      isUser ? "items-end" : "items-start"
-    )}>
-      <div className={cn(
-        isUser ? "user-message" : "bot-message"
-      )}>
-        <div className="whitespace-pre-line">{message.content}</div>
-      </div>
-      <span className="text-xs text-muted-foreground mt-1 px-2">
+    <div
+      className={cn(
+        "flex flex-col w-full max-w-screen-md mx-auto p-4 rounded-lg",
+        isBot
+          ? "bg-secondary/50 text-secondary-foreground"
+          : "bg-primary/10 text-foreground ml-auto"
+      )}
+    >
+      {isBot && message.bot_name && (
+        <div className="text-xs font-medium mb-1 text-primary">
+          {message.bot_name}
+        </div>
+      )}
+      <div className="whitespace-pre-wrap">{message.content}</div>
+      <div className="text-xs text-muted-foreground mt-2 self-end">
         {formattedTime}
-      </span>
+      </div>
     </div>
   );
 }

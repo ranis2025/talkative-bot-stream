@@ -247,6 +247,7 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
       })
     );
     
+    console.log("Group chat responses:", responses);
     return responses;
   } catch (error) {
     console.error("Error sending group message:", error);
