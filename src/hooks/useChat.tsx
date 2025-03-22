@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { IChat, IMessage, ApiResponse, Json, ChatBot, UserSettings } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { sendMessage } from "@/lib/chatApi";
+import { sendMessage, sendGroupMessage } from "@/lib/chatApi";
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
@@ -15,6 +15,7 @@ export function useChat() {
   const { token } = useAuth();
   const [currentBot, setCurrentBot] = useState<string | null>(null);
   const [userBots, setUserBots] = useState<ChatBot[]>([]);
+  const [chatView, setChatView] = useState<'individual' | 'group'>('individual');
 
   const fetchUserBots = useCallback(async () => {
     if (!token) return;
@@ -118,15 +119,17 @@ export function useChat() {
     }
   }, [fetchChats, currentBot, token]);
 
-  const createChat = useCallback(async () => {
+  const createChat = useCallback(async (isGroupChat = false) => {
     if (!token) return;
     
     const newChatId = uuidv4();
     const newChat: IChat = {
       id: newChatId,
-      title: "Новый чат",
+      title: isGroupChat ? "Новый групповой чат" : "Новый чат",
       messages: [],
-      bot_id: currentBot,
+      bot_id: isGroupChat ? null : currentBot,
+      bots_ids: isGroupChat ? [] : undefined,
+      is_group_chat: isGroupChat,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -134,8 +137,10 @@ export function useChat() {
     try {
       const { error } = await supabase.from("protalk_chats").insert({
         id: newChatId,
-        title: "Новый чат",
-        bot_id: currentBot,
+        title: isGroupChat ? "Новый групповой чат" : "Новый чат",
+        bot_id: isGroupChat ? null : currentBot,
+        bots_ids: isGroupChat ? [] : null,
+        is_group_chat: isGroupChat,
         token: token,
         messages: [] as unknown as Json,
       });
@@ -146,6 +151,12 @@ export function useChat() {
 
       setChats((prevChats) => [newChat, ...prevChats]);
       setCurrentChatId(newChatId);
+      
+      if (isGroupChat) {
+        setChatView('group');
+      } else {
+        setChatView('individual');
+      }
     } catch (error) {
       console.error("Error creating chat:", error);
       toast({
@@ -155,6 +166,10 @@ export function useChat() {
       });
     }
   }, [currentBot, toast, token]);
+
+  const createGroupChat = useCallback(() => {
+    return createChat(true);
+  }, [createChat]);
 
   const sendChatMessage = useCallback(
     async (message: string) => {
@@ -200,66 +215,135 @@ export function useChat() {
         );
 
         try {
-          const botResponse = await sendMessage(currentChatId, message, currentChat.bot_id);
-          
-          const botMessage: IMessage = {
-            id: uuidv4(),
-            content: botResponse,
-            role: "bot",
-            timestamp: Date.now(),
-          };
+          if (currentChat.is_group_chat && currentChat.bots_ids && currentChat.bots_ids.length > 0) {
+            const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids);
+            
+            const botMessages: IMessage[] = botResponses.map(response => {
+              const bot = userBots.find(b => b.bot_id === response.botId);
+              return {
+                id: uuidv4(),
+                content: response.response,
+                role: "bot",
+                timestamp: Date.now(),
+                bot_id: response.botId,
+                bot_name: bot?.name || "Бот"
+              };
+            });
 
-          const messagesWithBotResponse = [...updatedMessages, botMessage];
-          
-          const { error: botUpdateError } = await supabase
-            .from("protalk_chats")
-            .update({ 
-              messages: messagesWithBotResponse as unknown as Json,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", currentChatId);
-
-          if (botUpdateError) {
-            throw botUpdateError;
-          }
-
-          if (currentChat.messages.length === 0) {
-            const shortTitle =
-              message.length > 30 ? message.substring(0, 30) + "..." : message;
-
-            const { error: titleError } = await supabase
+            const messagesWithBotResponses = [...updatedMessages, ...botMessages];
+            
+            const { error: botUpdateError } = await supabase
               .from("protalk_chats")
-              .update({ title: shortTitle })
+              .update({ 
+                messages: messagesWithBotResponses as unknown as Json,
+                updated_at: new Date().toISOString()
+              })
               .eq("id", currentChatId);
 
-            if (titleError) {
-              throw titleError;
+            if (botUpdateError) {
+              throw botUpdateError;
             }
 
-            setChats((prevChats) =>
-              prevChats.map((chat) =>
-                chat.id === currentChatId
-                  ? {
-                      ...chat,
-                      title: shortTitle,
-                      messages: messagesWithBotResponse,
-                      updatedAt: Date.now(),
-                    }
-                  : chat
-              )
-            );
+            if (currentChat.messages.length === 0) {
+              const shortTitle =
+                message.length > 30 ? message.substring(0, 30) + "..." : message;
+
+              const { error: titleError } = await supabase
+                .from("protalk_chats")
+                .update({ title: shortTitle })
+                .eq("id", currentChatId);
+
+              if (titleError) {
+                throw titleError;
+              }
+
+              setChats((prevChats) =>
+                prevChats.map((chat) =>
+                  chat.id === currentChatId
+                    ? {
+                        ...chat,
+                        title: shortTitle,
+                        messages: messagesWithBotResponses,
+                        updatedAt: Date.now(),
+                      }
+                    : chat
+                )
+              );
+            } else {
+              setChats((prevChats) =>
+                prevChats.map((chat) =>
+                  chat.id === currentChatId
+                    ? {
+                        ...chat,
+                        messages: messagesWithBotResponses,
+                        updatedAt: Date.now(),
+                      }
+                    : chat
+                )
+              );
+            }
           } else {
-            setChats((prevChats) =>
-              prevChats.map((chat) =>
-                chat.id === currentChatId
-                  ? {
-                      ...chat,
-                      messages: messagesWithBotResponse,
-                      updatedAt: Date.now(),
-                    }
-                  : chat
-              )
-            );
+            const botResponse = await sendMessage(currentChatId, message, currentChat.bot_id);
+            
+            const botMessage: IMessage = {
+              id: uuidv4(),
+              content: botResponse,
+              role: "bot",
+              timestamp: Date.now(),
+            };
+
+            const messagesWithBotResponse = [...updatedMessages, botMessage];
+            
+            const { error: botUpdateError } = await supabase
+              .from("protalk_chats")
+              .update({ 
+                messages: messagesWithBotResponse as unknown as Json,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", currentChatId);
+
+            if (botUpdateError) {
+              throw botUpdateError;
+            }
+
+            if (currentChat.messages.length === 0) {
+              const shortTitle =
+                message.length > 30 ? message.substring(0, 30) + "..." : message;
+
+              const { error: titleError } = await supabase
+                .from("protalk_chats")
+                .update({ title: shortTitle })
+                .eq("id", currentChatId);
+
+              if (titleError) {
+                throw titleError;
+              }
+
+              setChats((prevChats) =>
+                prevChats.map((chat) =>
+                  chat.id === currentChatId
+                    ? {
+                        ...chat,
+                        title: shortTitle,
+                        messages: messagesWithBotResponse,
+                        updatedAt: Date.now(),
+                      }
+                    : chat
+                )
+              );
+            } else {
+              setChats((prevChats) =>
+                prevChats.map((chat) =>
+                  chat.id === currentChatId
+                    ? {
+                        ...chat,
+                        messages: messagesWithBotResponse,
+                        updatedAt: Date.now(),
+                      }
+                    : chat
+                )
+              );
+            }
           }
         } catch (apiError) {
           console.error("API error:", apiError);
@@ -310,7 +394,7 @@ export function useChat() {
         setLoading(false);
       }
     },
-    [chats, currentChatId, toast]
+    [chats, currentChatId, toast, userBots]
   );
 
   const deleteChat = useCallback(
@@ -372,10 +456,114 @@ export function useChat() {
     [toast]
   );
 
+  const addBotToGroupChat = useCallback(
+    async (botId: string) => {
+      if (!currentChatId) return;
+
+      try {
+        const currentChat = chats.find((chat) => chat.id === currentChatId);
+        if (!currentChat || !currentChat.is_group_chat) return;
+
+        const currentBots = currentChat.bots_ids || [];
+        if (currentBots.includes(botId)) return;
+
+        const updatedBots = [...currentBots, botId];
+        
+        const { error } = await supabase
+          .from("protalk_chats")
+          .update({ 
+            bots_ids: updatedBots,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", currentChatId);
+
+        if (error) {
+          throw error;
+        }
+
+        setChats((prevChats) =>
+          prevChats.map((chat) =>
+            chat.id === currentChatId
+              ? {
+                  ...chat,
+                  bots_ids: updatedBots,
+                  updatedAt: Date.now(),
+                }
+              : chat
+          )
+        );
+
+        toast({
+          title: "Бот добавлен",
+          description: "Бот успешно добавлен в групповой чат",
+        });
+      } catch (error) {
+        console.error("Error adding bot to group chat:", error);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось добавить бота в чат",
+          variant: "destructive",
+        });
+      }
+    },
+    [chats, currentChatId, toast]
+  );
+
+  const removeBotFromGroupChat = useCallback(
+    async (botId: string) => {
+      if (!currentChatId) return;
+
+      try {
+        const currentChat = chats.find((chat) => chat.id === currentChatId);
+        if (!currentChat || !currentChat.is_group_chat) return;
+
+        const currentBots = currentChat.bots_ids || [];
+        const updatedBots = currentBots.filter(id => id !== botId);
+        
+        const { error } = await supabase
+          .from("protalk_chats")
+          .update({ 
+            bots_ids: updatedBots,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", currentChatId);
+
+        if (error) {
+          throw error;
+        }
+
+        setChats((prevChats) =>
+          prevChats.map((chat) =>
+            chat.id === currentChatId
+              ? {
+                  ...chat,
+                  bots_ids: updatedBots,
+                  updatedAt: Date.now(),
+                }
+              : chat
+          )
+        );
+      } catch (error) {
+        console.error("Error removing bot from group chat:", error);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось удалить бота из чата",
+          variant: "destructive",
+        });
+      }
+    },
+    [chats, currentChatId, toast]
+  );
+
   const currentChat = chats.find((chat) => chat.id === currentChatId) || null;
 
   const setCurrentBotId = useCallback((botId: string | null) => {
     setCurrentBot(botId);
+    setCurrentChatId(null);
+  }, []);
+
+  const switchChatView = useCallback((view: 'individual' | 'group') => {
+    setChatView(view);
     setCurrentChatId(null);
   }, []);
 
@@ -387,11 +575,16 @@ export function useChat() {
     isInitialized,
     setCurrentChatId,
     createChat,
+    createGroupChat,
     sendChatMessage,
     deleteChat,
     renameChat,
     currentBot,
     setCurrentBotId,
-    userBots
+    userBots,
+    chatView,
+    switchChatView,
+    addBotToGroupChat,
+    removeBotFromGroupChat
   };
 }

@@ -5,11 +5,14 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Header } from "@/components/Header";
 import { ChatList } from "@/components/ChatList";
 import { Chat } from "@/components/Chat";
+import { GroupChat } from "@/components/GroupChat";
 import { cn } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Users, MessageSquare } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const {
@@ -20,12 +23,17 @@ const Index = () => {
     isInitialized,
     setCurrentChatId,
     createChat,
+    createGroupChat,
     sendChatMessage,
     deleteChat,
     renameChat,
     userBots,
     currentBot,
-    setCurrentBotId
+    setCurrentBotId,
+    chatView,
+    switchChatView,
+    addBotToGroupChat,
+    removeBotFromGroupChat
   } = useChat();
 
   const { token } = useAuth();
@@ -69,10 +77,26 @@ const Index = () => {
     }
   };
 
+  // Создание нового группового чата
+  const handleNewGroupChat = () => {
+    createGroupChat();
+    if (isMobileView) {
+      setSidebarOpen(false);
+    }
+  };
+
   // Возврат к списку чатов на мобильных устройствах
   const handleBackToList = () => {
     setSidebarOpen(true);
   };
+
+  // Фильтрация чатов по текущему представлению
+  const filteredChats = chats.filter(chat => 
+    chatView === 'group' ? chat.is_group_chat : !chat.is_group_chat
+  );
+
+  // Получение активных ботов для текущего группового чата
+  const activeBotsInChat = currentChat?.bots_ids || [];
 
   // Отображаем загрузку, пока данные инициализируются
   if (!isInitialized) {
@@ -103,8 +127,10 @@ const Index = () => {
       {(!isMobileView || sidebarOpen) && (
         <Header 
           onNewChat={handleNewChat} 
+          onNewGroupChat={handleNewGroupChat}
           isMobile={isMobileView} 
-          onToggleSidebar={isMobileView ? toggleSidebar : undefined} 
+          onToggleSidebar={isMobileView ? toggleSidebar : undefined}
+          chatView={chatView}
         />
       )}
 
@@ -117,9 +143,27 @@ const Index = () => {
           !sidebarOpen && (isMobileView ? "translate-x-[-100%]" : "w-0")
         )}>
           <div className="h-full flex flex-col overflow-hidden">
+            <div className="p-3 border-b">
+              <Tabs 
+                defaultValue={chatView} 
+                onValueChange={(value) => switchChatView(value as 'individual' | 'group')}
+                className="w-full"
+              >
+                <TabsList className="grid grid-cols-2 w-full">
+                  <TabsTrigger value="individual" className="flex items-center">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Личные чаты
+                  </TabsTrigger>
+                  <TabsTrigger value="group" className="flex items-center">
+                    <Users className="h-4 w-4 mr-2" />
+                    Групповые чаты
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
             <div className="flex-1 overflow-y-auto">
               <ChatList 
-                chats={chats}
+                chats={filteredChats}
                 currentChatId={currentChatId}
                 onSelectChat={handleSelectChat}
                 onDeleteChat={deleteChat}
@@ -127,7 +171,17 @@ const Index = () => {
                 userBots={userBots}
                 currentBot={currentBot}
                 onSelectBot={setCurrentBotId}
+                chatView={chatView}
               />
+            </div>
+            <div className="p-3 border-t">
+              <Button 
+                onClick={chatView === 'group' ? handleNewGroupChat : handleNewChat}
+                className="w-full"
+                size="sm"
+              >
+                {chatView === 'group' ? 'Новый групповой чат' : 'Новый чат'}
+              </Button>
             </div>
           </div>
         </div>
@@ -137,11 +191,23 @@ const Index = () => {
           "flex-1 flex flex-col overflow-hidden",
           isMobileView && sidebarOpen && "hidden"
         )}>
-          <Chat 
-            chat={currentChat} 
-            onSendMessage={sendChatMessage}
-            isLoading={loading}
-          />
+          {currentChat?.is_group_chat ? (
+            <GroupChat 
+              chat={currentChat} 
+              onSendMessage={sendChatMessage}
+              isLoading={loading}
+              userBots={userBots}
+              onAddBotToChat={addBotToGroupChat}
+              onRemoveBotFromChat={removeBotFromGroupChat}
+              activeBotsInChat={activeBotsInChat}
+            />
+          ) : (
+            <Chat 
+              chat={currentChat} 
+              onSendMessage={sendChatMessage}
+              isLoading={loading}
+            />
+          )}
         </div>
       </div>
     </div>

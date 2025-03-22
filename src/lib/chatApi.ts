@@ -167,3 +167,93 @@ export async function sendMessage(chatId: string, message: string, specificBotId
     return "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.";
   }
 }
+
+export async function sendGroupMessage(chatId: string, message: string, botIds: string[]): Promise<{botId: string, response: string}[]> {
+  try {
+    if (!botIds || botIds.length === 0) {
+      toast({
+        title: "Ошибка",
+        description: "Не выбраны боты для группового чата.",
+        variant: "destructive",
+      });
+      throw new Error("Bot IDs are required for group chat");
+    }
+    
+    console.log(`Sending group message to bots: ${botIds.join(', ')}, chat: ${chatId}`);
+    
+    // Send message to each bot in parallel
+    const responses = await Promise.all(
+      botIds.map(async (botId) => {
+        try {
+          // Create the payload for the API
+          const payload: ApiRequest = {
+            bot_id: botId,
+            chat_id: chatId,
+            message: message
+          };
+  
+          console.log(`Sending payload to bot ${botId}:`, payload);
+          const { data, error } = await supabase.functions.invoke('chat', {
+            body: payload
+          });
+  
+          if (error) {
+            console.error(`Error calling chat function for bot ${botId}:`, error);
+            return {
+              botId,
+              response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`
+            };
+          }
+  
+          if (!data || typeof data !== 'object') {
+            console.error(`Invalid response format for bot ${botId}:`, data);
+            return {
+              botId,
+              response: `Получен недопустимый формат ответа от бота ${botId}`
+            };
+          }
+  
+          if (!data.ok) {
+            const errorMessage = data.done || "Unknown error";
+            console.error(`API returned error for bot ${botId}:`, errorMessage);
+            return {
+              botId,
+              response: `Ошибка бота ${botId}: ${errorMessage}`
+            };
+          }
+  
+          if (typeof data.done !== 'string') {
+            console.error(`Invalid 'done' field format for bot ${botId}:`, data.done);
+            return {
+              botId,
+              response: `Ответ бота ${botId} в неправильном формате`
+            };
+          }
+  
+          return {
+            botId,
+            response: data.done
+          };
+        } catch (botError) {
+          console.error(`Error processing response from bot ${botId}:`, botError);
+          return {
+            botId,
+            response: `Ошибка при обработке ответа от бота ${botId}: ${botError.message || "Неизвестная ошибка"}`
+          };
+        }
+      })
+    );
+    
+    return responses;
+  } catch (error) {
+    console.error("Error sending group message:", error);
+    
+    toast({
+      title: "Ошибка",
+      description: error.message || "Произошла ошибка при отправке сообщения",
+      variant: "destructive",
+    });
+    
+    throw error;
+  }
+}

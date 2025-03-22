@@ -4,6 +4,8 @@ export interface IMessage {
   content: string;
   role: 'user' | 'bot';
   timestamp: number;
+  bot_id?: string;
+  bot_name?: string;
   [key: string]: any; // Adding index signature to make it compatible with Json
 }
 
@@ -12,12 +14,14 @@ export interface IChat {
   title: string;
   messages: IMessage[];
   bot_id?: string | null;
+  bots_ids?: string[];
+  is_group_chat?: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
 export interface ApiRequest {
-  bot_id: string;  // Changed from number to string to match our implementation
+  bot_id: string;
   chat_id: string;
   message: string;
 }

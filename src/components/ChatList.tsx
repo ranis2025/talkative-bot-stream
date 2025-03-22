@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { MessageSquare, Edit2, Trash2, Check, X } from "lucide-react";
+import { MessageSquare, Edit2, Trash2, Check, X, Users } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +24,7 @@ interface ChatListProps {
   userBots: ChatBot[];
   currentBot: string | null;
   onSelectBot: (botId: string) => void;
+  chatView: 'individual' | 'group';
 }
 
 export function ChatList({ 
@@ -34,7 +35,8 @@ export function ChatList({
   onRenameChat,
   userBots,
   currentBot,
-  onSelectBot
+  onSelectBot,
+  chatView
 }: ChatListProps) {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -70,7 +72,7 @@ export function ChatList({
 
   return (
     <div className="w-full overflow-y-auto">
-      {userBots.length > 0 && (
+      {chatView === 'individual' && userBots.length > 0 && (
         <div className="p-3">
           <Select
             value={currentBot || ""}
@@ -92,7 +94,7 @@ export function ChatList({
 
       {chats.length === 0 ? (
         <div className="p-4 text-center text-muted-foreground">
-          Нет активных чатов
+          {chatView === 'group' ? 'Нет групповых чатов' : 'Нет активных чатов'}
         </div>
       ) : (
         <ul className="space-y-1 p-2">
@@ -138,7 +140,11 @@ export function ChatList({
                       className="flex items-center text-left flex-1 min-w-0"
                       onClick={() => onSelectChat(chat.id)}
                     >
-                      <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
+                      {chat.is_group_chat ? (
+                        <Users className="h-4 w-4 mr-2 shrink-0" />
+                      ) : (
+                        <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
+                      )}
                       <div className="truncate flex-1">
                         <span>{chat.title}</span>
                         <div className="text-xs text-muted-foreground">
