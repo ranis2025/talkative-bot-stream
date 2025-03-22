@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface HeaderProps {
   onNewChat: () => void;
@@ -33,14 +34,21 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
           className="h-9.2" /* Increased from h-8 to h-9.2 (15% larger) */
         />
       </div>
-      <Button 
-        onClick={onNewChat}
-        variant="outline"
-        className="flex items-center gap-2"
-      >
-        <PlusCircle className="h-4 w-4" />
-        <span>Новый чат</span>
-      </Button>
+      <div className="flex space-x-2">
+        <Link to="/admin">
+          <Button variant="outline" size="icon">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </Link>
+        <Button 
+          onClick={onNewChat}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <PlusCircle className="h-4 w-4" />
+          <span>Новый чат</span>
+        </Button>
+      </div>
     </div>
   );
 }
