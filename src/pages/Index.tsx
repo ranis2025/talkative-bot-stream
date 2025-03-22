@@ -8,6 +8,8 @@ import { Chat } from "@/components/Chat";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const {
@@ -23,9 +25,19 @@ const Index = () => {
     renameChat,
   } = useChat();
 
+  const { token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileView, setIsMobileView] = useState(false);
+
+  // Ensure token is preserved in URL
+  useEffect(() => {
+    if (token && !searchParams.get("token")) {
+      navigate(`/chat?token=${token}`, { replace: true });
+    }
+  }, [token, searchParams, navigate]);
 
   // Обработка изменения размера экрана
   useEffect(() => {

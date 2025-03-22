@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Settings, LogOut } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -23,6 +23,7 @@ interface HeaderProps {
 export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
   const { token } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Function to sign out - just redirects to auth page
   const signOut = () => {
@@ -64,7 +65,7 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
       </div>
       <div className="flex space-x-2 items-center">
         <ThemeToggle />
-        <Link to="/admin">
+        <Link to={token ? `/admin?token=${token}` : "/admin"}>
           <Button variant="outline" size="icon">
             <Settings className="h-4 w-4" />
           </Button>

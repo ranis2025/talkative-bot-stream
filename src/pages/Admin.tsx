@@ -1,11 +1,11 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Plus, Trash2 } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -25,8 +25,16 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [newBot, setNewBot] = useState({ name: "", bot_id: "", bot_token: "", openai_key: "" });
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { token } = useAuth();
+
+  // Ensure token is preserved in URL
+  useEffect(() => {
+    if (token && !searchParams.get("token")) {
+      navigate(`/admin?token=${token}`, { replace: true });
+    }
+  }, [token, searchParams, navigate]);
 
   // Fetch bots data
   useEffect(() => {
@@ -171,11 +179,18 @@ const Admin = () => {
     }
   };
 
+  const handleBackToChat = () => {
+    navigate(token ? `/chat?token=${token}` : '/chat');
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Панель администратора</h1>
-        <Button onClick={() => navigate('/')}>Вернуться к чату</Button>
+        <Button onClick={handleBackToChat} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Вернуться к чату
+        </Button>
       </div>
 
       <div className="bg-card rounded-lg p-6 shadow-sm mb-8">

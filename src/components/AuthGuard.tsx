@@ -1,6 +1,6 @@
 
 import { ReactNode, useEffect } from "react";
-import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -10,6 +10,7 @@ interface AuthGuardProps {
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { token, isLoading, setToken } = useAuth();
   const [searchParams] = useSearchParams();
   
@@ -18,8 +19,11 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     const urlToken = searchParams.get("token");
     if (urlToken && urlToken !== token) {
       setToken(urlToken);
+    } else if (token && !searchParams.get("token") && location.pathname !== "/auth") {
+      // If we have a token in context but not in URL, add it to the URL
+      navigate(`${location.pathname}?token=${token}`, { replace: true });
     }
-  }, [searchParams, token, setToken]);
+  }, [searchParams, token, setToken, location, navigate]);
   
   // If loading, show loading state
   if (isLoading) {
