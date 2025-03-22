@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import GroupChats from "./pages/GroupChats";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,14 @@ const App = () => (
                 element={
                   <AuthGuard>
                     <Index />
+                  </AuthGuard>
+                } 
+              />
+              <Route 
+                path="/group-chats" 
+                element={
+                  <AuthGuard>
+                    <GroupChats />
                   </AuthGuard>
                 } 
               />

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -8,7 +9,7 @@ import { GroupChat } from "@/components/GroupChat";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Users, MessageSquare } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,6 +55,11 @@ const Index = () => {
     }
   }, [token, searchParams, navigate]);
 
+  // Set the chat view to individual on this page
+  useEffect(() => {
+    switchChatView("individual");
+  }, [switchChatView]);
+
   useEffect(() => {
     setIsMobileView(!!isMobile);
     setSidebarOpen(!isMobile);
@@ -79,21 +85,16 @@ const Index = () => {
   };
 
   const handleNewGroupChat = () => {
-    createGroupChat();
-    if (isMobileView) {
-      setSidebarOpen(false);
-    }
+    // Navigate to group chats page when creating a new group chat
+    navigate("/group-chats");
   };
 
   const handleBackToList = () => {
     setSidebarOpen(true);
   };
 
-  const filteredChats = chats.filter(chat => 
-    chatView === 'group' ? chat.is_group_chat : !chat.is_group_chat
-  );
-
-  const activeBotsInChat = currentChat?.bots_ids || [];
+  // Only show individual chats on this page
+  const filteredChats = chats.filter(chat => !chat.is_group_chat);
 
   if (!isInitialized) {
     return (
@@ -103,9 +104,6 @@ const Index = () => {
       </div>
     );
   }
-
-  const shouldRenderGroupChat = currentChat?.is_group_chat === true;
-  const shouldRenderIndividualChat = currentChat && !currentChat.is_group_chat;
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
@@ -138,24 +136,19 @@ const Index = () => {
           !sidebarOpen && (isMobileView ? "translate-x-[-100%]" : "w-0")
         )}>
           <div className="h-full flex flex-col overflow-hidden">
-            <div className="p-3 border-b">
-              <Tabs 
-                defaultValue={chatView} 
-                value={chatView}
-                onValueChange={(value) => switchChatView(value as 'individual' | 'group')}
-                className="w-full"
+            <div className="p-3 border-b flex items-center justify-between">
+              <h2 className="font-medium">Личные чаты</h2>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                asChild
+                className="hidden md:flex"
               >
-                <TabsList className="grid grid-cols-2 w-full">
-                  <TabsTrigger value="individual" className="flex items-center">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Личные чаты
-                  </TabsTrigger>
-                  <TabsTrigger value="group" className="flex items-center">
-                    <Users className="h-4 w-4 mr-2" />
-                    Групповые чаты
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+                <Link to="/group-chats">
+                  <Users className="h-4 w-4 mr-2" />
+                  Групповые чаты
+                </Link>
+              </Button>
             </div>
             <div className="flex-1 overflow-y-auto">
               <ChatList 
@@ -167,16 +160,27 @@ const Index = () => {
                 userBots={userBots}
                 currentBot={currentBot}
                 onSelectBot={setCurrentBotId}
-                chatView={chatView}
+                chatView="individual"
               />
             </div>
-            <div className="p-3 border-t">
+            <div className="p-3 border-t flex gap-2">
               <Button 
-                onClick={chatView === 'group' ? handleNewGroupChat : handleNewChat}
-                className="w-full"
+                onClick={handleNewChat}
+                className="flex-1"
                 size="sm"
               >
-                {chatView === 'group' ? 'Новый групповой чат' : 'Новый чат'}
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Новый чат
+              </Button>
+              
+              <Button 
+                onClick={handleNewGroupChat}
+                variant="outline"
+                size="sm"
+                className="md:hidden"
+              >
+                <Users className="h-4 w-4" />
+                <span className="sr-only">Групповые чаты</span>
               </Button>
             </div>
           </div>
@@ -186,19 +190,7 @@ const Index = () => {
           "flex-1 flex flex-col overflow-hidden",
           isMobileView && sidebarOpen && "hidden"
         )}>
-          {shouldRenderGroupChat && (
-            <GroupChat 
-              chat={currentChat} 
-              onSendMessage={sendChatMessage}
-              isLoading={loading}
-              userBots={userBots}
-              onAddBotToChat={addBotToGroupChat}
-              onRemoveBotFromChat={removeBotFromGroupChat}
-              activeBotsInChat={activeBotsInChat}
-            />
-          )}
-          
-          {shouldRenderIndividualChat && (
+          {currentChat && (
             <Chat 
               chat={currentChat} 
               onSendMessage={sendChatMessage}
@@ -210,15 +202,21 @@ const Index = () => {
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
               <div className="max-w-md space-y-4">
                 <h2 className="text-2xl font-medium">
-                  {chatView === 'group' 
-                    ? 'Добро пожаловать в Групповые Чаты' 
-                    : 'Добро пожаловать в Чат'}
+                  Добро пожаловать в Чат
                 </h2>
                 <p className="text-muted-foreground">
-                  {chatView === 'group'
-                    ? 'Выберите или создайте групповой чат, чтобы начать общение с несколькими ботами одновременно.' 
-                    : 'Выберите или создайте чат, чтобы начать общение с ботом.'}
+                  Выберите или создайте чат, чтобы начать общение с ботом.
                 </p>
+                <div className="flex justify-center pt-4">
+                  <Button 
+                    onClick={() => navigate("/group-chats")}
+                    className="flex items-center"
+                    variant="outline"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Перейти к групповым чатам
+                  </Button>
+                </div>
               </div>
             </div>
           )}

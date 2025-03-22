@@ -194,6 +194,7 @@ export function GroupChat({
           isLoading={isLoading} 
           placeholder={activeBotsInChat.length === 0 ? "Сначала добавьте ботов в чат..." : "Напишите сообщение..."}
           disabled={activeBotsInChat.length === 0}
+          activeBotsCount={activeBotsInChat.length}
         />
       </div>
     </div>

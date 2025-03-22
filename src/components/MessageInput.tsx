@@ -1,23 +1,35 @@
+
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, X } from "lucide-react";
+import { Send, Paperclip, X, Bot, Info } from "lucide-react";
 import { IFile } from "@/types/chat";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 interface MessageInputProps {
   onSendMessage: (message: string, files?: IFile[]) => void;
   isLoading: boolean;
   placeholder?: string;
   disabled?: boolean;
+  activeBotsCount?: number;
 }
+
 export function MessageInput({
   onSendMessage,
   isLoading,
   placeholder = "Напишите сообщение...",
-  disabled = false
+  disabled = false,
+  activeBotsCount = 0
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<IFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleSendMessage = () => {
     if ((message.trim() || files.length > 0) && !isLoading && !disabled) {
       onSendMessage(message, files);
@@ -25,12 +37,14 @@ export function MessageInput({
       setFiles([]);
     }
   };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       handleSendMessage();
     }
   };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const newFiles: IFile[] = Array.from(event.target.files).map(file => ({
@@ -48,6 +62,7 @@ export function MessageInput({
       fileInputRef.current.value = '';
     }
   };
+
   const removeFile = (index: number) => {
     const updatedFiles = [...files];
 
@@ -56,6 +71,7 @@ export function MessageInput({
     updatedFiles.splice(index, 1);
     setFiles(updatedFiles);
   };
+
   return <div className="space-y-2">
       {/* Display selected files */}
       {files.length > 0 && <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background/50">
@@ -74,6 +90,24 @@ export function MessageInput({
           <Paperclip className="h-5 w-5" />
           <span className="sr-only">Прикрепить файл</span>
         </Button>
+        
+        {activeBotsCount > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center px-2 py-1 rounded-full bg-primary/10 text-xs text-primary border border-primary/20">
+                  <Bot className="h-3 w-3 mr-1" />
+                  <span>{activeBotsCount} {activeBotsCount === 1 ? 'бот' : 
+                         (activeBotsCount > 1 && activeBotsCount < 5) ? 'бота' : 'ботов'}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>В этом чате активно {activeBotsCount} {activeBotsCount === 1 ? 'бот' : 
+                   (activeBotsCount > 1 && activeBotsCount < 5) ? 'бота' : 'ботов'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         
         <Textarea value={message} onChange={e => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={placeholder} className="min-h-[60px] resize-none" disabled={isLoading || disabled} />
         
