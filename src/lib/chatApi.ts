@@ -30,6 +30,20 @@ export async function sendMessage(chatId: string, message: string, specificBotId
 
     if (error) {
       console.error("Error calling chat function:", error);
+      
+      // Check if it's a network or connection issue
+      if (error.message?.includes("Failed to fetch") || 
+          error.message?.includes("Network error") ||
+          error.message?.includes("timeout")) {
+        return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
+      }
+      
+      // Check if it's an Edge Function error
+      if (error.message?.includes("Edge Function returned a non-2xx status code")) {
+        console.error("Edge Function returned an error status. Check the logs in the Supabase dashboard for more details.");
+        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
+      }
+      
       throw new Error(`Edge function error: ${error.message}`);
     }
 
@@ -45,7 +59,30 @@ export async function sendMessage(chatId: string, message: string, specificBotId
     if (!data.ok) {
       const errorMessage = data.done || "Unknown error";
       console.error("API returned error:", errorMessage);
+      
+      // Format specific error messages for the user
+      if (errorMessage.includes("Bot not found") || errorMessage.includes("Bot with ID")) {
+        return "Бот не найден. Пожалуйста, проверьте ID бота и попробуйте снова.";
+      }
+      
+      if (errorMessage.includes("Bot is not properly configured")) {
+        return "Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.";
+      }
+      
+      if (errorMessage.includes("OpenAI API")) {
+        return "Ошибка при обработке запроса AI моделью. Пожалуйста, попробуйте позже.";
+      }
+      
+      if (errorMessage.includes("Pro-Talk API")) {
+        return "Ошибка при обработке запроса внешним API. Пожалуйста, попробуйте позже.";
+      }
+      
       throw new Error(errorMessage);
+    }
+
+    if (typeof data.done !== 'string') {
+      console.error("Invalid 'done' field format:", data.done);
+      throw new Error("Ответ сервера в неправильном формате");
     }
 
     return data.done;

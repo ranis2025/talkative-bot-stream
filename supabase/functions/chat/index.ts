@@ -125,6 +125,10 @@ Deno.serve(async (req) => {
       console.log("Using OpenAI API for response");
       try {
         response = await sendToOpenAI(message, botData.openai_key);
+        
+        if (!response) {
+          throw new Error("Empty response received from OpenAI");
+        }
       } catch (error) {
         console.error("OpenAI API error:", error);
         return new Response(
@@ -144,6 +148,10 @@ Deno.serve(async (req) => {
       console.log("Using Pro-Talk API for response");
       try {
         response = await sendToExternalAPI(bot_id, chat_id, message, botData.bot_token);
+        
+        if (!response) {
+          throw new Error("Empty response received from Pro-Talk API");
+        }
       } catch (error) {
         console.error("Pro-Talk API error:", error);
         return new Response(
@@ -173,6 +181,8 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log("Sending successful response with data:", { responseLength: response.length });
+    
     return new Response(
       JSON.stringify({ ok: true, done: response }),
       { 
@@ -181,11 +191,11 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error processing request:", error);
+    console.error("Unhandled error in Edge Function:", error);
     return new Response(
       JSON.stringify({ 
         ok: false, 
-        done: error.message || "Internal server error" 
+        done: `Unhandled server error: ${error.message || "Unknown error"}` 
       }),
       { 
         status: 500, 
@@ -216,15 +226,20 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI API error response: ${response.status}`, errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      console.error(`OpenAI API error status: ${response.status}`, errorText);
+      throw new Error(`OpenAI API returned status ${response.status}: ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
+    if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error("Invalid OpenAI response format:", data);
+      throw new Error("Invalid response format from OpenAI");
+    }
+    
     console.log("Successfully received response from OpenAI");
     return data.choices[0].message.content;
   } catch (error) {
-    console.error("Error calling OpenAI:", error);
+    console.error("Error in sendToOpenAI function:", error);
     throw error;
   }
 }
@@ -246,7 +261,7 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
       message: message
     };
     
-    console.log(`Request payload: ${JSON.stringify(payload)}`);
+    console.log(`Request payload to Pro-Talk API: ${JSON.stringify(payload)}`);
     
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -256,14 +271,26 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
       body: JSON.stringify(payload),
     });
 
-    // Safely handle the response even if it's not JSON
-    const responseText = await response.text();
     console.log(`Pro-Talk API response status: ${response.status}`);
-    console.log(`Pro-Talk API response body: ${responseText}`);
+    
+    // Check if response is actually available
+    if (!response) {
+      throw new Error("No response received from Pro-Talk API");
+    }
+
+    // Safely handle the response even if it's not JSON
+    let responseText;
+    try {
+      responseText = await response.text();
+      console.log(`Pro-Talk API response body (first 200 chars): ${responseText.substring(0, 200)}`);
+    } catch (textError) {
+      console.error("Error getting response text:", textError);
+      throw new Error("Failed to get response text from API");
+    }
     
     if (!response.ok) {
-      console.error(`Pro-Talk API error: ${response.status} - ${responseText}`);
-      throw new Error(`API returned status ${response.status}: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
+      console.error(`Pro-Talk API error: ${response.status} - ${responseText.substring(0, 200)}`);
+      throw new Error(`API returned status ${response.status}: ${responseText.substring(0, 200)}`);
     }
 
     // Try to parse the response as JSON
@@ -272,8 +299,8 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
       parsedResponse = JSON.parse(responseText);
       console.log("Successfully parsed Pro-Talk API response");
     } catch (parseError) {
-      console.error("Error parsing Pro-Talk API response:", parseError, "Response was:", responseText);
-      throw new Error(`Failed to parse API response as JSON. Raw response: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
+      console.error("Error parsing Pro-Talk API response:", parseError, "Response was:", responseText.substring(0, 200));
+      throw new Error(`Failed to parse API response as JSON. Raw response: ${responseText.substring(0, 200)}`);
     }
 
     if (!parsedResponse.done) {
@@ -283,7 +310,7 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
 
     return parsedResponse.done;
   } catch (error) {
-    console.error("Error sending message to external API:", error);
+    console.error("Error in sendToExternalAPI function:", error);
     throw error;
   }
 }
