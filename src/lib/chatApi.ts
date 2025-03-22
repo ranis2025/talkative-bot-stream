@@ -1,5 +1,5 @@
 
-import { ApiRequest, ApiResponse } from "@/types/chat";
+import { ApiRequest } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 
 export async function sendMessage(chatId: string, message: string, specificBotId?: string | null): Promise<string> {
@@ -17,7 +17,7 @@ export async function sendMessage(chatId: string, message: string, specificBotId
     
     // Create the payload for the API
     const payload: ApiRequest = {
-      bot_id: botId,  // This is passed as a string to the edge function
+      bot_id: botId,
       chat_id: chatId,
       message: message
     };
@@ -29,7 +29,7 @@ export async function sendMessage(chatId: string, message: string, specificBotId
 
     if (error) {
       console.error("Error calling chat function:", error);
-      throw new Error(`API error: ${error.message}`);
+      throw new Error(`Edge function error: ${error.message}`);
     }
 
     // Check if the data is in the expected format
@@ -48,10 +48,15 @@ export async function sendMessage(chatId: string, message: string, specificBotId
   } catch (error) {
     console.error("Error sending message:", error);
     
+    // Check if error is from EdgeFunction directly
+    if (error instanceof Error && error.message.includes("Edge Function returned a non-2xx status code")) {
+      throw new Error("Сервер вернул ошибку. Пожалуйста, попробуйте позже или обратитесь к администратору.");
+    }
+    
     // If the error is related to JSON parsing, provide a more helpful message
     if (error instanceof SyntaxError && error.message.includes("JSON")) {
       console.error("JSON parse error - Got non-JSON response from server");
-      throw new Error("Server returned an invalid response format. This could be due to network issues or server configuration problems.");
+      throw new Error("Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.");
     }
     
     throw error;

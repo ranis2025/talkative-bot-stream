@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
     const { bot_id, chat_id, message } = await req.json();
     
     if (!bot_id || !chat_id || !message) {
+      console.error("Missing required parameters:", { bot_id, chat_id, message: message ? "provided" : "missing" });
       return new Response(
         JSON.stringify({ 
           ok: false, 
@@ -26,6 +27,8 @@ Deno.serve(async (req) => {
         }
       );
     }
+
+    console.log(`Received request with bot_id: ${bot_id}, chat_id: ${chat_id}`);
 
     // Create Supabase client
     const supabaseClient = createClient(
@@ -39,35 +42,63 @@ Deno.serve(async (req) => {
       .from('chat_bots')
       .select('*')
       .eq('bot_id', bot_id)
-      .single();
+      .maybeSingle();
     
-    if (botError) {
-      console.error("Error fetching bot data:", botError);
+    if (botError || !botData) {
+      console.error("Error fetching bot data:", botError || "Bot not found");
       return new Response(
         JSON.stringify({ 
           ok: false, 
-          done: "Error retrieving bot information" 
+          done: botError ? `Error retrieving bot information: ${botError.message}` : `Bot with ID ${bot_id} not found` 
         }),
         { 
-          status: 500, 
+          status: 404, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
         }
       );
     }
 
-    console.log(`Bot configuration: ID=${bot_id}, has OpenAI key: ${!!botData.openai_key}, has Bot token: ${!!botData.bot_token}`);
+    console.log(`Bot found: ${botData.name}, has OpenAI key: ${!!botData.openai_key}, has Bot token: ${!!botData.bot_token}`);
 
     let response;
 
     // Option 1: Use OpenAI if key is available
     if (botData.openai_key) {
       console.log("Using OpenAI API for response");
-      response = await sendToOpenAI(message, botData.openai_key);
+      try {
+        response = await sendToOpenAI(message, botData.openai_key);
+      } catch (error) {
+        console.error("OpenAI API error:", error);
+        return new Response(
+          JSON.stringify({ 
+            ok: false, 
+            done: `OpenAI API error: ${error.message || "Unknown error"}` 
+          }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
     } 
     // Option 2: Use external API with bot token
     else if (botData.bot_token) {
       console.log("Using Pro-Talk API for response");
-      response = await sendToExternalAPI(bot_id, chat_id, message, botData.bot_token);
+      try {
+        response = await sendToExternalAPI(bot_id, chat_id, message, botData.bot_token);
+      } catch (error) {
+        console.error("Pro-Talk API error:", error);
+        return new Response(
+          JSON.stringify({ 
+            ok: false, 
+            done: `Pro-Talk API error: ${error.message || "Unknown error"}` 
+          }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
     } 
     // No valid configuration
     else {
@@ -126,9 +157,9 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`OpenAI API error: ${response.status} - ${errorData}`);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
+      const errorText = await response.text();
+      console.error(`OpenAI API error response: ${response.status}`, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -164,24 +195,30 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
       }),
     });
 
+    // Safely handle the response even if it's not JSON
+    const responseText = await response.text();
+    console.log(`Pro-Talk API response status: ${response.status}`);
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Pro-Talk API error: ${response.status} - ${errorText}`);
-      throw new Error(`API error: ${response.status} - ${errorText}`);
+      console.error(`Pro-Talk API error: ${response.status} - ${responseText}`);
+      throw new Error(`API returned status ${response.status}: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
     }
 
-    // Try to safely parse the JSON response
-    let data;
+    // Try to parse the response as JSON
+    let parsedResponse;
     try {
-      const responseText = await response.text();
-      data = JSON.parse(responseText);
-      console.log("Successfully received and parsed response from Pro-Talk API");
+      parsedResponse = JSON.parse(responseText);
+      console.log("Successfully parsed Pro-Talk API response");
     } catch (parseError) {
-      console.error("Error parsing response from Pro-Talk API:", parseError);
-      throw new Error(`Failed to parse API response: ${parseError.message}`);
+      console.error("Error parsing Pro-Talk API response:", parseError, "Response was:", responseText);
+      throw new Error(`Failed to parse API response as JSON. Raw response: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
     }
 
-    return data.done;
+    if (!parsedResponse.done) {
+      throw new Error("API response missing 'done' field");
+    }
+
+    return parsedResponse.done;
   } catch (error) {
     console.error("Error sending message to external API:", error);
     throw error;
