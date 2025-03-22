@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -82,10 +83,12 @@ const Index = () => {
     setSidebarOpen(true);
   };
 
+  // Filter chats based on the current view (individual or group)
   const filteredChats = chats.filter(chat => 
     chatView === 'group' ? chat.is_group_chat : !chat.is_group_chat
   );
 
+  // Get active bots in the current chat
   const activeBotsInChat = currentChat?.bots_ids || [];
 
   if (!isInitialized) {

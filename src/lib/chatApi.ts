@@ -1,6 +1,9 @@
 
 import { ApiRequest } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast"; 
+
+// Importing the toast function directly to avoid the hook in a non-component context
 import { toast } from "@/hooks/use-toast";
 
 export async function sendMessage(chatId: string, message: string, specificBotId?: string | null): Promise<string> {

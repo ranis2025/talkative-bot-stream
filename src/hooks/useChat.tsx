@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ export function useChat() {
   const [userBots, setUserBots] = useState<ChatBot[]>([]);
   const [chatView, setChatView] = useState<'individual' | 'group'>('individual');
 
+  // Fetch user bots
   const fetchUserBots = useCallback(async () => {
     if (!token) return;
     
@@ -59,6 +61,7 @@ export function useChat() {
     }
   }, [token, currentBot]);
 
+  // Fetch chats
   const fetchChats = useCallback(async (bot_id?: string) => {
     if (!token) return;
     
@@ -121,6 +124,7 @@ export function useChat() {
     }
   }, [fetchChats, currentBot, token]);
 
+  // Create new chat
   const createChat = useCallback(async (isGroupChat = false) => {
     if (!token) return;
     
@@ -169,10 +173,12 @@ export function useChat() {
     }
   }, [currentBot, toast, token]);
 
+  // Create group chat
   const createGroupChat = useCallback(() => {
     return createChat(true);
   }, [createChat]);
 
+  // Send message
   const sendChatMessage = useCallback(
     async (message: string) => {
       if (!currentChatId || !message.trim()) return;
@@ -217,7 +223,9 @@ export function useChat() {
         );
 
         try {
+          // Handle group chat message
           if (currentChat.is_group_chat && currentChat.bots_ids && currentChat.bots_ids.length > 0) {
+            // Send message to multiple bots and get their responses
             const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids);
             
             const botMessages: IMessage[] = botResponses.map(response => {
@@ -246,6 +254,7 @@ export function useChat() {
               throw botUpdateError;
             }
 
+            // Update title for first message
             if (currentChat.messages.length === 0) {
               const shortTitle =
                 message.length > 30 ? message.substring(0, 30) + "..." : message;
@@ -285,6 +294,7 @@ export function useChat() {
               );
             }
           } else {
+            // Handle individual chat message
             const botResponse = await sendMessage(currentChatId, message, currentChat.bot_id);
             
             const botMessage: IMessage = {
@@ -308,6 +318,7 @@ export function useChat() {
               throw botUpdateError;
             }
 
+            // Update title for first message
             if (currentChat.messages.length === 0) {
               const shortTitle =
                 message.length > 30 ? message.substring(0, 30) + "..." : message;
@@ -399,6 +410,7 @@ export function useChat() {
     [chats, currentChatId, toast, userBots]
   );
 
+  // Delete chat
   const deleteChat = useCallback(
     async (chatId: string) => {
       try {
@@ -429,6 +441,7 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
+  // Rename chat
   const renameChat = useCallback(
     async (chatId: string, newTitle: string) => {
       try {
@@ -458,6 +471,7 @@ export function useChat() {
     [toast]
   );
 
+  // Add bot to group chat
   const addBotToGroupChat = useCallback(
     async (botId: string) => {
       if (!currentChatId) return;
@@ -511,6 +525,7 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
+  // Remove bot from group chat
   const removeBotFromGroupChat = useCallback(
     async (botId: string) => {
       if (!currentChatId) return;
@@ -557,13 +572,16 @@ export function useChat() {
     [chats, currentChatId, toast]
   );
 
+  // Get current chat
   const currentChat = chats.find((chat) => chat.id === currentChatId) || null;
 
+  // Set current bot
   const setCurrentBotId = useCallback((botId: string | null) => {
     setCurrentBot(botId);
     setCurrentChatId(null);
   }, []);
 
+  // Switch chat view
   const switchChatView = useCallback((view: 'individual' | 'group') => {
     setChatView(view);
     setCurrentChatId(null);

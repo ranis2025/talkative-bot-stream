@@ -37,7 +37,7 @@ export function GroupChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedBot, setSelectedBot] = useState<string | null>(null);
 
-  // Прокрутка вниз при добавлении нового сообщения
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
@@ -46,7 +46,7 @@ export function GroupChat({
     }
   }, [chat?.messages]);
 
-  // Если нет активного чата
+  // If no active chat
   if (!chat) {
     return <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-4">
@@ -107,11 +107,15 @@ export function GroupChat({
               <SelectValue placeholder="Выберите бота" />
             </SelectTrigger>
             <SelectContent>
-              {nonSelectedBots.map((bot) => (
-                <SelectItem key={bot.bot_id} value={bot.bot_id}>
-                  {bot.name}
-                </SelectItem>
-              ))}
+              {nonSelectedBots.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">Все боты уже добавлены</div>
+              ) : (
+                nonSelectedBots.map((bot) => (
+                  <SelectItem key={bot.bot_id} value={bot.bot_id}>
+                    {bot.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           <Button 
