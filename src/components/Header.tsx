@@ -1,7 +1,5 @@
-
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
-import Image from "react-bootstrap/Image";
 
 interface HeaderProps {
   onNewChat: () => void;
