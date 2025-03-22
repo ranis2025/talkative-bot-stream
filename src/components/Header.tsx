@@ -30,7 +30,7 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
         <img 
           src="/logo.png" 
           alt="ProTalk Logo" 
-          className="h-8 mr-2" 
+          className="h-9.2" /* Increased from h-8 to h-9.2 (15% larger) */
         />
       </div>
       <Button 
