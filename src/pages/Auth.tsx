@@ -1,19 +1,31 @@
 
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Pre-fill with requested user credentials
+  const [email, setEmail] = useState("user1@example.com");
+  const [password, setPassword] = useState("12345");
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      const from = location.state?.from?.pathname || "/chat";
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +44,10 @@ const Auth = () => {
           title: "Успешный вход",
           description: "Вы успешно вошли в систему",
         });
-        navigate("/chat");
+        
+        // Navigate to the intended destination or default to /chat
+        const from = location.state?.from?.pathname || "/chat";
+        navigate(from, { replace: true });
       } else {
         // Registration
         const { data, error } = await supabase.auth.signUp({
@@ -41,16 +56,61 @@ const Auth = () => {
         });
 
         if (error) throw error;
-        toast({
-          title: "Регистрация выполнена",
-          description: "Проверьте почту для подтверждения аккаунта",
-        });
-        setIsLogin(true);
+        
+        if (data.user?.identities?.length === 0) {
+          toast({
+            title: "Пользователь уже существует",
+            description: "Этот email уже зарегистрирован. Попробуйте войти.",
+            variant: "destructive",
+          });
+          setIsLogin(true);
+        } else {
+          toast({
+            title: "Регистрация выполнена",
+            description: "Проверьте почту для подтверждения аккаунта",
+          });
+          setIsLogin(true);
+        }
       }
     } catch (error: any) {
       toast({
         title: "Ошибка",
         description: error.message || "Произошла ошибка",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    setLoading(true);
+    try {
+      // Try creating the user1 account
+      const { data, error } = await supabase.auth.signUp({
+        email: "user1@example.com",
+        password: "12345",
+      });
+
+      if (error) {
+        if (error.message.includes("already")) {
+          toast({
+            title: "Аккаунт готов к использованию",
+            description: "Пользователь user1 уже существует и готов к использованию",
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        toast({
+          title: "Аккаунт создан",
+          description: "Пользователь user1 создан успешно. Теперь вы можете войти.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось создать пользователя",
         variant: "destructive",
       });
     } finally {
@@ -125,6 +185,20 @@ const Auth = () => {
               ? "Нет аккаунта? Зарегистрироваться"
               : "Уже есть аккаунт? Войти"}
           </button>
+        </div>
+
+        <div className="text-center mt-4">
+          <Button 
+            variant="outline" 
+            onClick={handleCreateUser}
+            className="w-full"
+            disabled={loading}
+          >
+            Создать пользователя user1
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Email: user1@example.com, Пароль: 12345
+          </p>
         </div>
 
         <div className="text-center mt-4">
