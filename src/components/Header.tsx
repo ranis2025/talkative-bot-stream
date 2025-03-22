@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
+import Image from "react-bootstrap/Image";
 
 interface HeaderProps {
   onNewChat: () => void;
@@ -27,7 +28,11 @@ export function Header({ onNewChat, isMobile, onToggleSidebar }: HeaderProps) {
             </div>
           </Button>
         )}
-        <h1 className="text-xl font-medium">Pro-Talk Чат</h1>
+        <img 
+          src="/logo.png" 
+          alt="ProTalk Logo" 
+          className="h-8 mr-2" 
+        />
       </div>
       <Button 
         onClick={onNewChat}
