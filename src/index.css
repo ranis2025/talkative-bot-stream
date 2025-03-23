@@ -137,4 +137,12 @@
   .bot-message {
     @apply message-bubble bg-chat-bot text-foreground self-start animate-slide-in-right;
   }
+  
+  .message-image {
+    @apply rounded-md object-cover max-w-full max-h-[300px] border border-border/40;
+  }
+  
+  .message-attachment {
+    @apply flex items-center gap-2 p-2 rounded-md border bg-background/50 hover:bg-background/70 transition-colors;
+  }
 }
