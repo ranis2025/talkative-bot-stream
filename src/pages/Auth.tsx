@@ -16,7 +16,7 @@ const Auth = () => {
   
   // Extract application name from token if it follows the format "AppName:User"
   const getAppName = (tokenValue: string | null) => {
-    if (!tokenValue) return "BIZO";
+    if (!tokenValue) return "ProTalk";
     
     // Check if token follows the expected format
     const tokenParts = tokenValue.split(':');
@@ -24,7 +24,7 @@ const Auth = () => {
       return tokenParts[0]; // Return the app name part
     }
     
-    return "BIZO"; // Default fallback
+    return "ProTalk"; // Default fallback
   };
   
   // Check for token in URL

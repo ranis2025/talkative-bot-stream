@@ -32,7 +32,7 @@ export function Header({
 
   // Extract application name from token if it follows the format "AppName:User"
   const getAppName = () => {
-    if (!token) return "BIZO";
+    if (!token) return "ProTalk";
     
     // Check if token follows the expected format
     const tokenParts = token.split(':');
@@ -40,7 +40,7 @@ export function Header({
       return tokenParts[0]; // Return the app name part
     }
     
-    return "BIZO"; // Default fallback
+    return "ProTalk"; // Default fallback
   };
   
   const appName = getAppName();
