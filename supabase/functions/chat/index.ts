@@ -222,7 +222,7 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
           { role: "system", content: "Вы — полезный ассистент, который отвечает на запросы клиентов." },
           { role: "user", content: message }
         ],
-        temperature: a0.7,
+        temperature: 0.7,
       }),
     });
 
