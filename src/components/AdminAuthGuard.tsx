@@ -35,11 +35,7 @@ export const AdminAuthGuard = ({ children }: AdminAuthGuardProps) => {
     return <Navigate to="/admin-auth" state={{ from: location }} replace />;
   }
 
-  // Admin is authenticated, but we still need a regular token for API calls
-  if (!token) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
-
-  // Admin authenticated and has token, allow access
+  // Admin is authenticated, bypass token requirement
+  // Allow access to admin functionality without token
   return <>{children}</>;
-};
+}

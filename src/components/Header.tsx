@@ -1,8 +1,9 @@
+
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   NavigationMenu, 
   NavigationMenuContent, 
@@ -28,9 +29,22 @@ export function Header({
 }: HeaderProps) {
   const { logout, token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  const isAdmin = localStorage.getItem("adminAuthenticated") === "true";
+  const isAdminPage = location.pathname.includes("/admin");
 
   const handleAdminClick = () => {
-    navigate(token ? `/admin-auth?token=${token}` : '/admin-auth');
+    if (isAdmin) {
+      navigate("/admin");
+    } else {
+      navigate(token ? `/admin-auth?token=${token}` : '/admin-auth');
+    }
+  };
+  
+  const handleAdminLogout = () => {
+    localStorage.removeItem("adminAuthenticated");
+    navigate("/admin-auth");
   };
 
   return (
@@ -54,30 +68,34 @@ export function Header({
       <div className="flex-1" />
       
       <div className="flex items-center space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={chatView === 'group' ? onNewGroupChat : onNewChat}
-          className={!isMobile ? "mr-2" : ""}
-        >
-          <PlusCircle className="h-4 w-4 mr-2" />
-          {!isMobile && (
-            <span>
-              {chatView === 'group' ? 'Новый групповой чат' : 'Новый чат'}
-            </span>
-          )}
-        </Button>
-        
-        {!isMobile && onNewGroupChat && chatView === 'individual' && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onNewGroupChat}
-            className="mr-2"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            <span>Новый групповой чат</span>
-          </Button>
+        {!isAdminPage && (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={chatView === 'group' ? onNewGroupChat : onNewChat}
+              className={!isMobile ? "mr-2" : ""}
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              {!isMobile && (
+                <span>
+                  {chatView === 'group' ? 'Новый групповой чат' : 'Новый чат'}
+                </span>
+              )}
+            </Button>
+            
+            {!isMobile && onNewGroupChat && chatView === 'individual' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onNewGroupChat}
+                className="mr-2"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                <span>Новый групповой чат</span>
+              </Button>
+            )}
+          </>
         )}
 
         <Button 
@@ -95,8 +113,8 @@ export function Header({
         <Button 
           variant="ghost" 
           size="icon"
-          onClick={logout}
-          title="Выйти из системы"
+          onClick={isAdminPage ? handleAdminLogout : logout}
+          title={isAdminPage ? "Выйти из панели администратора" : "Выйти из системы"}
         >
           <LogOut className="h-5 w-5" />
           <span className="sr-only">Выйти</span>
