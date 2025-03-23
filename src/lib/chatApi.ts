@@ -70,11 +70,14 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     
     console.log(`Sending message to bot: ${botId}, chat: ${chatId}`);
     
+    // Use empty string for message if it's undefined (e.g., when only sending a file)
+    const messageText = message || "";
+    
     // Create the payload for the API
     const payload: ApiRequest = {
       bot_id: botId,
       chat_id: chatId,
-      message: message
+      message: messageText
     };
 
     // Call our Supabase Edge Function
@@ -229,6 +232,9 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     
     console.log(`Sending group message to bots: ${botIds.join(', ')}, chat: ${chatId}`);
     
+    // Use empty string for message if it's undefined (e.g., when only sending a file)
+    const messageText = message || "";
+    
     // Send message to each bot in parallel
     const responses = await Promise.all(
       botIds.map(async (botId) => {
@@ -237,7 +243,7 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
           const payload: ApiRequest = {
             bot_id: botId,
             chat_id: chatId,
-            message: message
+            message: messageText
           };
   
           console.log(`Sending payload to bot ${botId}:`, payload);
