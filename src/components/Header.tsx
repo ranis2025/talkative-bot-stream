@@ -30,6 +30,21 @@ export function Header({
   const { logout, token } = useAuth();
   const navigate = useNavigate();
 
+  // Extract application name from token if it follows the format "AppName:User"
+  const getAppName = () => {
+    if (!token) return "BIZO";
+    
+    // Check if token follows the expected format
+    const tokenParts = token.split(':');
+    if (tokenParts.length === 2) {
+      return tokenParts[0]; // Return the app name part
+    }
+    
+    return "BIZO"; // Default fallback
+  };
+  
+  const appName = getAppName();
+
   const handleAdminClick = () => {
     navigate(token ? `/admin?token=${token}` : '/admin');
   };
@@ -49,7 +64,7 @@ export function Header({
       )}
       
       <div className="flex items-center">
-        <div className="font-semibold text-lg mr-4">BIZO Чат</div>
+        <div className="font-semibold text-lg mr-4">{appName} Чат</div>
       </div>
       
       <div className="flex-1" />

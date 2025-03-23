@@ -54,8 +54,9 @@ export function MessageInput({
     if ((!isLoading && !disabled) && (message.trim() || files.length > 0 || audioFile)) {
       const allFiles = audioFile ? [...files, audioFile] : files;
       
-      // If there's no text message but there are files, send a default message about the attachment
-      const textMessage = message.trim() || (allFiles.length > 0 ? "Вложение" : "");
+      // Send the message text if provided, otherwise send an empty string
+      // Files will be handled separately in the API call
+      const textMessage = message.trim();
       
       onSendMessage(textMessage, allFiles);
       setMessage("");

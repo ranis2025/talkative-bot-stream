@@ -1,4 +1,3 @@
-
 import { ApiRequest } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
@@ -70,12 +69,18 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     
     console.log(`Sending message to bot: ${botId}, chat: ${chatId}`);
     
-    // Create the payload for the API
+    // Create the payload for the API with files if present
     const payload: ApiRequest = {
       bot_id: botId,
       chat_id: chatId,
       message: message
     };
+    
+    // Add file URLs to the payload if they exist
+    if (files && files.length > 0) {
+      const fileUrls = files.map(file => file.url);
+      payload.files = fileUrls;
+    }
 
     // Call our Supabase Edge Function
     console.log(`Sending payload to edge function:`, payload);
@@ -233,12 +238,18 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     const responses = await Promise.all(
       botIds.map(async (botId) => {
         try {
-          // Create the payload for the API
+          // Create the payload for the API with files if present
           const payload: ApiRequest = {
             bot_id: botId,
             chat_id: chatId,
             message: message
           };
+          
+          // Add file URLs to the payload if they exist
+          if (files && files.length > 0) {
+            const fileUrls = files.map(file => file.url);
+            payload.files = fileUrls;
+          }
   
           console.log(`Sending payload to bot ${botId}:`, payload);
           const { data, error } = await supabase.functions.invoke('chat', {

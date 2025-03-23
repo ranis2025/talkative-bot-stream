@@ -1,4 +1,3 @@
-
 export interface ApiResponse {
   ok: boolean;
   done: string;
@@ -41,6 +40,7 @@ export interface ApiRequest {
   bot_id: string;
   chat_id: string;
   message: string;
+  files?: string[]; // Array of file URLs
 }
 
 export interface IFile {
