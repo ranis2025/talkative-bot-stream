@@ -176,7 +176,7 @@ export function GroupChat({
               </div>
             )}
             {isLoading && (
-              <div className="bot-message">
+              <div className="bot-message self-start max-w-[80%]">
                 <div className="flex space-x-2">
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse"></div>
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse delay-75"></div>

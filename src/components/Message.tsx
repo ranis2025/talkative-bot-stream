@@ -30,10 +30,10 @@ export function Message({ message }: MessageProps) {
   return (
     <div
       className={cn(
-        "flex flex-col w-full max-w-screen-md mx-auto p-4 rounded-lg",
+        "flex flex-col p-4 rounded-lg max-w-[80%]",
         isBot
-          ? "bg-secondary/50 text-secondary-foreground"
-          : "bg-primary/10 text-foreground ml-auto"
+          ? "bg-secondary/50 text-secondary-foreground self-start"
+          : "bg-primary/10 text-foreground self-end"
       )}
     >
       {isBot && message.bot_name && (
