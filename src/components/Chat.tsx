@@ -61,7 +61,7 @@ export function Chat({
                 <span>Произошла ошибка при обработке запроса. Если проблема повторяется, обратитесь в службу поддержки.</span>
               </div>
             )}
-            {isLoading && <div className="bot-message self-start max-w-[80%]">
+            {isLoading && <div className="self-start max-w-[80px] bg-secondary/50 text-secondary-foreground p-4 rounded-lg">
                 <div className="flex space-x-2">
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse"></div>
                   <div className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-pulse delay-75"></div>
