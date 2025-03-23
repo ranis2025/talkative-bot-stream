@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -5,7 +6,7 @@ import { Header } from "@/components/Header";
 import { ChatList } from "@/components/ChatList";
 import { GroupChat } from "@/components/GroupChat";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Users, UserPlus, Bot, Sparkles, RotateCw, Book, Lightbulb, MessageSquare } from "lucide-react";
+import { ArrowLeft, Users, UserPlus, Bot, Sparkles, RotateCw, Book, Lightbulb, MessageSquare, Zap } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -95,6 +97,13 @@ const GROUP_CHAT_TEMPLATES = [
     description: "Разбор вопроса с разных специализаций",
     minBots: 3,
     suggestedTopics: ["Технический проект", "Образовательная программа", "Здоровый образ жизни"]
+  },
+  {
+    id: "free",
+    name: "Свободный чат",
+    description: "Произвольная беседа без шаблонов",
+    minBots: 1,
+    suggestedTopics: ["Любая тема", "Свободное общение", "Без ограничений"]
   }
 ];
 
@@ -126,11 +135,12 @@ const GroupChats = () => {
   const [autoConversationInterval, setAutoConversationInterval] = useState<number | null>(null);
   const [isNewTopicDialogOpen, setIsNewTopicDialogOpen] = useState(false);
   const [selectedConversationMode, setSelectedConversationMode] = useState<string>("debate");
-  const [needsNewChat, setNeedsNewChat] = useState(false);
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [suggestedTopic, setSuggestedTopic] = useState<string>("");
   const [chatCount, setChatCount] = useState(0);
+  const [groupPrompt, setGroupPrompt] = useState<string>("");
+  const [showPromptDialog, setShowPromptDialog] = useState(false);
 
   useEffect(() => {
     switchChatView("group");
@@ -141,15 +151,10 @@ const GroupChats = () => {
   }, [switchChatView, location.state]);
 
   useEffect(() => {
-    if (needsNewChat && isInitialized) {
-      createNewGroupChat();
-      setNeedsNewChat(false);
+    if (isInitialized) {
+      console.log("Initialized: Available chats:", chats);
     }
-  }, [needsNewChat, isInitialized]);
-
-  useEffect(() => {
-    setChatCount(filteredChats.length);
-  }, [chats]);
+  }, [isInitialized, chats]);
 
   useEffect(() => {
     setIsMobileView(!!isMobile);
@@ -165,6 +170,10 @@ const GroupChats = () => {
     console.log("GroupChats: Active bots in chat:", activeBotsInChat);
     console.log("GroupChats: filteredChats:", filteredChats);
   }, [currentChat, activeBotsInChat, filteredChats]);
+
+  useEffect(() => {
+    setChatCount(filteredChats.length);
+  }, [filteredChats]);
 
   const toggleSidebar = () => {
     setSidebarOpen(prev => !prev);
@@ -184,18 +193,24 @@ const GroupChats = () => {
     }
   };
 
-  const createNewGroupChat = useCallback(() => {
+  const createNewGroupChat = useCallback(async () => {
     console.log("Creating new group chat");
     const newChatId = createGroupChat();
     console.log("New group chat created with ID:", newChatId);
     
-    if (selectedTemplate && suggestedTopic) {
-      setTimeout(() => {
+    setTimeout(() => {
+      if (selectedTemplate && suggestedTopic) {
         const foundTemplate = GROUP_CHAT_TEMPLATES.find(t => t.id === selectedTemplate);
         const templateName = foundTemplate?.name || 'Групповой чат';
         renameChat(newChatId, `${suggestedTopic} (${templateName})`);
-      }, 500);
-    }
+      }
+      
+      // Give the state time to update
+      setTimeout(() => {
+        setCurrentChatId(newChatId);
+        console.log("Setting current chat ID to:", newChatId);
+      }, 200);
+    }, 300);
     
     if (isMobileView) {
       setSidebarOpen(false);
@@ -203,8 +218,9 @@ const GroupChats = () => {
     
     setSelectedTemplate(null);
     setSuggestedTopic("");
+    
     return newChatId;
-  }, [createGroupChat, isMobileView, selectedTemplate, suggestedTopic, renameChat]);
+  }, [createGroupChat, isMobileView, selectedTemplate, suggestedTopic, renameChat, setCurrentChatId]);
 
   const handleCreateFromTemplate = () => {
     createNewGroupChat();
@@ -319,6 +335,26 @@ const GroupChats = () => {
       const randomTopic = template.suggestedTopics[Math.floor(Math.random() * template.suggestedTopics.length)];
       setSuggestedTopic(randomTopic);
     }
+  };
+
+  const sendGroupPrompt = () => {
+    if (!currentChat || !groupPrompt.trim()) {
+      toast({
+        title: "Пустой промт",
+        description: "Пожалуйста, введите промт для группы.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    sendChatMessage(groupPrompt);
+    setGroupPrompt("");
+    setShowPromptDialog(false);
+    
+    toast({
+      title: "Промт отправлен",
+      description: "Промт успешно отправлен всем ботам в группе."
+    });
   };
 
   if (!isInitialized) {
@@ -449,6 +485,38 @@ const GroupChats = () => {
                 </h2>
                 
                 <div className="flex items-center space-x-3">
+                  <Dialog open={showPromptDialog} onOpenChange={setShowPromptDialog}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Промт для группы
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Отправить промт всей группе</DialogTitle>
+                        <DialogDescription>
+                          Напишите общий промт, который будет отправлен в групповой чат.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <Textarea
+                          value={groupPrompt}
+                          onChange={(e) => setGroupPrompt(e.target.value)}
+                          placeholder="Например: Представьте, что вы эксперты в области искусственного интеллекта..."
+                          className="h-32"
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPromptDialog(false)}>Отмена</Button>
+                        <Button onClick={sendGroupPrompt}>Отправить</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                
                   <Dialog open={isNewTopicDialogOpen} onOpenChange={setIsNewTopicDialogOpen}>
                     <DialogTrigger asChild>
                       <Button 
@@ -595,6 +663,10 @@ const GroupChats = () => {
                     <li className="flex items-start">
                       <span className="text-primary mr-2">•</span>
                       <span>Создавать совместные истории, где каждый бот добавляет свой фрагмент</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-primary mr-2">•</span>
+                      <span>Отправлять общий промт всей группе ботов одновременно</span>
                     </li>
                   </ul>
                 </div>
