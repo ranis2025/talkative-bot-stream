@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -41,7 +40,6 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 
-// Define conversation modes and templates
 const CONVERSATION_MODES = {
   debate: {
     name: "Дебаты",
@@ -76,7 +74,6 @@ const CONVERSATION_MODES = {
   }
 };
 
-// Sample templates for new group chat creation
 const GROUP_CHAT_TEMPLATES = [
   {
     id: "debate",
@@ -135,17 +132,14 @@ const GroupChats = () => {
   const [suggestedTopic, setSuggestedTopic] = useState<string>("");
   const [chatCount, setChatCount] = useState(0);
 
-  // Switch to group chat view when component mounts
   useEffect(() => {
     switchChatView("group");
     
-    // Check if we're coming from the Index page and should create a new group chat
     if (location.state?.createNew) {
       setIsNewChatDialogOpen(true);
     }
   }, [switchChatView, location.state]);
 
-  // Create a new group chat if needed
   useEffect(() => {
     if (needsNewChat && isInitialized) {
       createNewGroupChat();
@@ -153,7 +147,6 @@ const GroupChats = () => {
     }
   }, [needsNewChat, isInitialized]);
 
-  // Count the number of chats for UI feedback
   useEffect(() => {
     setChatCount(filteredChats.length);
   }, [chats]);
@@ -163,25 +156,20 @@ const GroupChats = () => {
     setSidebarOpen(!isMobile);
   }, [isMobile]);
 
-  // Filter chats to only show group chats
   const filteredChats = chats.filter(chat => chat.is_group_chat);
   
-  // Get active bots in current chat
   const activeBotsInChat = currentChat?.bots_ids || [];
 
-  // Effect to log current state for debugging
   useEffect(() => {
     console.log("GroupChats: Current chat:", currentChat);
     console.log("GroupChats: Active bots in chat:", activeBotsInChat);
     console.log("GroupChats: filteredChats:", filteredChats);
   }, [currentChat, activeBotsInChat, filteredChats]);
 
-  // Toggle sidebar
   const toggleSidebar = () => {
     setSidebarOpen(prev => !prev);
   };
 
-  // Handle chat selection
   const handleSelectChat = (chatId: string) => {
     console.log("Selecting group chat with ID:", chatId);
     setCurrentChatId(chatId);
@@ -189,7 +177,6 @@ const GroupChats = () => {
       setSidebarOpen(false);
     }
     
-    // Stop auto-conversation if active
     if (autoConversationInterval) {
       clearInterval(autoConversationInterval);
       setAutoConversationInterval(null);
@@ -197,56 +184,50 @@ const GroupChats = () => {
     }
   };
 
-  // Create a new group chat from template or default
   const createNewGroupChat = useCallback(() => {
     console.log("Creating new group chat");
     const newChatId = createGroupChat();
+    console.log("New group chat created with ID:", newChatId);
     
     if (selectedTemplate && suggestedTopic) {
       setTimeout(() => {
-        renameChat(newChatId, `${suggestedTopic} (${GROUP_CHAT_TEMPLATES.find(t => t.id === selectedTemplate)?.name || 'Групповой чат'})`);
+        const foundTemplate = GROUP_CHAT_TEMPLATES.find(t => t.id === selectedTemplate);
+        const templateName = foundTemplate?.name || 'Групповой чат';
+        renameChat(newChatId, `${suggestedTopic} (${templateName})`);
       }, 500);
     }
-    
-    console.log("New group chat created with ID:", newChatId);
     
     if (isMobileView) {
       setSidebarOpen(false);
     }
     
-    // Reset template selection
     setSelectedTemplate(null);
     setSuggestedTopic("");
+    return newChatId;
   }, [createGroupChat, isMobileView, selectedTemplate, suggestedTopic, renameChat]);
 
-  // Handle new group chat dialog confirmation
   const handleCreateFromTemplate = () => {
     createNewGroupChat();
     setIsNewChatDialogOpen(false);
   };
 
-  // Handle opening new chat dialog 
   const handleNewGroupChat = () => {
     setIsNewChatDialogOpen(true);
   };
 
-  // Handle back to list
   const handleBackToList = () => {
     setSidebarOpen(true);
   };
 
-  // Navigate to regular chats
   const handleGoToRegularChats = () => {
     navigate("/chat");
   };
 
-  // Generate bot conversation prompt based on mode and topic
   const generateBotPrompt = (mode: string, topic: string, botIndex: number, botsCount: number) => {
     const selectedMode = CONVERSATION_MODES[mode as keyof typeof CONVERSATION_MODES] || CONVERSATION_MODES.debate;
     return selectedMode.promptTemplate(topic, botIndex, botsCount);
   };
 
-  // Start auto conversation between bots
   const startAutoConversation = () => {
     if (!currentChat || activeBotsInChat.length < 2) {
       toast({
@@ -270,7 +251,6 @@ const GroupChats = () => {
     
     let botIndex = 0;
     
-    // Send the initial prompt to start the conversation
     const initialPrompt = generateBotPrompt(
       selectedConversationMode, 
       autoConversationTopic, 
@@ -281,7 +261,6 @@ const GroupChats = () => {
     sendChatMessage(initialPrompt);
     botIndex = (botIndex + 1) % activeBotsInChat.length;
     
-    // Set up interval to continue the conversation
     const interval = window.setInterval(() => {
       if (!currentChat) {
         clearInterval(interval);
@@ -290,7 +269,6 @@ const GroupChats = () => {
         return;
       }
       
-      // Get the last message to use as context
       const lastMessages = currentChat.messages.slice(-3);
       const lastMessagesContent = lastMessages.map(msg => msg.content).join("\n");
       
@@ -303,12 +281,11 @@ const GroupChats = () => {
       
       sendChatMessage(prompt);
       botIndex = (botIndex + 1) % activeBotsInChat.length;
-    }, 15000); // 15 seconds interval between messages
+    }, 15000);
     
     setAutoConversationInterval(interval);
   };
 
-  // Stop auto conversation
   const stopAutoConversation = () => {
     if (autoConversationInterval) {
       clearInterval(autoConversationInterval);
@@ -321,7 +298,6 @@ const GroupChats = () => {
     }
   };
 
-  // Set new conversation topic and start conversation
   const setNewTopicAndStart = () => {
     if (!autoConversationTopic) {
       toast({
@@ -336,7 +312,6 @@ const GroupChats = () => {
     startAutoConversation();
   };
 
-  // Handle template selection 
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId);
     const template = GROUP_CHAT_TEMPLATES.find(t => t.id === templateId);
@@ -408,7 +383,6 @@ const GroupChats = () => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar section */}
         <div className={cn(
           "border-r bg-card h-full",
           isMobileView ? "absolute inset-0 z-20 transition-transform duration-300" : "w-80",
@@ -463,7 +437,6 @@ const GroupChats = () => {
           </div>
         </div>
 
-        {/* Main content section */}
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden",
           isMobileView && sidebarOpen && "hidden"
@@ -631,7 +604,6 @@ const GroupChats = () => {
         </div>
       </div>
       
-      {/* New Group Chat Dialog */}
       <Dialog open={isNewChatDialogOpen} onOpenChange={setIsNewChatDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>

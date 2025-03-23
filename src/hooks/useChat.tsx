@@ -121,8 +121,8 @@ export function useChat() {
     }
   }, [fetchChats, currentBot, token]);
 
-  const createChat = useCallback(async (isGroupChat = false) => {
-    if (!token) return;
+  const createChat = useCallback((isGroupChat = false) => {
+    if (!token) return "";
     
     const newChatId = uuidv4();
     const newChat: IChat = {
@@ -137,7 +137,7 @@ export function useChat() {
     };
 
     try {
-      const { error } = await supabase.from("protalk_chats").insert({
+      supabase.from("protalk_chats").insert({
         id: newChatId,
         title: isGroupChat ? "Новый групповой чат" : "Новый чат",
         bot_id: isGroupChat ? null : currentBot,
@@ -145,11 +145,16 @@ export function useChat() {
         is_group_chat: isGroupChat,
         token: token,
         messages: [] as unknown as Json,
+      }).then(({ error }) => {
+        if (error) {
+          console.error("Error creating chat:", error);
+          toast({
+            title: "Ошибка",
+            description: "Не удалось создать новый чат",
+            variant: "destructive",
+          });
+        }
       });
-
-      if (error) {
-        throw error;
-      }
 
       setChats((prevChats) => [newChat, ...prevChats]);
       setCurrentChatId(newChatId);
@@ -159,6 +164,8 @@ export function useChat() {
       } else {
         setChatView('individual');
       }
+      
+      return newChatId;
     } catch (error) {
       console.error("Error creating chat:", error);
       toast({
@@ -166,6 +173,7 @@ export function useChat() {
         description: "Не удалось создать новый чат",
         variant: "destructive",
       });
+      return "";
     }
   }, [currentBot, toast, token]);
 
