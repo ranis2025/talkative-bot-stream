@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -85,8 +84,7 @@ const Index = () => {
   };
 
   const handleNewGroupChat = () => {
-    // Вместо создания группового чата здесь перенаправляем на страницу групповых чатов
-    navigate("/group-chats");
+    navigate("/group-chats", { state: { createNew: true } });
   };
 
   const handleBackToList = () => {

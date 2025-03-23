@@ -8,7 +8,7 @@ import { GroupChat } from "@/components/GroupChat";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Users, UserPlus, Bot, Sparkles } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +50,7 @@ const GroupChats = () => {
   } = useChat();
   
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileView, setIsMobileView] = useState(false);
@@ -58,11 +59,25 @@ const GroupChats = () => {
   const [autoConversationInterval, setAutoConversationInterval] = useState<number | null>(null);
   const [isNewTopicDialogOpen, setIsNewTopicDialogOpen] = useState(false);
   const [selectedConversationMode, setSelectedConversationMode] = useState<string>("debate");
+  const [needsNewChat, setNeedsNewChat] = useState(false);
 
   // Switch to group chat view when component mounts
   useEffect(() => {
     switchChatView("group");
-  }, [switchChatView]);
+    
+    // Check if we're coming from the Index page and should create a new group chat
+    if (location.state?.createNew) {
+      setNeedsNewChat(true);
+    }
+  }, [switchChatView, location.state]);
+
+  // Create a new group chat if needed
+  useEffect(() => {
+    if (needsNewChat && isInitialized) {
+      handleNewGroupChat();
+      setNeedsNewChat(false);
+    }
+  }, [needsNewChat, isInitialized]);
 
   useEffect(() => {
     setIsMobileView(!!isMobile);
@@ -79,7 +94,8 @@ const GroupChats = () => {
   useEffect(() => {
     console.log("GroupChats: Current chat:", currentChat);
     console.log("GroupChats: Active bots in chat:", activeBotsInChat);
-  }, [currentChat, activeBotsInChat]);
+    console.log("GroupChats: filteredChats:", filteredChats);
+  }, [currentChat, activeBotsInChat, filteredChats]);
 
   // Toggle sidebar
   const toggleSidebar = () => {
@@ -104,7 +120,10 @@ const GroupChats = () => {
 
   // Handle new group chat creation
   const handleNewGroupChat = () => {
-    createGroupChat();
+    console.log("Creating new group chat");
+    const newChatId = createGroupChat();
+    console.log("New group chat created with ID:", newChatId);
+    
     if (isMobileView) {
       setSidebarOpen(false);
     }
@@ -294,6 +313,7 @@ const GroupChats = () => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar section */}
         <div className={cn(
           "border-r bg-card h-full",
           isMobileView ? "absolute inset-0 z-20 transition-transform duration-300" : "w-80",
@@ -334,6 +354,7 @@ const GroupChats = () => {
           </div>
         </div>
 
+        {/* Main content section */}
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden",
           isMobileView && sidebarOpen && "hidden"
@@ -437,6 +458,13 @@ const GroupChats = () => {
                 <p className="text-muted-foreground">
                   Создайте новый групповой чат или выберите существующий, чтобы начать общение с несколькими ботами одновременно.
                 </p>
+                <Button 
+                  onClick={handleNewGroupChat}
+                  className="mt-4"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Создать новый групповой чат
+                </Button>
                 <div className="bg-card border rounded-lg p-4 shadow-sm">
                   <h3 className="text-lg font-medium mb-2 flex items-center">
                     <Sparkles className="h-4 w-4 mr-2 text-primary" />
