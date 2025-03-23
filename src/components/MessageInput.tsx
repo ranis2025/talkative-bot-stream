@@ -91,6 +91,7 @@ export function MessageInput({
           // Example: "https://tmpfiles.org/1234" -> "https://tmpfiles.org/dl/1234/filename.ext"
           const uploadUrl = result.data.url;
           const fileId = uploadUrl.split('/').pop();
+          // Исправленное формирование URL для скачивания файла
           const downloadUrl = `https://tmpfiles.org/dl/${fileId}/${file.name}`;
           
           newFiles.push({
@@ -153,7 +154,8 @@ export function MessageInput({
         try {
           // Create a form data object to upload the file
           const formData = new FormData();
-          formData.append('file', audioBlob, 'audio-message.mp3');
+          const fileName = `audio-message-${Date.now()}.mp3`;
+          formData.append('file', audioBlob, fileName);
           
           // Upload to tmpfiles.org API
           const response = await fetch('https://tmpfiles.org/api/v1/upload', {
@@ -170,7 +172,8 @@ export function MessageInput({
           // Convert the tmpfiles URL to its download format
           const uploadUrl = result.data.url;
           const fileId = uploadUrl.split('/').pop();
-          const downloadUrl = `https://tmpfiles.org/dl/${fileId}/audio-message.mp3`;
+          // Исправленное формирование URL для голосового сообщения
+          const downloadUrl = `https://tmpfiles.org/dl/${fileId}/${fileName}`;
           
           setAudioFile({
             name: 'Голосовое сообщение.mp3',
