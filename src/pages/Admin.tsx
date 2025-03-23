@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Plus, Trash2, ArrowLeft, Copy, RefreshCw } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, ArrowLeft, Copy, RefreshCw, LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { v4 as uuidv4 } from "uuid";
@@ -41,14 +40,12 @@ const Admin = () => {
   const { toast } = useToast();
   const { token } = useAuth();
 
-  // Ensure token is preserved in URL
   useEffect(() => {
     if (token && !searchParams.get("token")) {
       navigate(`/admin?token=${token}`, { replace: true });
     }
   }, [token, searchParams, navigate]);
 
-  // Fetch bots data
   useEffect(() => {
     if (token) {
       fetchBots();
@@ -294,10 +291,8 @@ const Admin = () => {
     }
   };
 
-  // Проверить и удалить групповые чаты без связи с токеном
   const cleanupGroupChats = async () => {
     try {
-      // Удаляем групповые чаты, которые не связаны с токеном
       const { error } = await supabase
         .from('protalk_chats')
         .delete()
@@ -319,17 +314,31 @@ const Admin = () => {
     }
   };
 
+  const handleAdminLogout = () => {
+    localStorage.removeItem("adminAuthenticated");
+    toast({
+      title: "Выход выполнен",
+      description: "Вы вышли из панели администратора",
+    });
+    navigate(token ? `/chat?token=${token}` : '/auth');
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Панель администратора</h1>
-        <Button onClick={handleBackToChat} className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Вернуться к чату
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleBackToChat} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Вернуться к чату
+          </Button>
+          <Button onClick={handleAdminLogout} variant="outline" className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" />
+            Выйти из админ-панели
+          </Button>
+        </div>
       </div>
 
-      {/* Секция токенов */}
       <div className="bg-card rounded-lg p-6 shadow-sm mb-8">
         <h2 className="text-xl font-semibold mb-4">Управление токенами</h2>
         
@@ -409,7 +418,6 @@ const Admin = () => {
         )}
       </div>
 
-      {/* Секция ботов */}
       <div className="bg-card rounded-lg p-6 shadow-sm mb-8">
         <h2 className="text-xl font-semibold mb-4">Управление ботами</h2>
         

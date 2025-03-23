@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut } from "lucide-react";
@@ -31,7 +30,7 @@ export function Header({
   const navigate = useNavigate();
 
   const handleAdminClick = () => {
-    navigate(token ? `/admin?token=${token}` : '/admin');
+    navigate(token ? `/admin-auth?token=${token}` : '/admin-auth');
   };
 
   return (
