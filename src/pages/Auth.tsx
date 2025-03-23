@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,26 @@ const Auth = () => {
       navigate("/chat?token=demo-token");
     }
   }, [searchParams, navigate, toast, setToken]);
+
+  // Extract app name from token for display
+  const appName = useMemo(() => {
+    const token = searchParams.get("token");
+    if (!token) return "BIZO Чат";
+    
+    try {
+      // Check if token has the format AppName:User
+      if (token.includes(":")) {
+        const parts = token.split(":");
+        if (parts.length >= 1 && parts[0]) {
+          return parts[0];
+        }
+      }
+      return "BIZO"; // Default
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return "BIZO"; // Default on error
+    }
+  }, [searchParams]);
 
   // Handle token-based authentication
   const handleTokenAuth = async (token: string) => {
@@ -98,11 +118,11 @@ const Auth = () => {
           <div className="flex justify-center mb-2">
             <img
               src="/lovable-uploads/bf49cbb2-32bd-471b-9256-7db1562592e2.png"
-              alt="Bizo Logo"
+              alt="Logo"
               className="h-12 w-auto"
             />
           </div>
-          <h2 className="text-2xl font-bold">Вход по токену</h2>
+          <h2 className="text-2xl font-bold">{appName} Чат</h2>
           <p className="text-muted-foreground mt-2">
             Для доступа к приложению необходим токен в URL
           </p>

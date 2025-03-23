@@ -11,6 +11,7 @@ import {
   NavigationMenuList, 
   NavigationMenuTrigger 
 } from "@/components/ui/navigation-menu";
+import { useMemo } from "react";
 
 interface HeaderProps {
   onNewChat: () => void;
@@ -33,6 +34,25 @@ export function Header({
   
   const isAdmin = localStorage.getItem("adminAuthenticated") === "true";
   const isAdminPage = location.pathname.includes("/admin");
+
+  // Extract app name from token if it follows the format "AppName:User"
+  const appName = useMemo(() => {
+    if (!token) return "BIZO Чат";
+    
+    try {
+      // Check if token has the format AppName:User
+      if (token.includes(":")) {
+        const parts = token.split(":");
+        if (parts.length >= 1 && parts[0]) {
+          return `${parts[0]} Чат`;
+        }
+      }
+      return "BIZO Чат"; // Default
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return "BIZO Чат"; // Default on error
+    }
+  }, [token]);
 
   const handleAdminClick = () => {
     if (isAdmin) {
@@ -62,7 +82,7 @@ export function Header({
       )}
       
       <div className="flex items-center">
-        <div className="font-semibold text-lg mr-4">BIZO Чат</div>
+        <div className="font-semibold text-lg mr-4">{appName}</div>
       </div>
       
       <div className="flex-1" />
