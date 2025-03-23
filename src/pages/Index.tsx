@@ -85,7 +85,7 @@ const Index = () => {
   };
 
   const handleNewGroupChat = () => {
-    // Navigate to group chats page when creating a new group chat
+    // Вместо создания группового чата здесь перенаправляем на страницу групповых чатов
     navigate("/group-chats");
   };
 
