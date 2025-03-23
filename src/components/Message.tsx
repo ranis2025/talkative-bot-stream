@@ -45,8 +45,8 @@ export function Message({ message }: MessageProps) {
       className={cn(
         "flex flex-col p-4 rounded-2xl max-w-[80%] shadow-sm transition-all",
         isBot
-          ? "bg-secondary/50 text-secondary-foreground self-start border-l-4 border-primary/30"
-          : "bg-primary/10 text-foreground self-end border-r-4 border-primary/70"
+          ? "bg-secondary/50 text-secondary-foreground self-start border-l-4 border-primary/30 bot-message"
+          : "bg-primary/10 text-foreground self-end border-r-4 border-primary/70 user-message"
       )}
     >
       <div className="flex items-center gap-2 mb-1">
