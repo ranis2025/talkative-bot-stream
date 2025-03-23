@@ -14,6 +14,19 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const { setToken } = useAuth();
   
+  // Extract application name from token if it follows the format "AppName:User"
+  const getAppName = (tokenValue: string | null) => {
+    if (!tokenValue) return "BIZO";
+    
+    // Check if token follows the expected format
+    const tokenParts = tokenValue.split(':');
+    if (tokenParts.length === 2) {
+      return tokenParts[0]; // Return the app name part
+    }
+    
+    return "BIZO"; // Default fallback
+  };
+  
   // Check for token in URL
   useEffect(() => {
     const token = searchParams.get("token");
@@ -80,6 +93,8 @@ const Auth = () => {
     }
   };
 
+  const appName = getAppName(searchParams.get("token"));
+
   if (tokenLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
@@ -98,11 +113,11 @@ const Auth = () => {
           <div className="flex justify-center mb-2">
             <img
               src="/lovable-uploads/bf49cbb2-32bd-471b-9256-7db1562592e2.png"
-              alt="Bizo Logo"
+              alt={`${appName} Logo`}
               className="h-12 w-auto"
             />
           </div>
-          <h2 className="text-2xl font-bold">Вход по токену</h2>
+          <h2 className="text-2xl font-bold">Вход в {appName} Чат</h2>
           <p className="text-muted-foreground mt-2">
             Для доступа к приложению необходим токен в URL
           </p>

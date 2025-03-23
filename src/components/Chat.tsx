@@ -4,6 +4,7 @@ import { Message } from "./Message";
 import { MessageInput } from "./MessageInput";
 import { IChat, IFile } from "@/types/chat";
 import { AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ChatProps {
   chat: IChat | undefined;
@@ -17,6 +18,22 @@ export function Chat({
   isLoading
 }: ChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { token } = useAuth();
+  
+  // Extract application name from token if it follows the format "AppName:User"
+  const getAppName = () => {
+    if (!token) return "BIZO";
+    
+    // Check if token follows the expected format
+    const tokenParts = token.split(':');
+    if (tokenParts.length === 2) {
+      return tokenParts[0]; // Return the app name part
+    }
+    
+    return "BIZO"; // Default fallback
+  };
+  
+  const appName = getAppName();
 
   // Прокрутка вниз при добавлении нового сообщения
   useEffect(() => {
@@ -31,7 +48,7 @@ export function Chat({
   if (!chat) {
     return <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-4">
-          <h2 className="text-2xl font-medium">Добро пожаловать в BIZO Чат</h2>
+          <h2 className="text-2xl font-medium">Добро пожаловать в {appName} Чат</h2>
           <p className="text-muted-foreground">
             Создайте новый чат или выберите существующий, чтобы начать общение с ботом.
           </p>

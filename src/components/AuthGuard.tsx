@@ -14,6 +14,21 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   const { token, isLoading, setToken } = useAuth();
   const [searchParams] = useSearchParams();
   
+  // Extract application name from token if it follows the format "AppName:User"
+  const getAppName = () => {
+    if (!token) return "BIZO";
+    
+    // Check if token follows the expected format
+    const tokenParts = token.split(':');
+    if (tokenParts.length === 2) {
+      return tokenParts[0]; // Return the app name part
+    }
+    
+    return "BIZO"; // Default fallback
+  };
+  
+  const appName = getAppName();
+  
   // Check if there's a token in the URL that needs to be set in context
   useEffect(() => {
     const urlToken = searchParams.get("token");

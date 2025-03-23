@@ -51,9 +51,13 @@ export function MessageInput({
   }, []);
 
   const handleSendMessage = () => {
-    if ((message.trim() || files.length > 0 || audioFile) && !isLoading && !disabled) {
+    if ((!isLoading && !disabled) && (message.trim() || files.length > 0 || audioFile)) {
       const allFiles = audioFile ? [...files, audioFile] : files;
-      onSendMessage(message, allFiles);
+      
+      // If there's no text message but there are files, send a default message about the attachment
+      const textMessage = message.trim() || (allFiles.length > 0 ? "Вложение" : "");
+      
+      onSendMessage(textMessage, allFiles);
       setMessage("");
       setFiles([]);
       setAudioFile(null);
@@ -313,7 +317,7 @@ export function MessageInput({
           className="shrink-0" 
           size="icon" 
           onClick={handleSendMessage} 
-          disabled={(message.trim() === '' && files.length === 0 && !audioFile) || isLoading || disabled || isRecording}
+          disabled={isLoading || disabled || isRecording}
         >
           <Send className="h-5 w-5" />
           <span className="sr-only">Отправить</span>
