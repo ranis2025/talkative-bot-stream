@@ -1,3 +1,4 @@
+
 import { ApiRequest } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
@@ -69,18 +70,27 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     
     console.log(`Sending message to bot: ${botId}, chat: ${chatId}`);
     
-    // Create the payload for the API with files if present
+    // Prepare message content - include file URLs in the message itself if present
+    let messageContent = message;
+    if (files && files.length > 0) {
+      // If there's a message, add a line break
+      if (messageContent && messageContent.trim() !== '') {
+        messageContent += '\n\n';
+      }
+      
+      // Add each file URL on a new line
+      const fileUrls = files.map(file => file.url).join('\n');
+      messageContent += fileUrls;
+    }
+    
+    console.log(`Prepared message content with files:`, messageContent);
+    
+    // Create the payload for the API
     const payload: ApiRequest = {
       bot_id: botId,
       chat_id: chatId,
-      message: message
+      message: messageContent
     };
-    
-    // Add file URLs to the payload if they exist
-    if (files && files.length > 0) {
-      const fileUrls = files.map(file => file.url);
-      payload.files = fileUrls;
-    }
 
     // Call our Supabase Edge Function
     console.log(`Sending payload to edge function:`, payload);
@@ -234,22 +244,29 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     
     console.log(`Sending group message to bots: ${botIds.join(', ')}, chat: ${chatId}`);
     
+    // Prepare message content - include file URLs in the message itself if present
+    let messageContent = message;
+    if (files && files.length > 0) {
+      // If there's a message, add a line break
+      if (messageContent && messageContent.trim() !== '') {
+        messageContent += '\n\n';
+      }
+      
+      // Add each file URL on a new line
+      const fileUrls = files.map(file => file.url).join('\n');
+      messageContent += fileUrls;
+    }
+    
     // Send message to each bot in parallel
     const responses = await Promise.all(
       botIds.map(async (botId) => {
         try {
-          // Create the payload for the API with files if present
+          // Create the payload for the API
           const payload: ApiRequest = {
             bot_id: botId,
             chat_id: chatId,
-            message: message
+            message: messageContent
           };
-          
-          // Add file URLs to the payload if they exist
-          if (files && files.length > 0) {
-            const fileUrls = files.map(file => file.url);
-            payload.files = fileUrls;
-          }
   
           console.log(`Sending payload to bot ${botId}:`, payload);
           const { data, error } = await supabase.functions.invoke('chat', {
