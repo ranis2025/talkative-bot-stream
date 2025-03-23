@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -82,7 +81,7 @@ const GROUP_CHAT_TEMPLATES = [
     name: "Дебаты",
     description: "Обсуждение противоположных точек зрения",
     minBots: 2,
-    suggestedTopics: ["Искусственный интеллект", "Глобальное потепление", "Освоение космоса"]
+    suggestedTopics: ["Искусственный интеллект", "Глобальное п��тепление", "Освоение космоса"]
   },
   {
     id: "creative",
@@ -193,31 +192,32 @@ const GroupChats = () => {
     }
   };
 
-  const createNewGroupChat = useCallback(async () => {
+  const createNewGroupChat = useCallback(() => {
     console.log("Creating new group chat");
     const newChatId = createGroupChat();
     console.log("New group chat created with ID:", newChatId);
     
-    setTimeout(() => {
-      if (selectedTemplate && suggestedTopic) {
-        const foundTemplate = GROUP_CHAT_TEMPLATES.find(t => t.id === selectedTemplate);
-        const templateName = foundTemplate?.name || 'Групповой чат';
-        renameChat(newChatId, `${suggestedTopic} (${templateName})`);
+    if (newChatId) {
+      setTimeout(() => {
+        if (selectedTemplate && suggestedTopic) {
+          const foundTemplate = GROUP_CHAT_TEMPLATES.find(t => t.id === selectedTemplate);
+          const templateName = foundTemplate?.name || 'Групповой чат';
+          renameChat(newChatId, `${suggestedTopic} (${templateName})`);
+        }
+        
+        setTimeout(() => {
+          setCurrentChatId(newChatId);
+          console.log("Setting current chat ID to:", newChatId);
+        }, 200);
+      }, 300);
+      
+      if (isMobileView) {
+        setSidebarOpen(false);
       }
       
-      // Give the state time to update
-      setTimeout(() => {
-        setCurrentChatId(newChatId);
-        console.log("Setting current chat ID to:", newChatId);
-      }, 200);
-    }, 300);
-    
-    if (isMobileView) {
-      setSidebarOpen(false);
+      setSelectedTemplate(null);
+      setSuggestedTopic("");
     }
-    
-    setSelectedTemplate(null);
-    setSuggestedTopic("");
     
     return newChatId;
   }, [createGroupChat, isMobileView, selectedTemplate, suggestedTopic, renameChat, setCurrentChatId]);
@@ -688,7 +688,7 @@ const GroupChats = () => {
           <div className="py-4 space-y-4">
             <div className="space-y-2">
               <Label>Шаблон чата</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {GROUP_CHAT_TEMPLATES.map(template => (
                   <div 
                     key={template.id}

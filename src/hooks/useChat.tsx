@@ -137,6 +137,8 @@ export function useChat() {
     };
 
     try {
+      setChats((prevChats) => [newChat, ...prevChats]);
+      
       supabase.from("protalk_chats").insert({
         id: newChatId,
         title: isGroupChat ? "Новый групповой чат" : "Новый чат",
@@ -148,6 +150,8 @@ export function useChat() {
       }).then(({ error }) => {
         if (error) {
           console.error("Error creating chat:", error);
+          setChats((prevChats) => prevChats.filter(chat => chat.id !== newChatId));
+          
           toast({
             title: "Ошибка",
             description: "Не удалось создать новый чат",
@@ -156,7 +160,6 @@ export function useChat() {
         }
       });
 
-      setChats((prevChats) => [newChat, ...prevChats]);
       setCurrentChatId(newChatId);
       
       if (isGroupChat) {
