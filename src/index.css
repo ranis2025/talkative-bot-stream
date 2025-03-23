@@ -131,11 +131,11 @@
   }
 
   .user-message {
-    @apply message-bubble bg-chat-user text-white self-end max-w-[80%] animate-slide-in-left;
+    @apply message-bubble bg-chat-user text-white self-end max-w-[80%] animate-slide-in-left ml-auto;
   }
 
   .bot-message {
-    @apply message-bubble bg-chat-bot text-foreground self-start max-w-[80%] animate-slide-in-right;
+    @apply message-bubble bg-chat-bot text-foreground self-start max-w-[80%] animate-slide-in-right mr-auto;
   }
   
   .message-image {
