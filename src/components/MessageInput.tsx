@@ -11,6 +11,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from "uuid";
 
 interface MessageInputProps {
   onSendMessage: (message: string, files?: IFile[]) => void;
@@ -71,34 +73,30 @@ export function MessageInput({
         const newFiles: IFile[] = [];
         
         for (const file of Array.from(event.target.files)) {
-          // Create a form data object to upload the file
-          const formData = new FormData();
-          formData.append('file', file);
+          // Generate a unique file name
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${uuidv4()}.${fileExt}`;
+          const filePath = `chat-files/${fileName}`;
           
-          // Upload to tmpfiles.org API
-          const response = await fetch('https://tmpfiles.org/api/v1/upload', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (!response.ok) {
+          // Upload file to Supabase Storage
+          const { data, error } = await supabase.storage
+            .from('chat-files')
+            .upload(filePath, file);
+            
+          if (error) {
             throw new Error(`Failed to upload file: ${file.name}`);
           }
           
-          const result = await response.json();
-          
-          // Convert the tmpfiles URL to its download format
-          // Example: "https://tmpfiles.org/1234" -> "https://tmpfiles.org/dl/1234/filename.ext"
-          const uploadUrl = result.data.url;
-          const fileId = uploadUrl.split('/').pop();
-          // Исправленное формирование URL для скачивания файла
-          const downloadUrl = `https://tmpfiles.org/dl/${fileId}/${file.name}`;
+          // Get public URL for the file
+          const { data: { publicUrl } } = supabase.storage
+            .from('chat-files')
+            .getPublicUrl(filePath);
           
           newFiles.push({
             name: file.name,
             size: file.size,
             type: file.type,
-            url: downloadUrl
+            url: publicUrl
           });
         }
         
@@ -152,34 +150,29 @@ export function MessageInput({
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
         
         try {
-          // Create a form data object to upload the file
-          const formData = new FormData();
-          const fileName = `audio-message-${Date.now()}.mp3`;
-          formData.append('file', audioBlob, fileName);
+          // Generate a unique filename for the audio recording
+          const fileName = `voice-message-${Date.now()}.mp3`;
+          const filePath = `chat-files/${fileName}`;
           
-          // Upload to tmpfiles.org API
-          const response = await fetch('https://tmpfiles.org/api/v1/upload', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (!response.ok) {
+          // Upload audio to Supabase Storage
+          const { data, error } = await supabase.storage
+            .from('chat-files')
+            .upload(filePath, audioBlob);
+            
+          if (error) {
             throw new Error('Failed to upload audio');
           }
           
-          const result = await response.json();
-          
-          // Convert the tmpfiles URL to its download format
-          const uploadUrl = result.data.url;
-          const fileId = uploadUrl.split('/').pop();
-          // Исправленное формирование URL для голосового сообщения
-          const downloadUrl = `https://tmpfiles.org/dl/${fileId}/${fileName}`;
+          // Get public URL for the audio file
+          const { data: { publicUrl } } = supabase.storage
+            .from('chat-files')
+            .getPublicUrl(filePath);
           
           setAudioFile({
             name: 'Голосовое сообщение.mp3',
             size: audioBlob.size,
             type: 'audio/mp3',
-            url: downloadUrl
+            url: publicUrl
           });
           
           toast({

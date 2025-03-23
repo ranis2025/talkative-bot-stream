@@ -3,21 +3,24 @@ import { ApiRequest } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
 import { toast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from "uuid";
 
 // Function to upload files and return their URLs
 export async function uploadFiles(files: File[]): Promise<{ name: string; size: number; type: string; url: string; }[]> {
   try {
-    // Create a unique folder name based on timestamp and random string
-    const folderName = `uploads/${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    const uploadedFiles = [];
     
-    // Upload each file to Supabase storage
-    const uploadPromises = files.map(async (file) => {
-      const filePath = `${folderName}/${file.name}`;
+    for (const file of files) {
+      // Generate a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `chat-files/${fileName}`;
       
+      // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('chat-files')
         .upload(filePath, file);
-      
+        
       if (error) {
         console.error("Error uploading file:", error);
         throw error;
@@ -28,15 +31,15 @@ export async function uploadFiles(files: File[]): Promise<{ name: string; size: 
         .from('chat-files')
         .getPublicUrl(filePath);
       
-      return {
+      uploadedFiles.push({
         name: file.name,
         size: file.size,
         type: file.type,
         url: publicUrl
-      };
-    });
+      });
+    }
     
-    return await Promise.all(uploadPromises);
+    return uploadedFiles;
   } catch (error) {
     console.error("Error in uploadFiles:", error);
     toast({
