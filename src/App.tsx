@@ -7,11 +7,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminAuthGuard } from "@/components/AdminAuthGuard";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
-import AdminAuth from "./pages/AdminAuth";
 import NotFound from "./pages/NotFound";
 import GroupChats from "./pages/GroupChats";
 
@@ -32,10 +30,6 @@ const App = () => (
                 element={<Auth />}
               />
               <Route 
-                path="/admin-auth" 
-                element={<AdminAuth />}
-              />
-              <Route 
                 path="/chat" 
                 element={
                   <AuthGuard>
@@ -54,9 +48,9 @@ const App = () => (
               <Route 
                 path="/admin" 
                 element={
-                  <AdminAuthGuard>
+                  <AuthGuard>
                     <Admin />
-                  </AdminAuthGuard>
+                  </AuthGuard>
                 } 
               />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

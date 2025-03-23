@@ -1,13 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Plus, Trash2, ArrowLeft, Copy, RefreshCw, LogOut } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { v4 as uuidv4 } from "uuid";
 
 interface ChatBot {
   id: string;
@@ -20,36 +20,26 @@ interface ChatBot {
   token: string | null;
 }
 
-interface TokenEntry {
-  id: string;
-  token: string;
-  theme: string;
-  created_at: string;
-  user_id: string;
-}
-
 const Admin = () => {
   const [bots, setBots] = useState<ChatBot[]>([]);
-  const [tokens, setTokens] = useState<TokenEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingTokens, setLoadingTokens] = useState(true);
   const [newBot, setNewBot] = useState({ name: "", bot_id: "", bot_token: "", openai_key: "" });
-  const [newToken, setNewToken] = useState("");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { token } = useAuth();
 
+  // Ensure token is preserved in URL
   useEffect(() => {
     if (token && !searchParams.get("token")) {
       navigate(`/admin?token=${token}`, { replace: true });
     }
   }, [token, searchParams, navigate]);
 
+  // Fetch bots data
   useEffect(() => {
     if (token) {
       fetchBots();
-      fetchTokens();
     }
   }, [token]);
 
@@ -75,28 +65,6 @@ const Admin = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchTokens = async () => {
-    try {
-      setLoadingTokens(true);
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTokens(data || []);
-    } catch (error) {
-      console.error("Error fetching tokens:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось загрузить данные токенов",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingTokens(false);
     }
   };
 
@@ -215,207 +183,14 @@ const Admin = () => {
     navigate(token ? `/chat?token=${token}` : '/chat');
   };
 
-  const generateNewToken = () => {
-    setNewToken(uuidv4());
-  };
-
-  const createNewToken = async () => {
-    if (!newToken) {
-      generateNewToken();
-      return;
-    }
-
-    try {
-      const userId = uuidv4();
-      const { error } = await supabase
-        .from('user_settings')
-        .insert([{
-          token: newToken,
-          theme: 'dark',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          user_id: userId
-        }]);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Успешно",
-        description: "Новый токен создан",
-      });
-      
-      setNewToken("");
-      fetchTokens();
-    } catch (error) {
-      console.error("Error creating token:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать токен",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const copyToken = (tokenText: string) => {
-    navigator.clipboard.writeText(tokenText);
-    toast({
-      title: "Скопировано",
-      description: "Токен скопирован в буфер обмена",
-    });
-  };
-
-  const deleteToken = async (id: string) => {
-    if (!confirm("Вы уверены, что хотите удалить этот токен? Это удалит все связанные данные.")) return;
-    
-    try {
-      const { error } = await supabase
-        .from('user_settings')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Успешно",
-        description: "Токен удален",
-      });
-      
-      fetchTokens();
-    } catch (error) {
-      console.error("Error deleting token:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить токен",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const cleanupGroupChats = async () => {
-    try {
-      const { error } = await supabase
-        .from('protalk_chats')
-        .delete()
-        .is('token', null);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Успешно",
-        description: "Групповые чаты без токена удалены",
-      });
-    } catch (error) {
-      console.error("Error cleaning up group chats:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось очистить групповые чаты",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleAdminLogout = () => {
-    localStorage.removeItem("adminAuthenticated");
-    toast({
-      title: "Выход выполнен",
-      description: "Вы вышли из панели администратора",
-    });
-    navigate(token ? `/chat?token=${token}` : '/auth');
-  };
-
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Панель администратора</h1>
-        <div className="flex gap-2">
-          <Button onClick={handleBackToChat} className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Вернуться к чату
-          </Button>
-          <Button onClick={handleAdminLogout} variant="outline" className="flex items-center gap-2">
-            <LogOut className="h-4 w-4" />
-            Выйти из админ-панели
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-lg p-6 shadow-sm mb-8">
-        <h2 className="text-xl font-semibold mb-4">Управление токенами</h2>
-        
-        <div className="flex items-center gap-3 mb-6">
-          <Input 
-            value={newToken}
-            onChange={(e) => setNewToken(e.target.value)}
-            placeholder="Новый токен"
-            className="max-w-md"
-          />
-          <Button onClick={generateNewToken} variant="outline" className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Сгенерировать
-          </Button>
-          <Button onClick={createNewToken} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Создать
-          </Button>
-        </div>
-
-        <div className="mb-4">
-          <Button onClick={cleanupGroupChats} variant="outline" className="flex items-center gap-2">
-            <Trash2 className="h-4 w-4" />
-            Очистить групповые чаты без токена
-          </Button>
-        </div>
-        
-        {loadingTokens ? (
-          <div className="flex justify-center p-6">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Токен</TableHead>
-                <TableHead>ID пользователя</TableHead>
-                <TableHead>Тема</TableHead>
-                <TableHead>Создан</TableHead>
-                <TableHead>Действия</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tokens.map((tokenEntry) => (
-                <TableRow key={tokenEntry.id} className={token === tokenEntry.token ? "bg-primary/10" : ""}>
-                  <TableCell className="font-mono text-xs overflow-hidden">
-                    {tokenEntry.token}
-                    {token === tokenEntry.token && <span className="ml-2 text-primary">(текущий)</span>}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{tokenEntry.user_id}</TableCell>
-                  <TableCell>{tokenEntry.theme}</TableCell>
-                  <TableCell>{new Date(tokenEntry.created_at).toLocaleString()}</TableCell>
-                  <TableCell className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => copyToken(tokenEntry.token)}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => navigate(`/chat?token=${tokenEntry.token}`)}
-                    >
-                      Использовать
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="destructive" 
-                      onClick={() => deleteToken(tokenEntry.id)}
-                      disabled={token === tokenEntry.token}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <Button onClick={handleBackToChat} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Вернуться к чату
+        </Button>
       </div>
 
       <div className="bg-card rounded-lg p-6 shadow-sm mb-8">

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { 
   NavigationMenu, 
   NavigationMenuContent, 
@@ -11,7 +11,6 @@ import {
   NavigationMenuList, 
   NavigationMenuTrigger 
 } from "@/components/ui/navigation-menu";
-import { useMemo } from "react";
 
 interface HeaderProps {
   onNewChat: () => void;
@@ -30,41 +29,9 @@ export function Header({
 }: HeaderProps) {
   const { logout, token } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  const isAdmin = localStorage.getItem("adminAuthenticated") === "true";
-  const isAdminPage = location.pathname.includes("/admin");
-
-  // Extract app name from token if it follows the format "AppName:User"
-  const appName = useMemo(() => {
-    if (!token) return "BIZO Чат";
-    
-    try {
-      // Check if token has the format AppName:User
-      if (token.includes(":")) {
-        const parts = token.split(":");
-        if (parts.length >= 1 && parts[0]) {
-          return `${parts[0]} Чат`;
-        }
-      }
-      return "BIZO Чат"; // Default
-    } catch (error) {
-      console.error("Error parsing token:", error);
-      return "BIZO Чат"; // Default on error
-    }
-  }, [token]);
 
   const handleAdminClick = () => {
-    if (isAdmin) {
-      navigate("/admin");
-    } else {
-      navigate(token ? `/admin-auth?token=${token}` : '/admin-auth');
-    }
-  };
-  
-  const handleAdminLogout = () => {
-    localStorage.removeItem("adminAuthenticated");
-    navigate("/admin-auth");
+    navigate(token ? `/admin?token=${token}` : '/admin');
   };
 
   return (
@@ -82,40 +49,36 @@ export function Header({
       )}
       
       <div className="flex items-center">
-        <div className="font-semibold text-lg mr-4">{appName}</div>
+        <div className="font-semibold text-lg mr-4">BIZO Чат</div>
       </div>
       
       <div className="flex-1" />
       
       <div className="flex items-center space-x-2">
-        {!isAdminPage && (
-          <>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={chatView === 'group' ? onNewGroupChat : onNewChat}
-              className={!isMobile ? "mr-2" : ""}
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              {!isMobile && (
-                <span>
-                  {chatView === 'group' ? 'Новый групповой чат' : 'Новый чат'}
-                </span>
-              )}
-            </Button>
-            
-            {!isMobile && onNewGroupChat && chatView === 'individual' && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onNewGroupChat}
-                className="mr-2"
-              >
-                <Users className="h-4 w-4 mr-2" />
-                <span>Новый групповой чат</span>
-              </Button>
-            )}
-          </>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={chatView === 'group' ? onNewGroupChat : onNewChat}
+          className={!isMobile ? "mr-2" : ""}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />
+          {!isMobile && (
+            <span>
+              {chatView === 'group' ? 'Новый групповой чат' : 'Новый чат'}
+            </span>
+          )}
+        </Button>
+        
+        {!isMobile && onNewGroupChat && chatView === 'individual' && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onNewGroupChat}
+            className="mr-2"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            <span>Новый групповой чат</span>
+          </Button>
         )}
 
         <Button 
@@ -133,8 +96,8 @@ export function Header({
         <Button 
           variant="ghost" 
           size="icon"
-          onClick={isAdminPage ? handleAdminLogout : logout}
-          title={isAdminPage ? "Выйти из панели администратора" : "Выйти из системы"}
+          onClick={logout}
+          title="Выйти из системы"
         >
           <LogOut className="h-5 w-5" />
           <span className="sr-only">Выйти</span>

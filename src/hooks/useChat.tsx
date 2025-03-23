@@ -16,16 +16,28 @@ export function useChat() {
   const [currentBot, setCurrentBot] = useState<string | null>(null);
   const [userBots, setUserBots] = useState<ChatBot[]>([]);
   const [chatView, setChatView] = useState<'individual' | 'group'>('individual');
-  const isAdmin = localStorage.getItem("adminAuthenticated") === "true";
 
   const fetchUserBots = useCallback(async () => {
+    if (!token) return;
+    
     try {
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
+      
+      if (settingsError && settingsError.code !== "PGRST116") {
+        console.error("Error fetching user settings:", settingsError);
+      }
+
       const { data: botsData, error: botsError } = await supabase
         .from("chat_bots")
-        .select("*");
+        .select("*")
+        .eq("token", token);
       
       if (botsError) {
-        console.error("Error fetching bots:", botsError);
+        console.error("Error fetching user bots:", botsError);
         return;
       }
       
@@ -36,51 +48,29 @@ export function useChat() {
         }
       }
 
-      if (token) {
-        const { data: settingsData, error: settingsError } = await supabase
-          .from("user_settings")
-          .select("*")
-          .eq("token", token)
-          .maybeSingle();
-        
-        if (settingsError && settingsError.code !== "PGRST116") {
-          console.error("Error fetching user settings:", settingsError);
-        }
-
-        if (settingsData) {
-          const settings = settingsData as unknown as UserSettings;
-          if (settings.default_bot_id && !currentBot) {
-            setCurrentBot(settings.default_bot_id);
-          }
+      if (settingsData) {
+        const settings = settingsData as unknown as UserSettings;
+        if (settings.default_bot_id && !currentBot) {
+          setCurrentBot(settings.default_bot_id);
         }
       }
     } catch (error) {
-      console.error("Error loading bots and settings:", error);
+      console.error("Error loading user bots and settings:", error);
     }
   }, [token, currentBot]);
 
   const fetchChats = useCallback(async (bot_id?: string) => {
+    if (!token) return;
+    
     try {
       let query = supabase
         .from("protalk_chats")
         .select("*");
       
-      if (!isAdmin && token) {
-        query = query.eq('token', token);
-      } else if (!isAdmin && !token) {
-        setChats([]);
-        setIsInitialized(true);
-        return;
-      }
+      query = query.eq('token', token);
       
       if (bot_id) {
         query = query.eq('bot_id', bot_id);
-      }
-      
-      if (chatView === 'group') {
-        query = query.eq('is_group_chat', true);
-      } else {
-        query = query.eq('is_group_chat', false);
       }
       
       const { data, error } = await query.order("updated_at", { ascending: false });
@@ -102,7 +92,6 @@ export function useChat() {
         }));
 
         setChats(formattedChats);
-        console.log("Initialized: Available chats:", formattedChats);
 
         if (formattedChats.length > 0 && !currentChatId) {
           setCurrentChatId(formattedChats[0].id);
@@ -118,17 +107,23 @@ export function useChat() {
     } finally {
       setIsInitialized(true);
     }
-  }, [currentChatId, toast, token, isAdmin, chatView]);
+  }, [currentChatId, toast, token]);
 
   useEffect(() => {
-    fetchUserBots();
-  }, [fetchUserBots]);
+    if (token) {
+      fetchUserBots();
+    }
+  }, [fetchUserBots, token]);
 
   useEffect(() => {
-    fetchChats(currentBot);
-  }, [fetchChats, currentBot]);
+    if (token) {
+      fetchChats(currentBot);
+    }
+  }, [fetchChats, currentBot, token]);
 
-  const createChat = useCallback((isGroupChat = false) => {
+  const createChat = useCallback(async (isGroupChat = false) => {
+    if (!token) return;
+    
     const newChatId = uuidv4();
     const newChat: IChat = {
       id: newChatId,
@@ -142,30 +137,21 @@ export function useChat() {
     };
 
     try {
-      setChats((prevChats) => [newChat, ...prevChats]);
-      console.log(`Creating new ${isGroupChat ? 'group ' : ''}chat with ID: ${newChatId}`);
-      
-      supabase.from("protalk_chats").insert({
+      const { error } = await supabase.from("protalk_chats").insert({
         id: newChatId,
         title: isGroupChat ? "Новый групповой чат" : "Новый чат",
         bot_id: isGroupChat ? null : currentBot,
         bots_ids: isGroupChat ? [] : null,
         is_group_chat: isGroupChat,
-        token: token || null,
+        token: token,
         messages: [] as unknown as Json,
-      }).then(({ error }) => {
-        if (error) {
-          console.error("Error creating chat:", error);
-          setChats((prevChats) => prevChats.filter(chat => chat.id !== newChatId));
-          
-          toast({
-            title: "Ошибка",
-            description: "Не удалось создать новый чат",
-            variant: "destructive",
-          });
-        }
       });
 
+      if (error) {
+        throw error;
+      }
+
+      setChats((prevChats) => [newChat, ...prevChats]);
       setCurrentChatId(newChatId);
       
       if (isGroupChat) {
@@ -173,8 +159,6 @@ export function useChat() {
       } else {
         setChatView('individual');
       }
-      
-      return newChatId;
     } catch (error) {
       console.error("Error creating chat:", error);
       toast({
@@ -182,7 +166,6 @@ export function useChat() {
         description: "Не удалось создать новый чат",
         variant: "destructive",
       });
-      return "";
     }
   }, [currentBot, toast, token]);
 
@@ -636,8 +619,7 @@ export function useChat() {
   const switchChatView = useCallback((view: 'individual' | 'group') => {
     setChatView(view);
     setCurrentChatId(null);
-    fetchChats(currentBot);
-  }, [currentBot, fetchChats]);
+  }, []);
 
   return {
     chats,

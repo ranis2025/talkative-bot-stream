@@ -33,15 +33,12 @@ Deno.serve(async (req) => {
 
     const { bot_id, chat_id, message } = reqBody;
     
-    // Set a default empty message if none is provided (for file/voice messages)
-    const messageText = message || "";
-    
-    if (!bot_id || !chat_id) {
-      console.error("Missing required parameters:", { bot_id, chat_id });
+    if (!bot_id || !chat_id || !message) {
+      console.error("Missing required parameters:", { bot_id, chat_id, message: message ? "provided" : "missing" });
       return new Response(
         JSON.stringify({ 
           ok: false, 
-          done: "Missing required parameters: bot_id or chat_id" 
+          done: "Missing required parameters: bot_id, chat_id, or message" 
         }),
         { 
           status: 400, 
@@ -129,7 +126,7 @@ Deno.serve(async (req) => {
     if (botData.openai_key) {
       console.log("Using OpenAI API for response");
       try {
-        response = await sendToOpenAI(messageText, botData.openai_key);
+        response = await sendToOpenAI(message, botData.openai_key);
         
         if (!response) {
           throw new Error("Empty response received from OpenAI");
@@ -152,7 +149,7 @@ Deno.serve(async (req) => {
     else if (botData.bot_token) {
       console.log("Using Pro-Talk API for response");
       try {
-        response = await sendToExternalAPI(bot_id, chat_id, messageText, botData.bot_token);
+        response = await sendToExternalAPI(bot_id, chat_id, message, botData.bot_token);
         
         if (!response) {
           throw new Error("Empty response received from Pro-Talk API");

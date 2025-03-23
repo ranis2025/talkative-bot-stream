@@ -23,13 +23,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const urlToken = searchParams.get("token");
-    const isAdmin = localStorage.getItem("adminAuthenticated") === "true";
     
     if (urlToken) {
       checkOrCreateUserSettings(urlToken);
       setToken(urlToken);
-    } else if (!isAdmin) {
-      // Only show token required message if not an admin
+    } else {
       toast({
         title: "Требуется токен",
         description: "Для доступа к приложению необходим токен в URL",

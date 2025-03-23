@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -84,7 +85,8 @@ const Index = () => {
   };
 
   const handleNewGroupChat = () => {
-    navigate("/group-chats", { state: { createNew: true } });
+    // Navigate to group chats page when creating a new group chat
+    navigate("/group-chats");
   };
 
   const handleBackToList = () => {
