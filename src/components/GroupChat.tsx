@@ -3,7 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import { Message } from "./Message";
 import { MessageInput } from "./MessageInput";
 import { IChat, ChatBot, IMessage, IFile } from "@/types/chat";
-import { AlertTriangle, UserPlus, AtSign } from "lucide-react";
+import { AlertTriangle, UserPlus, AtSign, Settings, Bot } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { X } from "lucide-react";
@@ -12,6 +12,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Drawer,
+  DrawerTrigger,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+  DrawerClose,
+} from "@/components/ui/drawer";
 
 interface GroupChatProps {
   chat: IChat | undefined;
@@ -50,9 +59,10 @@ export function GroupChat({
   // Monitor input for @ mentions
   const handleInputChange = (value: string) => {
     setInputValue(value);
-    if (value.startsWith("@") && !isAtMention) {
+    // Only show mention dropdown when @ is typed
+    if (value.includes("@") && !isAtMention) {
       setIsAtMention(true);
-    } else if (!value.startsWith("@") && isAtMention) {
+    } else if (!value.includes("@") && isAtMention) {
       setIsAtMention(false);
       setMentionBotId(null);
     }
@@ -141,74 +151,88 @@ export function GroupChat({
     (chat.messages[chat.messages.length - 1].content.includes("Ошибка:") || 
      chat.messages[chat.messages.length - 1].content.includes("Сервер временно недоступен"));
 
-  const handleAddBot = (botId: string) => {
-    if (botId && !activeBotsInChat.includes(botId)) {
-      console.log("Adding bot to chat:", botId);
-      onAddBotToChat(botId);
-    }
-  };
-
-  const handleRemoveBot = (botId: string) => {
-    console.log("Removing bot from chat:", botId);
-    onRemoveBotFromChat(botId);
-  };
-
-  const nonSelectedBots = userBots.filter(bot => !activeBotsInChat.includes(bot.bot_id));
-
   // Map botIds to their names for display
   const getBotNameById = (botId: string): string => {
     const bot = userBots.find(b => b.bot_id === botId);
     return bot?.name || "Бот";
   };
+  
+  // Filter non-selected bots for adding to chat
+  const nonSelectedBots = userBots.filter(bot => !activeBotsInChat.includes(bot.bot_id));
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="p-3 border-b">
-        <div className="mb-3">
-          <span className="text-sm font-medium mr-2">Боты в чате:</span>
-          {activeBotsInChat.length === 0 ? (
-            <span className="text-sm text-muted-foreground">Добавьте ботов в чат</span>
-          ) : (
-            <div className="flex flex-col gap-2 mt-2">
-              {activeBotsInChat.map(botId => {
-                const bot = userBots.find(b => b.bot_id === botId);
-                return (
-                  <Badge key={botId} variant="secondary" className="flex items-center gap-1 justify-between">
-                    {bot?.name || "Бот"}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-4 w-4 rounded-full" 
-                      onClick={() => handleRemoveBot(botId)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      <div className="p-3 border-b flex justify-between items-center">
+        <h2 className="font-medium truncate flex-1">{chat.title}</h2>
         
-        {nonSelectedBots.length > 0 && (
-          <div className="mt-3">
-            <div className="text-sm font-medium mb-2">Добавить бота:</div>
-            <div className="flex flex-col space-y-2">
-              {nonSelectedBots.map((bot) => (
-                <Button
-                  key={bot.bot_id}
-                  variant="outline"
-                  size="sm"
-                  className="justify-start"
-                  onClick={() => handleAddBot(bot.bot_id)}
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  {bot.name}
-                </Button>
-              ))}
+        <Drawer>
+          <DrawerTrigger asChild>
+            <Button variant="outline" size="sm" className="ml-2">
+              <Settings className="h-4 w-4 mr-2" />
+              Настройки чата
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Настройки группового чата</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 py-2">
+              <div className="mb-4">
+                <h3 className="text-sm font-medium mb-2">Боты в этом чате</h3>
+                {activeBotsInChat.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Нет активных ботов. Добавьте ботов для начала общения.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {activeBotsInChat.map(botId => {
+                      const bot = userBots.find(b => b.bot_id === botId);
+                      return (
+                        <Badge key={botId} variant="secondary" className="flex items-center gap-1 justify-between">
+                          <span className="flex items-center gap-1">
+                            <Bot className="h-3 w-3" />
+                            {bot?.name || "Бот"}
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-4 w-4 rounded-full ml-1" 
+                            onClick={() => onRemoveBotFromChat(botId)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              
+              {nonSelectedBots.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium mb-2">Добавить бота в чат</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {nonSelectedBots.map((bot) => (
+                      <Button
+                        key={bot.bot_id}
+                        variant="outline"
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => onAddBotToChat(bot.bot_id)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        {bot.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+            <DrawerFooter>
+              <DrawerClose asChild>
+                <Button variant="outline">Закрыть настройки</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -217,7 +241,7 @@ export function GroupChat({
             <div className="max-w-md space-y-4">
               <h2 className="text-xl font-medium">Добавьте ботов и начните общение</h2>
               <p className="text-muted-foreground">
-                Добавьте нескольких ботов и введите сообщение в поле ниже, чтобы начать групповую беседу.
+                Добавьте ботов через настройки чата и введите сообщение в поле ниже, чтобы начать групповую беседу.
               </p>
             </div>
           </div>
@@ -257,7 +281,7 @@ export function GroupChat({
                 isLoading={isLoading || isDiscussionActive} 
                 placeholder={
                   isDiscussionActive ? "Дождитесь окончания обсуждения..." : 
-                  activeBotsInChat.length === 0 ? "Сначала добавьте ботов в чат..." : 
+                  activeBotsInChat.length === 0 ? "Сначала добавьте ботов в чат через настройки..." : 
                   "Напишите сообщение или @имя_бота для выбора первого отвечающего..."
                 }
                 disabled={activeBotsInChat.length === 0 || isDiscussionActive}
