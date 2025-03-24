@@ -61,6 +61,7 @@ const GroupChats = () => {
   const [isNewTopicDialogOpen, setIsNewTopicDialogOpen] = useState(false);
   const [selectedConversationMode, setSelectedConversationMode] = useState<string>("debate");
   const [hasCreatedChat, setHasCreatedChat] = useState(false);
+  const [isSwitchingToNewChat, setIsSwitchingToNewChat] = useState(false);
 
   // Switch to group chat view when component mounts
   useEffect(() => {
@@ -86,14 +87,17 @@ const GroupChats = () => {
     console.log("GroupChats: Active bots in chat:", activeBotsInChat);
     console.log("GroupChats: Using auth token:", token);
     console.log("GroupChats: Has created chat:", hasCreatedChat);
-  }, [currentChat, activeBotsInChat, token, hasCreatedChat]);
+    console.log("GroupChats: Is switching to new chat:", isSwitchingToNewChat);
+    console.log("GroupChats: User bots count:", userBots.length);
+  }, [currentChat, activeBotsInChat, token, hasCreatedChat, isSwitchingToNewChat, userBots]);
 
-  // Clear hasCreatedChat flag when currentChat changes
+  // Clear creation flags when currentChat changes
   useEffect(() => {
-    if (hasCreatedChat && currentChat) {
+    if ((hasCreatedChat || isSwitchingToNewChat) && currentChat) {
       setHasCreatedChat(false);
+      setIsSwitchingToNewChat(false);
     }
-  }, [currentChat, hasCreatedChat]);
+  }, [currentChat, hasCreatedChat, isSwitchingToNewChat]);
 
   // Toggle sidebar
   const toggleSidebar = () => {
@@ -119,24 +123,26 @@ const GroupChats = () => {
   // Handle new group chat creation
   const handleNewGroupChat = async () => {
     try {
-      // Set flag to indicate we're creating a chat
+      // Set flags to indicate we're creating a chat and switching to it
       setHasCreatedChat(true);
+      setIsSwitchingToNewChat(true);
       
       // Create the chat and wait for it to complete
       const newChatId = await createGroupChat();
       console.log("New group chat created with ID:", newChatId);
       
       if (newChatId) {
+        // Set current chat ID to the new chat
+        setCurrentChatId(newChatId);
+        
         // Ensure we're not in mobile view after creating a chat
         if (isMobileView) {
           setSidebarOpen(false);
         }
-        
-        // Force the component to re-render with the new chat
-        setCurrentChatId(newChatId);
       } else {
-        // Reset the flag if chat creation failed
+        // Reset the flags if chat creation failed
         setHasCreatedChat(false);
+        setIsSwitchingToNewChat(false);
         toast({
           title: "Ошибка",
           description: "Не удалось создать групповой чат",
@@ -146,6 +152,7 @@ const GroupChats = () => {
     } catch (error) {
       console.error("Error creating group chat:", error);
       setHasCreatedChat(false);
+      setIsSwitchingToNewChat(false);
       toast({
         title: "Ошибка",
         description: "Произошла ошибка при создании группового чата",
@@ -339,8 +346,13 @@ const GroupChats = () => {
           <Button 
             onClick={handleNewGroupChat}
             size="sm"
+            disabled={hasCreatedChat || isSwitchingToNewChat}
           >
-            <UserPlus className="h-4 w-4 mr-2" />
+            {(hasCreatedChat || isSwitchingToNewChat) ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <UserPlus className="h-4 w-4 mr-2" />
+            )}
             Новый групповой чат
           </Button>
         </div>
@@ -379,9 +391,9 @@ const GroupChats = () => {
                 onClick={handleNewGroupChat}
                 className="w-full"
                 size="sm"
-                disabled={hasCreatedChat}
+                disabled={hasCreatedChat || isSwitchingToNewChat}
               >
-                {hasCreatedChat ? (
+                {(hasCreatedChat || isSwitchingToNewChat) ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <UserPlus className="h-4 w-4 mr-2" />

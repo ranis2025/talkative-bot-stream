@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -125,19 +124,19 @@ export function useChat() {
   const createChat = useCallback(async (isGroupChat = false) => {
     if (!token) return null;
     
-    const newChatId = uuidv4();
-    const newChat: IChat = {
-      id: newChatId,
-      title: isGroupChat ? "Новый групповой чат" : "Новый чат",
-      messages: [],
-      bot_id: isGroupChat ? null : currentBot,
-      bots_ids: isGroupChat ? [] : undefined,
-      is_group_chat: isGroupChat,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
     try {
+      const newChatId = uuidv4();
+      const newChat: IChat = {
+        id: newChatId,
+        title: isGroupChat ? "Новый групповой чат" : "Новый чат",
+        messages: [],
+        bot_id: isGroupChat ? null : currentBot,
+        bots_ids: isGroupChat ? [] : undefined,
+        is_group_chat: isGroupChat,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
       const { error } = await supabase.from("protalk_chats").insert({
         id: newChatId,
         title: isGroupChat ? "Новый групповой чат" : "Новый чат",
@@ -153,7 +152,6 @@ export function useChat() {
       }
 
       setChats((prevChats) => [newChat, ...prevChats]);
-      setCurrentChatId(newChatId);
       
       if (isGroupChat) {
         setChatView('group');
@@ -161,17 +159,18 @@ export function useChat() {
         setChatView('individual');
       }
       
-      return newChatId; // Return the new chat ID so we can await it
+      console.log(`New ${isGroupChat ? 'group' : ''} chat created with ID:`, newChatId);
+      return newChatId; // Return the new chat ID
     } catch (error) {
       console.error("Error creating chat:", error);
       toast({
         title: "Ошибка",
-        description: "Не удалось создать новый чат",
+        description: `Не удалось создать новый ${isGroupChat ? 'групповой' : ''} чат`,
         variant: "destructive",
       });
       return null;
     }
-  }, [currentBot, toast, token, setChatView, setCurrentChatId]);
+  }, [currentBot, toast, token]);
 
   const createGroupChat = useCallback(() => {
     return createChat(true);
