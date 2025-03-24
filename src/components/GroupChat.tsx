@@ -5,13 +5,6 @@ import { MessageInput } from "./MessageInput";
 import { IChat, ChatBot, IMessage, IFile } from "@/types/chat";
 import { AlertTriangle, UserPlus } from "lucide-react";
 import { Button } from "./ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "./ui/badge";
 import { X } from "lucide-react";
 
@@ -71,11 +64,10 @@ export function GroupChat({
     (chat.messages[chat.messages.length - 1].content.includes("Ошибка:") || 
      chat.messages[chat.messages.length - 1].content.includes("Сервер временно недоступен"));
 
-  const handleAddBot = () => {
-    if (selectedBot && !activeBotsInChat.includes(selectedBot)) {
-      console.log("Adding bot to chat:", selectedBot);
-      onAddBotToChat(selectedBot);
-      setSelectedBot(null);
+  const handleAddBot = (botId: string) => {
+    if (botId && !activeBotsInChat.includes(botId)) {
+      console.log("Adding bot to chat:", botId);
+      onAddBotToChat(botId);
     }
   };
 
@@ -94,61 +86,51 @@ export function GroupChat({
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="p-3 border-b flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium mr-2">Боты в чате:</span>
-        {activeBotsInChat.length === 0 ? (
-          <span className="text-sm text-muted-foreground">Добавьте ботов в чат</span>
-        ) : (
-          activeBotsInChat.map(botId => {
-            const bot = userBots.find(b => b.bot_id === botId);
-            return (
-              <Badge key={botId} variant="secondary" className="flex items-center gap-1">
-                {bot?.name || "Бот"}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-4 w-4 rounded-full" 
-                  onClick={() => handleRemoveBot(botId)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </Badge>
-            );
-          })
-        )}
-        
-        <div className="flex-1"></div>
-        
-        <div className="flex items-center gap-2 ml-auto">
-          <Select
-            value={selectedBot || ""}
-            onValueChange={setSelectedBot}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Выберите бота" />
-            </SelectTrigger>
-            <SelectContent>
-              {nonSelectedBots.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">Все боты уже добавлены</div>
-              ) : (
-                nonSelectedBots.map((bot) => (
-                  <SelectItem key={bot.bot_id} value={bot.bot_id}>
-                    {bot.name}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleAddBot}
-            disabled={!selectedBot || nonSelectedBots.length === 0}
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Добавить бота
-          </Button>
+      <div className="p-3 border-b">
+        <div className="mb-3">
+          <span className="text-sm font-medium mr-2">Боты в чате:</span>
+          {activeBotsInChat.length === 0 ? (
+            <span className="text-sm text-muted-foreground">Добавьте ботов в чат</span>
+          ) : (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {activeBotsInChat.map(botId => {
+                const bot = userBots.find(b => b.bot_id === botId);
+                return (
+                  <Badge key={botId} variant="secondary" className="flex items-center gap-1">
+                    {bot?.name || "Бот"}
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-4 w-4 rounded-full" 
+                      onClick={() => handleRemoveBot(botId)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
         </div>
+        
+        {nonSelectedBots.length > 0 && (
+          <div className="mt-3">
+            <div className="text-sm font-medium mb-2">Добавить бота:</div>
+            <div className="flex flex-wrap gap-2">
+              {nonSelectedBots.map((bot) => (
+                <Button
+                  key={bot.bot_id}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddBot(bot.bot_id)}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {bot.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
