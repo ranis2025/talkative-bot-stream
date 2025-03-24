@@ -1,4 +1,3 @@
-
 import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +37,6 @@ export function MessageInput({
   const [files, setFiles] = useState<IFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Use controlled or uncontrolled message state
   const currentMessage = value !== undefined ? value : message;
   
   const handleSend = () => {
@@ -46,7 +44,6 @@ export function MessageInput({
     
     onSendMessage(currentMessage.trim(), files.length > 0 ? files : undefined);
     
-    // Only reset internal state if using uncontrolled component
     if (value === undefined) {
       setMessage("");
     }
@@ -93,7 +90,6 @@ export function MessageInput({
     }
   };
 
-  // Determine if button should be disabled
   const isSendDisabled = isLoading || disabled || (!currentMessage.trim() && files.length === 0);
 
   return (
