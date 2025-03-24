@@ -206,7 +206,7 @@ export function useChat() {
   }, [createChat]);
 
   const sendChatMessage = useCallback(
-    async (message: string, files?: IFile[]) => {
+    async (message: string, files?: IFile[], specificBotId?: string | null) => {
       if (!currentChatId) return;
 
       setLoading(true);
@@ -281,8 +281,16 @@ export function useChat() {
         try {
           if (currentChat.is_group_chat && currentChat.bots_ids && currentChat.bots_ids.length > 0) {
             console.log("Processing group chat message for bots:", currentChat.bots_ids);
+            console.log("Specific bot ID for first response:", specificBotId);
             
-            const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids, uploadedFiles);
+            const botResponses = await sendGroupMessage(
+              currentChatId, 
+              message, 
+              currentChat.bots_ids, 
+              uploadedFiles,
+              specificBotId
+            );
+            
             console.log("Received bot responses:", botResponses);
             
             // Create a message for each bot response
@@ -462,7 +470,7 @@ export function useChat() {
         setLoading(false);
       }
     },
-    [chats, currentChatId, toast, userBots]
+    [chats, currentChatId, toast]
   );
 
   const deleteChat = useCallback(

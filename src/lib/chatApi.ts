@@ -1,22 +1,18 @@
-
 import { ApiRequest, IMessage } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
 import { toast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 
-// Function to upload files and return their URLs
 export async function uploadFiles(files: File[]): Promise<{ name: string; size: number; type: string; url: string; }[]> {
   try {
     const uploadedFiles = [];
     
     for (const file of files) {
-      // Generate a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `chat-files/${fileName}`;
       
-      // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('chat-files')
         .upload(filePath, file);
@@ -26,7 +22,6 @@ export async function uploadFiles(files: File[]): Promise<{ name: string; size: 
         throw error;
       }
       
-      // Get public URL for the file
       const { data: { publicUrl } } = supabase.storage
         .from('chat-files')
         .getPublicUrl(filePath);
@@ -53,7 +48,6 @@ export async function uploadFiles(files: File[]): Promise<{ name: string; size: 
 
 export async function sendMessage(chatId: string, message: string, files?: { name: string; size: number; type: string; url: string; file?: File }[], specificBotId?: string | null): Promise<string> {
   try {
-    // Get bot ID from URL or use the specified one
     const urlParams = new URLSearchParams(window.location.search);
     const urlBotId = urlParams.get('bot_id');
     const botId = specificBotId || urlBotId;
@@ -70,29 +64,24 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     
     console.log(`Sending message to bot: ${botId}, chat: ${chatId}`);
     
-    // Prepare message content - include file URLs in the message itself if present
     let messageContent = message;
     if (files && files.length > 0) {
-      // If there's a message, add a line break
       if (messageContent && messageContent.trim() !== '') {
         messageContent += '\n\n';
       }
       
-      // Add each file URL on a new line
       const fileUrls = files.map(file => file.url).join('\n');
       messageContent += fileUrls;
     }
     
     console.log(`Prepared message content with files:`, messageContent);
     
-    // Create the payload for the API
     const payload: ApiRequest = {
       bot_id: botId,
       chat_id: chatId,
       message: messageContent
     };
 
-    // Call our Supabase Edge Function
     console.log(`Sending payload to edge function:`, payload);
     const { data, error } = await supabase.functions.invoke('chat', {
       body: payload
@@ -101,7 +90,6 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     if (error) {
       console.error("Error calling chat function:", error);
       
-      // Check if it's a network or connection issue
       if (error.message?.includes("Failed to fetch") || 
           error.message?.includes("Network error") ||
           error.message?.includes("timeout")) {
@@ -113,7 +101,6 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
         return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
       }
       
-      // Check if it's an Edge Function error
       if (error.message?.includes("Edge Function returned a non-2xx status code")) {
         console.error("Edge Function returned an error status. Check the logs in the Supabase dashboard for more details.");
         toast({
@@ -132,10 +119,8 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       throw new Error(`Edge function error: ${error.message}`);
     }
 
-    // Log the response for debugging
     console.log("Edge function response:", data);
 
-    // Check if the data is in the expected format
     if (!data || typeof data !== 'object') {
       console.error("Invalid response format:", data);
       toast({
@@ -156,7 +141,6 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
         variant: "destructive",
       });
       
-      // Format specific error messages for the user
       if (errorMessage.includes("Bot not found") || errorMessage.includes("Bot with ID")) {
         return "Бот не найден. Пожалуйста, проверьте ID бота и попробуйте снова.";
       }
@@ -190,7 +174,6 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
   } catch (error) {
     console.error("Error sending message:", error);
     
-    // Check if error is from EdgeFunction directly
     if (error instanceof Error) {
       const errorMessage = error.message;
       
@@ -200,19 +183,16 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
         variant: "destructive",
       });
       
-      // Handle Edge Function non-2xx status code
       if (errorMessage.includes("Edge Function returned a non-2xx status code")) {
         console.error("Edge Function returned a non-2xx status code. This could be due to a server-side issue.");
         return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
       }
       
-      // Handle JSON parsing errors
       if (error instanceof SyntaxError && errorMessage.includes("JSON")) {
         console.error("JSON parse error - Got non-JSON response from server");
         return "Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.";
       }
       
-      // Return a user-friendly error message based on the error
       if (errorMessage.includes("Bot ID is required")) {
         return "Ошибка: ID бота не указан. Пожалуйста, проверьте URL или настройки.";
       }
@@ -226,12 +206,11 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       }
     }
     
-    // Default error message
     return "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.";
   }
 }
 
-export async function sendGroupMessage(chatId: string, message: string, botIds: string[], files?: { name: string; size: number; type: string; url: string; }[]): Promise<{botId: string, response: string, botName: string}[]> {
+export async function sendGroupMessage(chatId: string, message: string, botIds: string[], files?: { name: string; size: number; type: string; url: string; }[], specificBotId?: string | null): Promise<{botId: string, response: string, botName: string}[]> {
   try {
     if (!botIds || botIds.length === 0) {
       toast({
@@ -242,9 +221,8 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
       throw new Error("Bot IDs are required for group chat");
     }
     
-    console.log(`Sending group message to bots: ${botIds.join(', ')}, chat: ${chatId}`);
+    console.log(`Sending group message to bots: ${botIds.join(', ')}, chat: ${chatId}, specific bot: ${specificBotId || 'none'}`);
     
-    // Get the conversation history
     const { data: chatData, error: chatError } = await supabase
       .from("protalk_chats")
       .select("*")
@@ -256,18 +234,14 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
       throw new Error(`Error fetching chat history: ${chatError.message}`);
     }
     
-    // Extract the last 20 messages from the conversation history
     const chatHistory = chatData.messages || [];
     const recentHistory = Array.isArray(chatHistory) ? chatHistory.slice(-20) : [];
     
-    // Format the conversation history to include in the prompt
     let conversationHistoryText = "";
     if (recentHistory.length > 0) {
       conversationHistoryText = "История переписки:\n\n";
       
-      // Properly type each message as we process it
       recentHistory.forEach((msgJson) => {
-        // Cast each message to the correct type with safety checks
         const msg = msgJson as unknown as IMessage;
         
         if (typeof msg === 'object' && msg !== null) {
@@ -283,20 +257,16 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
       conversationHistoryText += "Текущий вопрос:\n\n";
     }
     
-    // Prepare message content - include file URLs in the message itself if present
     let messageContent = conversationHistoryText + message;
     if (files && files.length > 0) {
-      // If there's a message, add a line break
       if (messageContent && messageContent.trim() !== '') {
         messageContent += '\n\n';
       }
       
-      // Add each file URL on a new line
       const fileUrls = files.map(file => file.url).join('\n');
       messageContent += fileUrls;
     }
     
-    // Get bot names for responses
     const { data: botsData, error: botsError } = await supabase
       .from("chat_bots")
       .select("*")
@@ -312,12 +282,16 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
       botsMap.set(bot.bot_id, bot.name);
     });
     
-    // Send message to each bot in sequence
+    let orderedBotIds = [...botIds];
+    if (specificBotId && botIds.includes(specificBotId)) {
+      orderedBotIds = orderedBotIds.filter(id => id !== specificBotId);
+      orderedBotIds.unshift(specificBotId);
+    }
+    
     const responses = [];
     
-    for (const botId of botIds) {
+    for (const botId of orderedBotIds) {
       try {
-        // Create the payload for the API
         const payload: ApiRequest = {
           bot_id: botId,
           chat_id: chatId,
@@ -376,7 +350,6 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
           botName: botsMap.get(botId) || "Бот"
         });
         
-        // Update the message content for the next bot to include the previous bot's response
         const lastResponse = responses[responses.length - 1];
         messageContent = `${conversationHistoryText}${message}\n\n${lastResponse.botName}: ${lastResponse.response}`;
       } catch (botError) {

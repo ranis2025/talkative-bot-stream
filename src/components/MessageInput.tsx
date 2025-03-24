@@ -1,328 +1,195 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, X, Bot, Info, Mic, StopCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PaperAirplane, Plus, X, FileText, Images, File, Paperclip } from "lucide-react";
 import { IFile } from "@/types/chat";
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { v4 as uuidv4 } from "uuid";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ReactNode } from "react";
 
 interface MessageInputProps {
   onSendMessage: (message: string, files?: IFile[]) => void;
-  isLoading: boolean;
+  isLoading?: boolean;
   placeholder?: string;
   disabled?: boolean;
   activeBotsCount?: number;
+  value?: string;
+  onChange?: (value: string) => void;
+  leftIcon?: ReactNode;
 }
 
-export function MessageInput({
-  onSendMessage,
-  isLoading,
+export function MessageInput({ 
+  onSendMessage, 
+  isLoading = false, 
   placeholder = "Напишите сообщение...",
   disabled = false,
-  activeBotsCount = 0
+  activeBotsCount = 0,
+  value,
+  onChange,
+  leftIcon
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<IFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [audioFile, setAudioFile] = useState<IFile | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, []);
-
-  const handleSendMessage = () => {
-    if ((!isLoading && !disabled) && (message.trim() || files.length > 0 || audioFile)) {
-      const allFiles = audioFile ? [...files, audioFile] : files;
-      
-      // Send the message text if provided, otherwise send an empty string
-      // Files will be handled separately in the API call
-      const textMessage = message.trim();
-      
-      onSendMessage(textMessage, allFiles);
+  
+  // Use controlled or uncontrolled message state
+  const currentMessage = value !== undefined ? value : message;
+  
+  const handleSend = () => {
+    if (isLoading || disabled || (!currentMessage.trim() && files.length === 0)) return;
+    
+    onSendMessage(currentMessage.trim(), files.length > 0 ? files : undefined);
+    
+    // Only reset internal state if using uncontrolled component
+    if (value === undefined) {
       setMessage("");
-      setFiles([]);
-      setAudioFile(null);
+    }
+    setFiles([]);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      handleSendMessage();
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    if (onChange) {
+      onChange(newValue);
+    } else {
+      setMessage(newValue);
     }
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      try {
-        const newFiles: IFile[] = [];
-        
-        for (const file of Array.from(event.target.files)) {
-          // Generate a unique file name
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${uuidv4()}.${fileExt}`;
-          const filePath = `chat-files/${fileName}`;
-          
-          // Upload file to Supabase Storage
-          const { data, error } = await supabase.storage
-            .from('chat-files')
-            .upload(filePath, file);
-            
-          if (error) {
-            throw new Error(`Failed to upload file: ${file.name}`);
-          }
-          
-          // Get public URL for the file
-          const { data: { publicUrl } } = supabase.storage
-            .from('chat-files')
-            .getPublicUrl(filePath);
-          
-          newFiles.push({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            url: publicUrl
-          });
-        }
-        
-        setFiles([...files, ...newFiles]);
-        toast({
-          title: "Файлы загружены",
-          description: `${newFiles.length} файл(ов) успешно загружено`,
-        });
-      } catch (error) {
-        console.error("Error uploading files:", error);
-        toast({
-          title: "Ошибка загрузки",
-          description: "Не удалось загрузить файлы. Пожалуйста, попробуйте снова.",
-          variant: "destructive",
-        });
-      }
-    }
-
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files).map((file) => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        file,
+        url: URL.createObjectURL(file),
+      }));
+      setFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
   const removeFile = (index: number) => {
-    const updatedFiles = [...files];
-    updatedFiles.splice(index, 1);
-    setFiles(updatedFiles);
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
-        
-        try {
-          // Generate a unique filename for the audio recording
-          const fileName = `voice-message-${Date.now()}.mp3`;
-          const filePath = `chat-files/${fileName}`;
-          
-          // Upload audio to Supabase Storage
-          const { data, error } = await supabase.storage
-            .from('chat-files')
-            .upload(filePath, audioBlob);
-            
-          if (error) {
-            throw new Error('Failed to upload audio');
-          }
-          
-          // Get public URL for the audio file
-          const { data: { publicUrl } } = supabase.storage
-            .from('chat-files')
-            .getPublicUrl(filePath);
-          
-          setAudioFile({
-            name: 'Голосовое сообщение.mp3',
-            size: audioBlob.size,
-            type: 'audio/mp3',
-            url: publicUrl
-          });
-          
-          toast({
-            title: "Аудио записано",
-            description: "Голосовое сообщение готово к отправке",
-          });
-        } catch (error) {
-          console.error("Error uploading audio:", error);
-          toast({
-            title: "Ошибка загрузки",
-            description: "Не удалось загрузить аудио. Пожалуйста, попробуйте снова.",
-            variant: "destructive",
-          });
-        }
-        
-        // Stop all audio tracks
-        stream.getTracks().forEach(track => track.stop());
-        
-        setIsRecording(false);
-        setRecordingTime(0);
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-      
-      // Start timer for recording duration
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-      
-    } catch (error) {
-      console.error("Error accessing microphone:", error);
-      toast({
-        title: "Ошибка доступа к микрофону",
-        description: "Убедитесь, что вы предоставили доступ к микрофону.",
-        variant: "destructive",
-      });
+  const openFileInput = (accept: string) => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = accept;
+      fileInputRef.current.click();
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-  };
+  // Determine if button should be disabled
+  const isSendDisabled = isLoading || disabled || (!currentMessage.trim() && files.length === 0);
 
-  const removeAudio = () => {
-    setAudioFile(null);
-  };
-
-  return <div className="space-y-2">
-      {/* Display selected files */}
-      {files.length > 0 && <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background/50">
-          {files.map((file, index) => <div key={index} className="flex items-center gap-1 text-xs border rounded-full px-2 py-1 bg-background">
-              <span className="truncate max-w-[150px]">{file.name}</span>
-              <Button variant="ghost" size="icon" className="h-4 w-4 rounded-full" onClick={() => removeFile(index)}>
+  return (
+    <div className="bg-card/50 border rounded-md focus-within:ring-1 focus-within:ring-primary">
+      {files.length > 0 && (
+        <div className="p-2 border-b flex flex-wrap gap-2">
+          {files.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center bg-secondary/30 p-1 rounded text-xs gap-1"
+            >
+              {file.type.startsWith("image/") ? (
+                <Images className="h-3 w-3" />
+              ) : (
+                <FileText className="h-3 w-3" />
+              )}
+              <span className="truncate max-w-[100px]">{file.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 rounded-full"
+                onClick={() => removeFile(index)}
+              >
                 <X className="h-3 w-3" />
               </Button>
-            </div>)}
-        </div>}
-      
-      {/* Display recorded audio */}
-      {audioFile && !isRecording && (
-        <div className="flex items-center gap-2 p-2 border rounded-md bg-background/50">
-          <audio src={audioFile.url} controls className="h-8 max-w-[250px]" />
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={removeAudio}>
-            <X className="h-4 w-4" />
-          </Button>
+            </div>
+          ))}
         </div>
       )}
-      
-      <div className="flex items-end gap-2">
-        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} multiple />
-        
-        {!isRecording ? (
-          <>
-            <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="icon" disabled={isLoading || disabled} type="button" className="rounded-full shrink-0 text-center mx-0 text-xl">
-              <Paperclip className="h-5 w-5" />
-              <span className="sr-only">Прикрепить файл</span>
-            </Button>
-            
-            <Button 
-              onClick={startRecording} 
-              variant="outline" 
-              size="icon" 
-              disabled={isLoading || disabled || audioFile !== null} 
-              type="button" 
-              className="rounded-full shrink-0 text-center mx-0 text-xl"
-            >
-              <Mic className="h-5 w-5" />
-              <span className="sr-only">Записать голосовое сообщение</span>
-            </Button>
-          </>
-        ) : (
-          <Button 
-            onClick={stopRecording} 
-            variant="destructive" 
-            size="sm"
-            className="rounded-full shrink-0 flex items-center gap-2 animate-pulse"
+      <div className="flex items-end">
+        <div className="flex-1 relative">
+          {leftIcon && (
+            <div className="absolute left-3 top-3">
+              {leftIcon}
+            </div>
+          )}
+          <Textarea
+            placeholder={placeholder}
+            value={currentMessage}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            className={cn(
+              "min-h-[60px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 p-3",
+              leftIcon && "pl-10"
+            )}
+            disabled={isLoading || disabled}
+          />
+        </div>
+        <div className="flex items-center px-3 pb-3">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            multiple
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="rounded-full"
+                disabled={isLoading || disabled}
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openFileInput("image/*")}>
+                <Images className="h-4 w-4 mr-2" />
+                <span>Изображение</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openFileInput(".pdf,.doc,.docx,.txt")}>
+                <File className="h-4 w-4 mr-2" />
+                <span>Документ</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openFileInput("*")}>
+                <Paperclip className="h-4 w-4 mr-2" />
+                <span>Любой файл</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            type="button"
+            size="icon"
+            onClick={handleSend}
+            disabled={isSendDisabled}
+            className={cn("rounded-full ml-1", 
+              isSendDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-primary"
+            )}
           >
-            <StopCircle className="h-4 w-4" />
-            <span>{formatTime(recordingTime)}</span>
+            <PaperAirplane className="h-5 w-5" />
           </Button>
-        )}
-        
-        {activeBotsCount > 0 && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center px-2 py-1 rounded-full bg-primary/10 text-xs text-primary border border-primary/20">
-                  <Bot className="h-3 w-3 mr-1" />
-                  <span>{activeBotsCount} {activeBotsCount === 1 ? 'бот' : 
-                         (activeBotsCount > 1 && activeBotsCount < 5) ? 'бота' : 'ботов'}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>В этом чате активно {activeBotsCount} {activeBotsCount === 1 ? 'бот' : 
-                   (activeBotsCount > 1 && activeBotsCount < 5) ? 'бота' : 'ботов'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        <Textarea 
-          value={message} 
-          onChange={e => setMessage(e.target.value)} 
-          onKeyDown={handleKeyDown} 
-          placeholder={isRecording ? "Запись голосового сообщения..." : placeholder} 
-          className="min-h-[60px] resize-none" 
-          disabled={isLoading || disabled || isRecording} 
-        />
-        
-        <Button 
-          className="shrink-0" 
-          size="icon" 
-          onClick={handleSendMessage} 
-          disabled={isLoading || disabled || isRecording}
-        >
-          <Send className="h-5 w-5" />
-          <span className="sr-only">Отправить</span>
-        </Button>
+        </div>
       </div>
-    </div>;
+    </div>
+  );
 }
