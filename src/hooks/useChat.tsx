@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ export function useChat() {
   const [currentBot, setCurrentBot] = useState<string | null>(null);
   const [userBots, setUserBots] = useState<ChatBot[]>([]);
   const [chatView, setChatView] = useState<'individual' | 'group'>('individual');
+  const [isCreatingGroupChat, setIsCreatingGroupChat] = useState(false);
 
   const fetchUserBots = useCallback(async () => {
     if (!token) return;
@@ -63,14 +65,18 @@ export function useChat() {
     if (!token) return;
     
     try {
+      console.log("Fetching chats with token:", token, "and bot_id:", bot_id, "chatView:", chatView);
+      
       let query = supabase
         .from("protalk_chats")
         .select("*");
       
       query = query.eq('token', token);
       
-      if (bot_id) {
+      if (chatView === 'individual' && bot_id) {
         query = query.eq('bot_id', bot_id);
+      } else if (chatView === 'group') {
+        query = query.eq('is_group_chat', true);
       }
       
       const { data, error } = await query.order("updated_at", { ascending: false });
@@ -80,6 +86,7 @@ export function useChat() {
       }
 
       if (data) {
+        console.log("Fetched chats:", data);
         const formattedChats: IChat[] = data.map((chat: any) => ({
           id: chat.id,
           title: chat.title,
@@ -91,6 +98,7 @@ export function useChat() {
           updatedAt: chat.updated_at ? new Date(chat.updated_at).getTime() : Date.now(),
         }));
 
+        console.log("Formatted chats:", formattedChats);
         setChats(formattedChats);
 
         if (formattedChats.length > 0 && !currentChatId) {
@@ -107,7 +115,7 @@ export function useChat() {
     } finally {
       setIsInitialized(true);
     }
-  }, [currentChatId, toast, token]);
+  }, [currentChatId, toast, token, chatView]);
 
   useEffect(() => {
     if (token) {
@@ -119,12 +127,17 @@ export function useChat() {
     if (token) {
       fetchChats(currentBot);
     }
-  }, [fetchChats, currentBot, token]);
+  }, [fetchChats, currentBot, token, chatView]);
 
   const createChat = useCallback(async (isGroupChat = false) => {
     if (!token) return null;
     
+    if (isGroupChat) {
+      setIsCreatingGroupChat(true);
+    }
+    
     try {
+      console.log("Creating new chat with token:", token, "isGroupChat:", isGroupChat);
       const newChatId = uuidv4();
       const newChat: IChat = {
         id: newChatId,
@@ -137,7 +150,7 @@ export function useChat() {
         updatedAt: Date.now(),
       };
 
-      const { error } = await supabase.from("protalk_chats").insert({
+      const { data, error } = await supabase.from("protalk_chats").insert({
         id: newChatId,
         title: isGroupChat ? "Новый групповой чат" : "Новый чат",
         bot_id: isGroupChat ? null : currentBot,
@@ -148,8 +161,11 @@ export function useChat() {
       });
 
       if (error) {
+        console.error("Error creating chat:", error);
         throw error;
       }
+
+      console.log("Chat created successfully:", newChatId, "Data:", data);
 
       setChats((prevChats) => [newChat, ...prevChats]);
       
@@ -169,6 +185,10 @@ export function useChat() {
         variant: "destructive",
       });
       return null;
+    } finally {
+      if (isGroupChat) {
+        setIsCreatingGroupChat(false);
+      }
     }
   }, [currentBot, toast, token]);
 
@@ -620,9 +640,12 @@ export function useChat() {
   }, []);
 
   const switchChatView = useCallback((view: 'individual' | 'group') => {
+    console.log("Switching chat view to:", view);
     setChatView(view);
     setCurrentChatId(null);
-  }, []);
+    // After switching view, fetch the relevant chats
+    fetchChats(currentBot);
+  }, [fetchChats, currentBot]);
 
   return {
     chats,
@@ -630,6 +653,7 @@ export function useChat() {
     currentChatId,
     loading,
     isInitialized,
+    isCreatingGroupChat,
     setCurrentChatId,
     createChat,
     createGroupChat,
