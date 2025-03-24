@@ -1,4 +1,5 @@
-import { ApiRequest } from "@/types/chat";
+
+import { ApiRequest, IMessage } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
 import { toast } from "@/hooks/use-toast";
@@ -263,14 +264,22 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     let conversationHistoryText = "";
     if (recentHistory.length > 0) {
       conversationHistoryText = "История переписки:\n\n";
-      recentHistory.forEach(msg => {
-        if (msg.role === "user") {
-          conversationHistoryText += `Пользователь: ${msg.content}\n\n`;
-        } else if (msg.role === "bot") {
-          const botName = msg.bot_name || "Бот";
-          conversationHistoryText += `${botName}: ${msg.content}\n\n`;
+      
+      // Properly type each message as we process it
+      recentHistory.forEach((msgJson) => {
+        // Cast each message to the correct type with safety checks
+        const msg = msgJson as unknown as IMessage;
+        
+        if (typeof msg === 'object' && msg !== null) {
+          if (msg.role === "user") {
+            conversationHistoryText += `Пользователь: ${msg.content}\n\n`;
+          } else if (msg.role === "bot") {
+            const botName = msg.bot_name || "Бот";
+            conversationHistoryText += `${botName}: ${msg.content}\n\n`;
+          }
         }
       });
+      
       conversationHistoryText += "Текущий вопрос:\n\n";
     }
     
