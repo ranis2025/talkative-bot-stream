@@ -257,7 +257,7 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     
     // Extract the last 20 messages from the conversation history
     const chatHistory = chatData.messages || [];
-    const recentHistory = chatHistory.slice(-20);
+    const recentHistory = Array.isArray(chatHistory) ? chatHistory.slice(-20) : [];
     
     // Format the conversation history to include in the prompt
     let conversationHistoryText = "";
