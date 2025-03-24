@@ -62,6 +62,8 @@ const GroupChats = () => {
   const [selectedConversationMode, setSelectedConversationMode] = useState<string>("debate");
   const [hasCreatedChat, setHasCreatedChat] = useState(false);
   const [isSwitchingToNewChat, setIsSwitchingToNewChat] = useState(false);
+  const [isNewGroupChatDialogOpen, setIsNewGroupChatDialogOpen] = useState(false);
+  const [newChatTitle, setNewChatTitle] = useState("Новый групповой чат");
 
   // Switch to group chat view when component mounts
   useEffect(() => {
@@ -126,12 +128,18 @@ const GroupChats = () => {
       // Set flags to indicate we're creating a chat and switching to it
       setHasCreatedChat(true);
       setIsSwitchingToNewChat(true);
+      setIsNewGroupChatDialogOpen(false);
       
       // Create the chat and wait for it to complete
       const newChatId = await createGroupChat();
       console.log("New group chat created with ID:", newChatId);
       
       if (newChatId) {
+        // If we have a custom title, rename the chat
+        if (newChatTitle && newChatTitle !== "Новый групповой чат") {
+          await renameChat(newChatId, newChatTitle);
+        }
+        
         // Set current chat ID to the new chat
         setCurrentChatId(newChatId);
         
@@ -289,6 +297,17 @@ const GroupChats = () => {
     setIsNewTopicDialogOpen(false);
     startAutoConversation();
   };
+  
+  // Reset new chat form
+  const resetNewChatForm = () => {
+    setNewChatTitle("Новый групповой чат");
+  };
+  
+  // Open new chat dialog
+  const openNewChatDialog = () => {
+    resetNewChatForm();
+    setIsNewGroupChatDialogOpen(true);
+  };
 
   if (!token) {
     return (
@@ -310,6 +329,50 @@ const GroupChats = () => {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
+      {/* New Group Chat Dialog */}
+      <Dialog open={isNewGroupChatDialogOpen} onOpenChange={setIsNewGroupChatDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Создать новый групповой чат</DialogTitle>
+            <DialogDescription>
+              Укажите название для нового группового чата. После создания вы сможете добавить ботов.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="chat-title" className="text-right">
+                Название
+              </Label>
+              <Input
+                id="chat-title"
+                value={newChatTitle}
+                onChange={(e) => setNewChatTitle(e.target.value)}
+                placeholder="Введите название чата"
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewGroupChatDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button 
+              onClick={handleNewGroupChat}
+              disabled={hasCreatedChat || isSwitchingToNewChat}
+            >
+              {(hasCreatedChat || isSwitchingToNewChat) ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Создание...
+                </>
+              ) : (
+                "Создать чат"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {isMobileView && !sidebarOpen && (
         <div className="w-full flex items-center p-4 border-b bg-background/80 backdrop-blur-md z-10">
           <button 
@@ -344,7 +407,7 @@ const GroupChats = () => {
           </Button>
           
           <Button 
-            onClick={handleNewGroupChat}
+            onClick={openNewChatDialog}
             size="sm"
             disabled={hasCreatedChat || isSwitchingToNewChat}
           >
@@ -388,7 +451,7 @@ const GroupChats = () => {
             </div>
             <div className="p-3 border-t">
               <Button 
-                onClick={handleNewGroupChat}
+                onClick={openNewChatDialog}
                 className="w-full"
                 size="sm"
                 disabled={hasCreatedChat || isSwitchingToNewChat}
@@ -531,6 +594,19 @@ const GroupChats = () => {
                     </li>
                   </ul>
                 </div>
+                <Button 
+                  onClick={openNewChatDialog}
+                  className="mx-auto"
+                  size="lg"
+                  disabled={hasCreatedChat || isSwitchingToNewChat}
+                >
+                  {(hasCreatedChat || isSwitchingToNewChat) ? (
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-5 w-5 mr-2" />
+                  )}
+                  Создать групповой чат
+                </Button>
               </div>
             </div>
           )}

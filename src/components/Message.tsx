@@ -3,8 +3,9 @@ import { IMessage } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileIcon, ImageIcon, FileTextIcon, CheckCircle, Clock, User, Bot, Images, Link, Play, Pause, Volume2 } from "lucide-react";
+import { FileIcon, ImageIcon, FileTextIcon, CheckCircle, Clock, User, Bot, Images, Link, Play, Pause, Volume2, Copy, CheckCheck } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "@/hooks/use-toast";
 
 interface MessageProps {
   message: IMessage;
@@ -19,7 +20,45 @@ export function Message({ message }: MessageProps) {
   const [extractedFileLinks, setExtractedFileLinks] = useState<{url: string, text: string}[]>([]);
   const [extractedAudioLinks, setExtractedAudioLinks] = useState<string[]>([]);
   const [audioPlaying, setAudioPlaying] = useState<{[key: string]: boolean}>({});
+  const [isCopied, setIsCopied] = useState(false);
   const audioRefs = useRef<{[key: string]: HTMLAudioElement | null}>({});
+  
+  // Reset copy state after 2 seconds
+  useEffect(() => {
+    let copyTimeout: number | null = null;
+    if (isCopied) {
+      copyTimeout = window.setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    }
+    return () => {
+      if (copyTimeout) {
+        clearTimeout(copyTimeout);
+      }
+    };
+  }, [isCopied]);
+  
+  // Function to copy message content to clipboard
+  const copyMessageContent = () => {
+    if (!message.content) return;
+    
+    navigator.clipboard.writeText(message.content)
+      .then(() => {
+        setIsCopied(true);
+        toast({
+          title: "Скопировано",
+          description: "Текст сообщения скопирован в буфер обмена",
+        });
+      })
+      .catch((error) => {
+        console.error("Error copying text:", error);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось скопировать текст",
+          variant: "destructive",
+        });
+      });
+  };
   
   // Function to determine file type icon
   const getFileIcon = (fileName: string) => {
@@ -161,6 +200,17 @@ export function Message({ message }: MessageProps) {
           </div>
           
           <div className="flex items-center justify-end gap-1 mt-2">
+            <button
+              onClick={copyMessageContent}
+              className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
+              title="Копировать текст"
+            >
+              {isCopied ? (
+                <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
             <div className="text-xs text-muted-foreground flex items-center">
               <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
               {formattedTime}
@@ -215,6 +265,17 @@ export function Message({ message }: MessageProps) {
           </div>
           
           <div className="flex items-center justify-end gap-1 mt-2">
+            <button
+              onClick={copyMessageContent}
+              className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
+              title="Копировать текст"
+            >
+              {isCopied ? (
+                <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
             <div className="text-xs text-muted-foreground flex items-center">
               <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
               {formattedTime}
@@ -288,6 +349,17 @@ export function Message({ message }: MessageProps) {
           </div>
           
           <div className="flex items-center justify-end gap-1 mt-2">
+            <button
+              onClick={copyMessageContent}
+              className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
+              title="Копировать текст"
+            >
+              {isCopied ? (
+                <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
             <div className="text-xs text-muted-foreground flex items-center">
               <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
               {formattedTime}
@@ -299,7 +371,7 @@ export function Message({ message }: MessageProps) {
         !isBot || (isBot && extractedAudioLinks.length === 0) ? (
           <div
             className={cn(
-              "flex flex-col p-4 rounded-2xl max-w-[80%] shadow-sm transition-all",
+              "flex flex-col p-4 rounded-2xl max-w-[80%] shadow-sm transition-all group",
               isBot
                 ? "bg-secondary/50 text-secondary-foreground self-start border-l-4 border-primary/30 bot-message"
                 : "bg-primary/10 text-foreground self-end border-r-4 border-primary/70 user-message"
@@ -390,6 +462,17 @@ export function Message({ message }: MessageProps) {
             )}
             
             <div className="flex items-center justify-end gap-1 mt-2">
+              <button
+                onClick={copyMessageContent}
+                className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50 opacity-0 group-hover:opacity-100"
+                title="Копировать текст"
+              >
+                {isCopied ? (
+                  <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
               <div className="text-xs text-muted-foreground flex items-center">
                 {isBot ? (
                   <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
