@@ -103,7 +103,7 @@ export function GroupChat({
             const bot = userBots.find(b => b.bot_id === botId);
             return (
               <Badge key={botId} variant="secondary" className="flex items-center gap-1">
-                {bot?.name || "Бот"} (ID: {botId})
+                {bot?.name || "Бот"}
                 <Button 
                   variant="ghost" 
                   size="icon" 

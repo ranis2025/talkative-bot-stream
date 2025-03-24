@@ -1,4 +1,3 @@
-
 import { ApiRequest } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
@@ -196,7 +195,7 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       
       toast({
         title: "Ошибка",
-        description: errorMessage || "Произошла ошибка при обработке запроса",
+        description: errorMessage || "Произошла ошибка при обраб��тке запроса",
         variant: "destructive",
       });
       
@@ -231,7 +230,7 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
   }
 }
 
-export async function sendGroupMessage(chatId: string, message: string, botIds: string[], files?: { name: string; size: number; type: string; url: string; }[]): Promise<{botId: string, response: string}[]> {
+export async function sendGroupMessage(chatId: string, message: string, botIds: string[], files?: { name: string; size: number; type: string; url: string; }[]): Promise<{botId: string, response: string, botName: string}[]> {
   try {
     if (!botIds || botIds.length === 0) {
       toast({
@@ -244,8 +243,39 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     
     console.log(`Sending group message to bots: ${botIds.join(', ')}, chat: ${chatId}`);
     
+    // Get the conversation history
+    const { data: chatData, error: chatError } = await supabase
+      .from("protalk_chats")
+      .select("*")
+      .eq("id", chatId)
+      .single();
+    
+    if (chatError) {
+      console.error("Error fetching chat history:", chatError);
+      throw new Error(`Error fetching chat history: ${chatError.message}`);
+    }
+    
+    // Extract the last 20 messages from the conversation history
+    const chatHistory = chatData.messages || [];
+    const recentHistory = chatHistory.slice(-20);
+    
+    // Format the conversation history to include in the prompt
+    let conversationHistoryText = "";
+    if (recentHistory.length > 0) {
+      conversationHistoryText = "История переписки:\n\n";
+      recentHistory.forEach(msg => {
+        if (msg.role === "user") {
+          conversationHistoryText += `Пользователь: ${msg.content}\n\n`;
+        } else if (msg.role === "bot") {
+          const botName = msg.bot_name || "Бот";
+          conversationHistoryText += `${botName}: ${msg.content}\n\n`;
+        }
+      });
+      conversationHistoryText += "Текущий вопрос:\n\n";
+    }
+    
     // Prepare message content - include file URLs in the message itself if present
-    let messageContent = message;
+    let messageContent = conversationHistoryText + message;
     if (files && files.length > 0) {
       // If there's a message, add a line break
       if (messageContent && messageContent.trim() !== '') {
@@ -257,68 +287,98 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
       messageContent += fileUrls;
     }
     
-    // Send message to each bot in parallel
-    const responses = await Promise.all(
-      botIds.map(async (botId) => {
-        try {
-          // Create the payload for the API
-          const payload: ApiRequest = {
-            bot_id: botId,
-            chat_id: chatId,
-            message: messageContent
-          };
+    // Get bot names for responses
+    const { data: botsData, error: botsError } = await supabase
+      .from("chat_bots")
+      .select("*")
+      .in("bot_id", botIds);
+    
+    if (botsError) {
+      console.error("Error fetching bots data:", botsError);
+      throw new Error(`Error fetching bots data: ${botsError.message}`);
+    }
+    
+    const botsMap = new Map();
+    botsData.forEach(bot => {
+      botsMap.set(bot.bot_id, bot.name);
+    });
+    
+    // Send message to each bot in sequence
+    const responses = [];
+    
+    for (const botId of botIds) {
+      try {
+        // Create the payload for the API
+        const payload: ApiRequest = {
+          bot_id: botId,
+          chat_id: chatId,
+          message: messageContent
+        };
   
-          console.log(`Sending payload to bot ${botId}:`, payload);
-          const { data, error } = await supabase.functions.invoke('chat', {
-            body: payload
+        console.log(`Sending payload to bot ${botId}:`, payload);
+        const { data, error } = await supabase.functions.invoke('chat', {
+          body: payload
+        });
+  
+        if (error) {
+          console.error(`Error calling chat function for bot ${botId}:`, error);
+          responses.push({
+            botId,
+            response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`,
+            botName: botsMap.get(botId) || "Бот"
           });
-  
-          if (error) {
-            console.error(`Error calling chat function for bot ${botId}:`, error);
-            return {
-              botId,
-              response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`
-            };
-          }
-  
-          if (!data || typeof data !== 'object') {
-            console.error(`Invalid response format for bot ${botId}:`, data);
-            return {
-              botId,
-              response: `Получен недопустимый формат ответа от бота ${botId}`
-            };
-          }
-  
-          if (!data.ok) {
-            const errorMessage = data.done || "Unknown error";
-            console.error(`API returned error for bot ${botId}:`, errorMessage);
-            return {
-              botId,
-              response: `Ошибка бота ${botId}: ${errorMessage}`
-            };
-          }
-  
-          if (typeof data.done !== 'string') {
-            console.error(`Invalid 'done' field format for bot ${botId}:`, data.done);
-            return {
-              botId,
-              response: `Ответ бота ${botId} в неправильном формате`
-            };
-          }
-  
-          return {
-            botId,
-            response: data.done
-          };
-        } catch (botError) {
-          console.error(`Error processing response from bot ${botId}:`, botError);
-          return {
-            botId,
-            response: `Ошибка при обработке ответа от бота ${botId}: ${botError.message || "Неизвестная ошибка"}`
-          };
+          continue;
         }
-      })
-    );
+  
+        if (!data || typeof data !== 'object') {
+          console.error(`Invalid response format for bot ${botId}:`, data);
+          responses.push({
+            botId,
+            response: `Получен недопустимый формат ответа от бота ${botId}`,
+            botName: botsMap.get(botId) || "Бот"
+          });
+          continue;
+        }
+  
+        if (!data.ok) {
+          const errorMessage = data.done || "Unknown error";
+          console.error(`API returned error for bot ${botId}:`, errorMessage);
+          responses.push({
+            botId,
+            response: `Ошибка бота ${botId}: ${errorMessage}`,
+            botName: botsMap.get(botId) || "Бот"
+          });
+          continue;
+        }
+  
+        if (typeof data.done !== 'string') {
+          console.error(`Invalid 'done' field format for bot ${botId}:`, data.done);
+          responses.push({
+            botId,
+            response: `Ответ бота ${botId} в неправильном формате`,
+            botName: botsMap.get(botId) || "Бот"
+          });
+          continue;
+        }
+  
+        responses.push({
+          botId,
+          response: data.done,
+          botName: botsMap.get(botId) || "Бот"
+        });
+        
+        // Update the message content for the next bot to include the previous bot's response
+        const lastResponse = responses[responses.length - 1];
+        messageContent = `${conversationHistoryText}${message}\n\n${lastResponse.botName}: ${lastResponse.response}`;
+      } catch (botError) {
+        console.error(`Error processing response from bot ${botId}:`, botError);
+        responses.push({
+          botId,
+          response: `Ошибка при обработке ответа от бота ${botId}: ${botError.message || "Неизвестная ошибка"}`,
+          botName: botsMap.get(botId) || "Бот"
+        });
+      }
+    }
     
     console.log("Group chat responses:", responses);
     return responses;

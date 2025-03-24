@@ -253,15 +253,15 @@ export function useChat() {
             const botResponses = await sendGroupMessage(currentChatId, message, currentChat.bots_ids, uploadedFiles);
             console.log("Received bot responses:", botResponses);
             
+            // Create a message for each bot response
             const botMessages: IMessage[] = botResponses.map(response => {
-              const bot = userBots.find(b => b.bot_id === response.botId);
               return {
                 id: uuidv4(),
                 content: response.response,
                 role: "bot",
                 timestamp: Date.now(),
                 bot_id: response.botId,
-                bot_name: bot?.name || "Бот"
+                bot_name: response.botName
               };
             });
 
