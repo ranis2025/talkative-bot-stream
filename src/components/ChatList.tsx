@@ -1,11 +1,10 @@
-
 import { IChat, ChatBot } from "@/types/chat";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { MessageSquare, Edit2, Trash2, Check, X, Users } from "lucide-react";
-import { useState } from "react";
+import { MessageSquare, Edit2, Trash2, Check, X, Users, Bot } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -40,14 +39,20 @@ export function ChatList({
 }: ChatListProps) {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [botDisplayMode, setBotDisplayMode] = useState<'dropdown' | 'buttons'>('dropdown');
 
-  // Начать редактирование
+  useEffect(() => {
+    const savedMode = localStorage.getItem('botDisplayMode');
+    if (savedMode === 'dropdown' || savedMode === 'buttons') {
+      setBotDisplayMode(savedMode);
+    }
+  }, []);
+
   const startEditing = (chat: IChat) => {
     setEditingChatId(chat.id);
     setEditTitle(chat.title);
   };
 
-  // Сохранить изменения
   const saveEdit = () => {
     if (editingChatId && editTitle.trim()) {
       onRenameChat(editingChatId, editTitle);
@@ -55,12 +60,10 @@ export function ChatList({
     }
   };
 
-  // Отменить редактирование
   const cancelEdit = () => {
     setEditingChatId(null);
   };
 
-  // Обработка нажатия Enter для сохранения
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -70,9 +73,9 @@ export function ChatList({
     }
   };
 
-  return (
-    <div className="w-full overflow-y-auto">
-      {chatView === 'individual' && userBots.length > 0 && (
+  const renderBotSelection = () => {
+    if (botDisplayMode === 'dropdown') {
+      return (
         <div className="p-3">
           <Select
             value={currentBot || ""}
@@ -90,7 +93,29 @@ export function ChatList({
             </SelectContent>
           </Select>
         </div>
-      )}
+      );
+    }
+
+    return (
+      <div className="p-3 space-y-2">
+        {userBots.map((bot) => (
+          <Button
+            key={bot.bot_id}
+            variant={currentBot === bot.bot_id ? "secondary" : "outline"}
+            className="w-full justify-start"
+            onClick={() => onSelectBot(bot.bot_id)}
+          >
+            <Bot className="w-4 h-4 mr-2" />
+            {bot.name}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full overflow-y-auto">
+      {chatView === 'individual' && userBots.length > 0 && renderBotSelection()}
 
       {chats.length === 0 ? (
         <div className="p-4 text-center text-muted-foreground">

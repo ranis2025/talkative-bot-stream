@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -6,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Plus, Trash2, ArrowLeft } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface ChatBot {
   id: string;
@@ -24,19 +25,18 @@ const Admin = () => {
   const [bots, setBots] = useState<ChatBot[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBot, setNewBot] = useState({ name: "", bot_id: "", bot_token: "", openai_key: "" });
+  const [botDisplayMode, setBotDisplayMode] = useState<'dropdown' | 'buttons'>('dropdown');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { token } = useAuth();
 
-  // Ensure token is preserved in URL
   useEffect(() => {
     if (token && !searchParams.get("token")) {
       navigate(`/admin?token=${token}`, { replace: true });
     }
   }, [token, searchParams, navigate]);
 
-  // Fetch bots data
   useEffect(() => {
     if (token) {
       fetchBots();
@@ -66,6 +66,22 @@ const Admin = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    const savedMode = localStorage.getItem('botDisplayMode');
+    if (savedMode === 'dropdown' || savedMode === 'buttons') {
+      setBotDisplayMode(savedMode);
+    }
+  }, []);
+
+  const handleBotDisplayModeChange = (value: 'dropdown' | 'buttons') => {
+    setBotDisplayMode(value);
+    localStorage.setItem('botDisplayMode', value);
+    toast({
+      title: "Настройки сохранены",
+      description: "Режим отображения ботов обновлен",
+    });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,6 +210,24 @@ const Admin = () => {
       </div>
 
       <div className="bg-card rounded-lg p-6 shadow-sm mb-8">
+        <div className="border-b pb-4 mb-6">
+          <h3 className="text-lg font-medium mb-4">Настройки отображения</h3>
+          <RadioGroup
+            value={botDisplayMode}
+            onValueChange={(value: 'dropdown' | 'buttons') => handleBotDisplayModeChange(value)}
+            className="flex flex-col space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="dropdown" id="dropdown" />
+              <Label htmlFor="dropdown">Выпадающий список</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="buttons" id="buttons" />
+              <Label htmlFor="buttons">Список кнопок</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
         <h2 className="text-xl font-semibold mb-4">Управление ботами</h2>
         
         {loading ? (
