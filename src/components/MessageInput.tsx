@@ -3,7 +3,7 @@ import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { PaperAirplane, Plus, X, FileText, Images, File, Paperclip } from "lucide-react";
+import { Send, Plus, X, FileText, Images, File, Paperclip } from "lucide-react";
 import { IFile } from "@/types/chat";
 import {
   DropdownMenu,
@@ -186,7 +186,7 @@ export function MessageInput({
               isSendDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-primary"
             )}
           >
-            <PaperAirplane className="h-5 w-5" />
+            <Send className="h-5 w-5" />
           </Button>
         </div>
       </div>
