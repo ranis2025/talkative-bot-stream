@@ -69,8 +69,12 @@ export function useChat() {
       
       query = query.eq('token', token);
       
-      if (bot_id) {
-        query = query.eq('bot_id', bot_id);
+      if (chatView === 'group') {
+        query = query.eq('is_group_chat', true);
+      } else if (bot_id) {
+        query = query.eq('bot_id', bot_id).eq('is_group_chat', false);
+      } else {
+        query = query.eq('is_group_chat', false);
       }
       
       const { data, error } = await query.order("updated_at", { ascending: false });
@@ -80,6 +84,7 @@ export function useChat() {
       }
 
       if (data) {
+        console.log("Fetched chats:", data);
         const formattedChats: IChat[] = data.map((chat: any) => ({
           id: chat.id,
           title: chat.title,
@@ -107,7 +112,7 @@ export function useChat() {
     } finally {
       setIsInitialized(true);
     }
-  }, [currentChatId, toast, token]);
+  }, [currentChatId, toast, token, chatView]);
 
   useEffect(() => {
     if (token) {
@@ -137,6 +142,16 @@ export function useChat() {
         updatedAt: Date.now(),
       };
 
+      console.log("Creating new chat with data:", {
+        id: newChatId,
+        title: isGroupChat ? "Новый групповой чат" : "Новый чат",
+        bot_id: isGroupChat ? null : currentBot,
+        bots_ids: isGroupChat ? [] : null,
+        is_group_chat: isGroupChat,
+        token: token,
+        messages: [] as unknown as Json,
+      });
+
       const { error } = await supabase.from("protalk_chats").insert({
         id: newChatId,
         title: isGroupChat ? "Новый групповой чат" : "Новый чат",
@@ -148,7 +163,21 @@ export function useChat() {
       });
 
       if (error) {
+        console.error("Error creating chat in Supabase:", error);
         throw error;
+      }
+
+      // Fetch the chat we just created to confirm it was saved correctly
+      const { data: createdChat, error: fetchError } = await supabase
+        .from("protalk_chats")
+        .select("*")
+        .eq("id", newChatId)
+        .single();
+        
+      if (fetchError) {
+        console.error("Error fetching newly created chat:", fetchError);
+      } else {
+        console.log("Created chat retrieved from database:", createdChat);
       }
 
       setChats((prevChats) => [newChat, ...prevChats]);

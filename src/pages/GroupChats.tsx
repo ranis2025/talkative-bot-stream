@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -68,6 +67,7 @@ const GroupChats = () => {
   // Switch to group chat view when component mounts
   useEffect(() => {
     if (token) {
+      console.log("Switching to group chat view");
       switchChatView("group");
     }
   }, [switchChatView, token]);
@@ -91,7 +91,8 @@ const GroupChats = () => {
     console.log("GroupChats: Has created chat:", hasCreatedChat);
     console.log("GroupChats: Is switching to new chat:", isSwitchingToNewChat);
     console.log("GroupChats: User bots count:", userBots.length);
-  }, [currentChat, activeBotsInChat, token, hasCreatedChat, isSwitchingToNewChat, userBots]);
+    console.log("GroupChats: Filtered group chats:", filteredChats);
+  }, [currentChat, activeBotsInChat, token, hasCreatedChat, isSwitchingToNewChat, userBots, filteredChats]);
 
   // Clear creation flags when currentChat changes
   useEffect(() => {
@@ -130,6 +131,8 @@ const GroupChats = () => {
       setIsSwitchingToNewChat(true);
       setIsNewGroupChatDialogOpen(false);
       
+      console.log("Creating new group chat with title:", newChatTitle);
+      
       // Create the chat and wait for it to complete
       const newChatId = await createGroupChat();
       console.log("New group chat created with ID:", newChatId);
@@ -147,6 +150,11 @@ const GroupChats = () => {
         if (isMobileView) {
           setSidebarOpen(false);
         }
+        
+        toast({
+          title: "Успех",
+          description: "Групповой чат успешно создан",
+        });
       } else {
         // Reset the flags if chat creation failed
         setHasCreatedChat(false);
@@ -502,7 +510,7 @@ const GroupChats = () => {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
-                        <DialogTitle>Запустить беседу между ботами</DialogTitle>
+                        <DialogTitle>Запустить беседу меж��у ботами</DialogTitle>
                         <DialogDescription>
                           Выберите тему и режим для автоматической беседы между ботами в этом чате.
                         </DialogDescription>

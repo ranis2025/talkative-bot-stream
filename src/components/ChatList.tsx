@@ -91,6 +91,12 @@ export function ChatList({
         </div>
       )}
 
+      <div className="px-3 py-2 border-b">
+        <div className="text-sm font-medium">
+          {chatView === 'group' ? 'Групповые чаты' : 'История чатов'}
+        </div>
+      </div>
+
       {chats.length === 0 ? (
         <div className="p-4 text-center text-muted-foreground">
           {chatView === 'group' ? 'Нет групповых чатов' : 'Нет активных чатов'}

@@ -43,7 +43,8 @@ export function GroupChat({
   useEffect(() => {
     console.log("GroupChat rendered with chat:", chat);
     console.log("Active bots in chat:", activeBotsInChat);
-  }, [chat, activeBotsInChat]);
+    console.log("Available bots:", userBots);
+  }, [chat, activeBotsInChat, userBots]);
 
   // If no active chat
   if (!chat) {
@@ -116,12 +117,13 @@ export function GroupChat({
         {nonSelectedBots.length > 0 && (
           <div className="mt-3">
             <div className="text-sm font-medium mb-2">Добавить бота:</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col space-y-2">
               {nonSelectedBots.map((bot) => (
                 <Button
                   key={bot.bot_id}
                   variant="outline"
                   size="sm"
+                  className="justify-start"
                   onClick={() => handleAddBot(bot.bot_id)}
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
