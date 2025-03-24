@@ -3,7 +3,7 @@ import { IMessage } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileIcon, ImageIcon, FileTextIcon, CheckCircle, Clock, User, Bot, Images } from "lucide-react";
+import { FileIcon, ImageIcon, FileTextIcon, CheckCircle, Clock, User, Bot, Images, Link } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface MessageProps {
@@ -16,6 +16,7 @@ export function Message({ message }: MessageProps) {
   const formattedTime = format(timestamp, "HH:mm", { locale: ru });
   const [imageLoaded, setImageLoaded] = useState<{[key: string]: boolean}>({});
   const [extractedImageLinks, setExtractedImageLinks] = useState<string[]>([]);
+  const [extractedFileLinks, setExtractedFileLinks] = useState<{url: string, text: string}[]>([]);
   
   // Function to determine file type icon
   const getFileIcon = (fileName: string) => {
@@ -41,7 +42,7 @@ export function Message({ message }: MessageProps) {
     setImageLoaded(prev => ({...prev, [fileUrl]: true}));
   };
   
-  // Extract image links from bot message content
+  // Extract image and file links from bot message content
   useEffect(() => {
     if (isBot && message.content) {
       // Regular expression to find image URLs in text
@@ -51,6 +52,19 @@ export function Message({ message }: MessageProps) {
       if (matches.length > 0) {
         const links = matches.map(match => match[1]);
         setExtractedImageLinks(links);
+      }
+      
+      // Regular expression to find file URLs in text (excluding image formats)
+      // This regex looks for markdown style links [text](url) where url is not an image
+      const fileRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+\.(?!png|jpg|jpeg|gif|webp)[a-zA-Z0-9]+)\)/gi;
+      const fileMatches = [...message.content.matchAll(fileRegex)];
+      
+      if (fileMatches.length > 0) {
+        const fileLinks = fileMatches.map(match => ({
+          text: match[1],
+          url: match[2]
+        }));
+        setExtractedFileLinks(fileLinks);
       }
     }
   }, [isBot, message.content]);
@@ -100,6 +114,60 @@ export function Message({ message }: MessageProps) {
                   )}
                   onLoad={() => handleImageLoad(imageUrl)}
                 />
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-end gap-1 mt-2">
+            <div className="text-xs text-muted-foreground flex items-center">
+              <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
+              {formattedTime}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* If bot message has file links, show them in a separate message */}
+      {isBot && extractedFileLinks.length > 0 && (
+        <div
+          className={cn(
+            "flex flex-col p-4 rounded-2xl max-w-[80%] shadow-sm transition-all",
+            "bg-secondary/50 text-secondary-foreground self-start border-l-4 border-primary/30 bot-message"
+          )}
+          style={{ float: "left", clear: "both" }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20">
+              <Bot className="h-3.5 w-3.5 text-primary" />
+            </div>
+            {message.bot_name && (
+              <div className="text-xs font-medium text-primary flex items-center gap-1">
+                {message.bot_name} 
+                {message.bot_id && <span className="text-muted-foreground text-[10px]">(ID: {message.bot_id})</span>}
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center gap-1 mb-2">
+              <Link className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Файлы из ответа:</span>
+            </div>
+            
+            {extractedFileLinks.map((file, index) => (
+              <div key={index} className="flex items-center gap-2 p-2 rounded-md border bg-background/50 hover:bg-background/80 transition-colors">
+                <FileIcon className="h-5 w-5 text-primary" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{file.text}</div>
+                </div>
+                <a 
+                  href={file.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:text-primary/80 hover:underline flex items-center gap-1"
+                >
+                  Открыть
+                </a>
               </div>
             ))}
           </div>
