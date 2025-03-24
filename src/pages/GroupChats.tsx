@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Select,
   SelectContent,
@@ -49,6 +49,7 @@ const GroupChats = () => {
     switchChatView
   } = useChat();
   
+  const { token } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -61,8 +62,10 @@ const GroupChats = () => {
 
   // Switch to group chat view when component mounts
   useEffect(() => {
-    switchChatView("group");
-  }, [switchChatView]);
+    if (token) {
+      switchChatView("group");
+    }
+  }, [switchChatView, token]);
 
   useEffect(() => {
     setIsMobileView(!!isMobile);
@@ -79,7 +82,8 @@ const GroupChats = () => {
   useEffect(() => {
     console.log("GroupChats: Current chat:", currentChat);
     console.log("GroupChats: Active bots in chat:", activeBotsInChat);
-  }, [currentChat, activeBotsInChat]);
+    console.log("GroupChats: Using auth token:", token);
+  }, [currentChat, activeBotsInChat, token]);
 
   // Toggle sidebar
   const toggleSidebar = () => {
@@ -238,6 +242,15 @@ const GroupChats = () => {
     setIsNewTopicDialogOpen(false);
     startAutoConversation();
   };
+
+  if (!token) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background text-foreground">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Проверка токена...</span>
+      </div>
+    );
+  }
 
   if (!isInitialized) {
     return (

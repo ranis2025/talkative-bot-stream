@@ -24,9 +24,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const urlToken = searchParams.get("token");
     
+    // Try to get token from local storage if not in URL
+    const storedToken = localStorage.getItem("auth_token");
+    
     if (urlToken) {
       checkOrCreateUserSettings(urlToken);
       setToken(urlToken);
+      localStorage.setItem("auth_token", urlToken);
+      console.log("Token set from URL:", urlToken);
+    } else if (storedToken) {
+      checkOrCreateUserSettings(storedToken);
+      setToken(storedToken);
+      console.log("Token restored from storage:", storedToken);
     } else {
       toast({
         title: "Требуется токен",
@@ -69,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setToken(null);
+    localStorage.removeItem("auth_token");
     toast({
       title: "Выход выполнен",
       description: "Вы успешно вышли из системы",

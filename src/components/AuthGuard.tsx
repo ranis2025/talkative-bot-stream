@@ -33,9 +33,12 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   useEffect(() => {
     const urlToken = searchParams.get("token");
     if (urlToken && urlToken !== token) {
+      console.log("Setting token from URL:", urlToken);
       setToken(urlToken);
-    } else if (token && !searchParams.get("token") && location.pathname !== "/auth") {
-      // If we have a token in context but not in URL, add it to the URL
+    } else if (token && !searchParams.get("token") && 
+               (location.pathname === "/chat" || location.pathname === "/group-chats" || location.pathname === "/admin")) {
+      // If we have a token in context but not in URL, add it to the URL for chat, group-chats and admin routes
+      console.log("Adding token to URL:", token);
       navigate(`${location.pathname}?token=${token}`, { replace: true });
     }
   }, [searchParams, token, setToken, location, navigate]);
