@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -107,11 +108,18 @@ const GroupChats = () => {
   };
 
   // Handle new group chat creation
-  const handleNewGroupChat = () => {
-    createGroupChat();
+  const handleNewGroupChat = async () => {
+    // Create the chat and wait for it to complete before continuing
+    await createGroupChat();
+    
+    // Ensure we're not in mobile view after creating a chat (this was causing the issue)
+    // Only change sidebar state for mobile view
     if (isMobileView) {
       setSidebarOpen(false);
     }
+    
+    // Log to verify the chat was created properly
+    console.log("New group chat created, chats:", chats);
   };
 
   // Handle back to list

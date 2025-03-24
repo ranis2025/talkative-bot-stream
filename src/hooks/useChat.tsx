@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,7 +123,7 @@ export function useChat() {
   }, [fetchChats, currentBot, token]);
 
   const createChat = useCallback(async (isGroupChat = false) => {
-    if (!token) return;
+    if (!token) return null;
     
     const newChatId = uuidv4();
     const newChat: IChat = {
@@ -159,6 +160,8 @@ export function useChat() {
       } else {
         setChatView('individual');
       }
+      
+      return newChatId; // Return the new chat ID so we can await it
     } catch (error) {
       console.error("Error creating chat:", error);
       toast({
@@ -166,8 +169,9 @@ export function useChat() {
         description: "Не удалось создать новый чат",
         variant: "destructive",
       });
+      return null;
     }
-  }, [currentBot, toast, token]);
+  }, [currentBot, toast, token, setChatView, setCurrentChatId]);
 
   const createGroupChat = useCallback(() => {
     return createChat(true);
