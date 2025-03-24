@@ -75,13 +75,13 @@ export function ChatList({
       {chatView === 'individual' && userBots.length > 0 && (
         <div className="p-3 space-y-2">
           <div className="text-sm font-medium mb-2">Выберите бота:</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col space-y-2">
             {userBots.map((bot) => (
               <Button
                 key={bot.bot_id}
                 variant={currentBot === bot.bot_id ? "default" : "outline"}
                 size="sm"
-                className="flex-1 min-w-0"
+                className="justify-start"
                 onClick={() => onSelectBot(bot.bot_id)}
               >
                 <span className="truncate">{bot.name}</span>
