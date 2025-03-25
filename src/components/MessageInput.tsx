@@ -1,4 +1,3 @@
-
 import { useState, useRef, KeyboardEvent, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,7 +45,6 @@ export function MessageInput({
   
   const currentMessage = value !== undefined ? value : message;
   
-  // Clean up timer on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -107,17 +105,14 @@ export function MessageInput({
     }
   };
   
-  // Voice recording functions
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Create MediaRecorder with the stream
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
-      // Set up event listeners
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -127,11 +122,9 @@ export function MessageInput({
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
-        // Create a file object from the blob
         const file = new File([audioBlob], "voice-message.webm", { type: 'audio/webm' });
         const audioURL = URL.createObjectURL(audioBlob);
         
-        // Add to files
         const newFile: IFile = {
           name: "Голосовое сообщение.webm",
           size: file.size,
@@ -142,15 +135,12 @@ export function MessageInput({
         
         setFiles(prev => [...prev, newFile]);
         
-        // Stop all tracks from the stream to release the microphone
         stream.getTracks().forEach(track => track.stop());
       };
       
-      // Start recording
       mediaRecorder.start(200);
       setIsRecording(true);
       
-      // Start timer
       setRecordingTime(0);
       timerRef.current = window.setInterval(() => {
         setRecordingTime(prev => prev + 1);
@@ -188,7 +178,6 @@ export function MessageInput({
     }
   };
   
-  // Format recording time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -260,7 +249,6 @@ export function MessageInput({
             multiple
           />
           
-          {/* Voice recording button */}
           <Button
             type="button"
             size="icon"
