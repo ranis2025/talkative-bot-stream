@@ -56,13 +56,19 @@ export function GroupChat({
     }
   }, [chat?.messages]);
 
-  // Monitor input for @ mentions
+  // Monitor input for @ mentions - only show when @ is typed
   const handleInputChange = (value: string) => {
     setInputValue(value);
-    // Only show mention dropdown when @ is typed
+    
+    // Check for @ symbol to show mention dropdown
     if (value.includes("@") && !isAtMention) {
-      setIsAtMention(true);
-    } else if (!value.includes("@") && isAtMention) {
+      const lastAtIndex = value.lastIndexOf("@");
+      const isAtLastPosition = lastAtIndex === value.length - 1 || 
+                             value.substring(lastAtIndex + 1).trim() === "";
+      if (isAtLastPosition) {
+        setIsAtMention(true);
+      }
+    } else if (!value.includes("@")) {
       setIsAtMention(false);
       setMentionBotId(null);
     }

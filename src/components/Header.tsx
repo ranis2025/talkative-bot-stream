@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut } from "lucide-react";
+import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -49,6 +49,10 @@ export function Header({
     navigate(token ? `/admin?token=${token}` : '/admin');
   };
 
+  const handleNavigate = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <div className="w-full flex items-center p-4 border-b bg-background/80 backdrop-blur-md z-10">
       {isMobile && onToggleSidebar && (
@@ -93,6 +97,31 @@ export function Header({
           >
             <Users className="h-4 w-4 mr-2" />
             <span>Новый групповой чат</span>
+          </Button>
+        )}
+
+        {/* Switch between chat types */}
+        {chatView === 'individual' && (
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => handleNavigate('/group-chats')}
+            title="Групповые чаты"
+          >
+            <Users className="h-5 w-5" />
+            <span className="sr-only">Групповые чаты</span>
+          </Button>
+        )}
+        
+        {chatView === 'group' && isMobile && (
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => handleNavigate('/chat')}
+            title="Обычные чаты"
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="sr-only">Обычные чаты</span>
           </Button>
         )}
 
