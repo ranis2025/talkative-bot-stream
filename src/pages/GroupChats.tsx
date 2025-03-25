@@ -414,6 +414,8 @@ const GroupChats = () => {
             К обычным чатам
           </Button>
           
+          {/* Hide the "New group chat" button for now */}
+          {/*
           <Button 
             onClick={openNewChatDialog}
             size="sm"
@@ -426,6 +428,7 @@ const GroupChats = () => {
             )}
             Новый групповой чат
           </Button>
+          */}
         </div>
       </div>
 
@@ -510,7 +513,7 @@ const GroupChats = () => {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
-                        <DialogTitle>Запустить беседу меж��у ботами</DialogTitle>
+                        <DialogTitle>Запустить беседу между ботами</DialogTitle>
                         <DialogDescription>
                           Выберите тему и режим для автоматической беседы между ботами в этом чате.
                         </DialogDescription>
@@ -566,8 +569,8 @@ const GroupChats = () => {
                 onSendMessage={sendChatMessage}
                 isLoading={loading}
                 userBots={userBots}
-                onAddBotToChat={addBotToGroupChat}
-                onRemoveBotFromChat={removeBotFromGroupChat}
+                onAddBotToGroupChat={addBotToGroupChat}
+                onRemoveBotFromGroupChat={removeBotFromGroupChat}
                 activeBotsInChat={activeBotsInChat}
               />
             </>
