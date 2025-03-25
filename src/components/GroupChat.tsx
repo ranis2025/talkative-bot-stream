@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useState } from "react";
 import { Message } from "./Message";
 import { MessageInput } from "./MessageInput";
@@ -26,8 +27,8 @@ interface GroupChatProps {
   onSendMessage: (message: string, files?: IFile[], specificBotId?: string | null) => void;
   isLoading: boolean;
   userBots: ChatBot[];
-  onAddBotToGroupChat: (botId: string) => void;
-  onRemoveBotFromGroupChat: (botId: string) => void;
+  onAddBotToChat: (botId: string) => void;
+  onRemoveBotFromChat: (botId: string) => void;
   activeBotsInChat: string[];
 }
 
@@ -36,8 +37,8 @@ export function GroupChat({
   onSendMessage,
   isLoading,
   userBots,
-  onAddBotToGroupChat,
-  onRemoveBotFromGroupChat,
+  onAddBotToChat,
+  onRemoveBotFromChat,
   activeBotsInChat
 }: GroupChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,6 +47,7 @@ export function GroupChat({
   const [isDiscussionActive, setIsDiscussionActive] = useState(false);
   const [mentionBotId, setMentionBotId] = useState<string | null>(null);
   
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
@@ -54,8 +56,10 @@ export function GroupChat({
     }
   }, [chat?.messages]);
 
+  // Monitor input for @ mentions
   const handleInputChange = (value: string) => {
     setInputValue(value);
+    // Only show mention dropdown when @ is typed
     if (value.includes("@") && !isAtMention) {
       setIsAtMention(true);
     } else if (!value.includes("@") && isAtMention) {
@@ -64,6 +68,7 @@ export function GroupChat({
     }
   };
 
+  // Select bot for mention
   const handleSelectMentionBot = (botId: string) => {
     setMentionBotId(botId);
     const botName = userBots.find(bot => bot.bot_id === botId)?.name || "Bot";
@@ -71,9 +76,11 @@ export function GroupChat({
     setIsAtMention(false);
   };
 
+  // Handle message sending
   const handleSendMessage = (message: string, files?: IFile[]) => {
     if (!chat || activeBotsInChat.length === 0) return;
     
+    // Extract actual message content if there's a mention
     let actualMessage = message;
     let targetBotId = mentionBotId;
     
@@ -84,18 +91,27 @@ export function GroupChat({
       }
     }
     
+    // Set discussion active flag to prevent user from sending new messages
+    // until all bots have responded
     setIsDiscussionActive(true);
+    
+    // Send message with mentioned bot if any
     onSendMessage(actualMessage, files, targetBotId);
+    
+    // Reset mention state
     setMentionBotId(null);
     setInputValue("");
   };
 
+  // Check if discussion is complete (all bots have responded)
   useEffect(() => {
     if (!chat || !isDiscussionActive) return;
     
+    // Get last messages sequence
     const messages = chat.messages;
     if (messages.length === 0) return;
     
+    // Find the last user message
     let lastUserMsgIndex = -1;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
@@ -106,14 +122,17 @@ export function GroupChat({
     
     if (lastUserMsgIndex === -1) return;
     
+    // Count bot responses after the last user message
     const botResponses = messages.slice(lastUserMsgIndex + 1).filter(msg => msg.role === "bot");
     const uniqueBotsResponded = new Set(botResponses.map(msg => msg.bot_id));
     
+    // If all bots have responded, stop the discussion
     if (uniqueBotsResponded.size >= activeBotsInChat.length) {
       setIsDiscussionActive(false);
     }
   }, [chat, isDiscussionActive, activeBotsInChat]);
 
+  // If no active chat
   if (!chat) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -132,11 +151,13 @@ export function GroupChat({
     (chat.messages[chat.messages.length - 1].content.includes("Ошибка:") || 
      chat.messages[chat.messages.length - 1].content.includes("Сервер временно недоступен"));
 
+  // Map botIds to their names for display
   const getBotNameById = (botId: string): string => {
     const bot = userBots.find(b => b.bot_id === botId);
     return bot?.name || "Бот";
   };
   
+  // Filter non-selected bots for adding to chat
   const nonSelectedBots = userBots.filter(bot => !activeBotsInChat.includes(bot.bot_id));
 
   return (
@@ -174,7 +195,7 @@ export function GroupChat({
                             variant="ghost" 
                             size="icon" 
                             className="h-4 w-4 rounded-full ml-1" 
-                            onClick={() => onRemoveBotFromGroupChat(botId)}
+                            onClick={() => onRemoveBotFromChat(botId)}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -195,7 +216,7 @@ export function GroupChat({
                         variant="outline"
                         size="sm"
                         className="justify-start"
-                        onClick={() => onAddBotToGroupChat(bot.bot_id)}
+                        onClick={() => onAddBotToChat(bot.bot_id)}
                       >
                         <UserPlus className="h-4 w-4 mr-2" />
                         {bot.name}

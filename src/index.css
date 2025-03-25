@@ -118,12 +118,6 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/50;
   }
-  
-  /* Remove black rectangle focus outline */
-  textarea:focus, input:focus, button:focus, *:focus {
-    outline: none !important;
-    box-shadow: none;
-  }
 }
 
 @layer components {
