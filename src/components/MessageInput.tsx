@@ -1,8 +1,9 @@
-import { useState, useRef, KeyboardEvent, ChangeEvent, useEffect } from "react";
+
+import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Send, Plus, X, FileText, Images, File, Paperclip, Mic, MicOff } from "lucide-react";
+import { Send, Plus, X, FileText, Images, File, Paperclip } from "lucide-react";
 import { IFile } from "@/types/chat";
 import {
   DropdownMenu,
@@ -11,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ReactNode } from "react";
-import { toast } from "@/hooks/use-toast";
 
 interface MessageInputProps {
   onSendMessage: (message: string, files?: IFile[]) => void;
@@ -37,13 +37,6 @@ export function MessageInput({
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<IFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Voice recording states
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<number | null>(null);
   
   const currentMessage = value !== undefined ? value : message;
   
@@ -98,93 +91,10 @@ export function MessageInput({
     }
   };
 
-  // Voice recording functions
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Fixed TypeScript error - use the correct MediaRecorder constructor
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const file = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
-        
-        const audioFile: IFile = {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          file,
-          url: URL.createObjectURL(file),
-        };
-        
-        setFiles((prev) => [...prev, audioFile]);
-        setIsRecording(false);
-        setRecordingTime(0);
-        
-        // Stop all tracks from the stream
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      
-      // Start timer
-      timerRef.current = window.setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-      
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось получить доступ к микрофону",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-  };
-
-  // Format recording time
-  const formatRecordingTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-  };
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, [isRecording]);
-
   const isSendDisabled = isLoading || disabled || (!currentMessage.trim() && files.length === 0);
 
   return (
-    <div className="bg-card/50 border rounded-md focus-within:ring-1 focus-within:ring-primary shadow-none">
+    <div className="bg-card/50 border rounded-md focus-within:ring-1 focus-within:ring-primary">
       {files.length > 0 && (
         <div className="p-2 border-b flex flex-wrap gap-2">
           {files.map((file, index) => (
@@ -194,8 +104,6 @@ export function MessageInput({
             >
               {file.type.startsWith("image/") ? (
                 <Images className="h-3 w-3" />
-              ) : file.type.includes("audio") ? (
-                <Mic className="h-3 w-3" />
               ) : (
                 <FileText className="h-3 w-3" />
               )}
@@ -225,7 +133,7 @@ export function MessageInput({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             className={cn(
-              "min-h-[60px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 p-3 shadow-none",
+              "min-h-[60px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 p-3",
               leftIcon && "pl-10"
             )}
             disabled={isLoading || disabled}
@@ -239,33 +147,6 @@ export function MessageInput({
             className="hidden"
             multiple
           />
-          
-          {isRecording ? (
-            <div className="flex items-center mr-2">
-              <span className="text-xs text-red-500 mr-2 animate-pulse">{formatRecordingTime(recordingTime)}</span>
-              <Button
-                type="button"
-                size="icon"
-                variant="destructive"
-                className="rounded-full"
-                onClick={stopRecording}
-              >
-                <MicOff className="h-5 w-5" />
-              </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="rounded-full mr-1"
-              onClick={startRecording}
-              disabled={isLoading || disabled}
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
-          )}
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -93,8 +92,7 @@ const GroupChats = () => {
     console.log("GroupChats: Is switching to new chat:", isSwitchingToNewChat);
     console.log("GroupChats: User bots count:", userBots.length);
     console.log("GroupChats: Filtered group chats:", filteredChats);
-    console.log("GroupChats: Is mobile view:", isMobileView);
-  }, [currentChat, activeBotsInChat, token, hasCreatedChat, isSwitchingToNewChat, userBots, filteredChats, isMobileView]);
+  }, [currentChat, activeBotsInChat, token, hasCreatedChat, isSwitchingToNewChat, userBots, filteredChats]);
 
   // Clear creation flags when currentChat changes
   useEffect(() => {
@@ -410,27 +408,24 @@ const GroupChats = () => {
             variant="outline" 
             size="sm" 
             onClick={handleGoToRegularChats}
+            className="hidden sm:flex"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             К обычным чатам
           </Button>
           
-          {/* Hiding this button as requested */}
-          {!isMobileView && (
-            <Button 
-              onClick={openNewChatDialog}
-              size="sm"
-              disabled={hasCreatedChat || isSwitchingToNewChat}
-              className="hidden"
-            >
-              {(hasCreatedChat || isSwitchingToNewChat) ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <UserPlus className="h-4 w-4 mr-2" />
-              )}
-              Новый групповой чат
-            </Button>
-          )}
+          <Button 
+            onClick={openNewChatDialog}
+            size="sm"
+            disabled={hasCreatedChat || isSwitchingToNewChat}
+          >
+            {(hasCreatedChat || isSwitchingToNewChat) ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <UserPlus className="h-4 w-4 mr-2" />
+            )}
+            Новый групповой чат
+          </Button>
         </div>
       </div>
 
@@ -476,19 +471,6 @@ const GroupChats = () => {
                 )}
                 Новый групповой чат
               </Button>
-              
-              {/* Add mobile view button to regular chats */}
-              {isMobileView && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleGoToRegularChats}
-                  className="w-full mt-2"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  К обычным чатам
-                </Button>
-              )}
             </div>
           </div>
         </div>
@@ -505,7 +487,6 @@ const GroupChats = () => {
                 </h2>
                 
                 <div className="flex items-center space-x-3">
-                  {/* Hiding this button as requested */}
                   <Dialog open={isNewTopicDialogOpen} onOpenChange={setIsNewTopicDialogOpen}>
                     <DialogTrigger asChild>
                       <Button 
@@ -513,7 +494,6 @@ const GroupChats = () => {
                         size="sm"
                         onClick={autoConversationActive ? stopAutoConversation : () => setIsNewTopicDialogOpen(true)}
                         disabled={activeBotsInChat.length < 2}
-                        className="hidden"
                       >
                         {autoConversationActive ? (
                           <>
@@ -530,7 +510,7 @@ const GroupChats = () => {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
-                        <DialogTitle>Запустить беседу между ботами</DialogTitle>
+                        <DialogTitle>Запустить беседу меж��у ботами</DialogTitle>
                         <DialogDescription>
                           Выберите тему и режим для автоматической беседы между ботами в этом чате.
                         </DialogDescription>
