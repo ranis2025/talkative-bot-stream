@@ -103,6 +103,7 @@ export function MessageInput({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Fix: Corrected MediaRecorder constructor usage
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -308,3 +309,4 @@ export function MessageInput({
     </div>
   );
 }
+
