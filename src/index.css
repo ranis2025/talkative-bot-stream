@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -118,6 +119,11 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/50;
   }
+  
+  /* Remove black focus outline */
+  textarea:focus, input:focus, button:focus {
+    outline: none;
+  }
 }
 
 @layer components {
@@ -147,5 +153,18 @@
   
   .message-attachment {
     @apply flex items-center gap-2 p-2 rounded-md border bg-background/50 hover:bg-background/70 transition-colors;
+  }
+  
+  /* Voice recording elements styling */
+  .voice-record-button {
+    @apply rounded-full p-2 hover:bg-muted transition-colors;
+  }
+  
+  .voice-recording {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-sm animate-pulse;
+  }
+  
+  .recording-indicator {
+    @apply w-2 h-2 bg-destructive rounded-full;
   }
 }

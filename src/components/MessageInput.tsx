@@ -1,9 +1,9 @@
 
-import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
+import { useState, useRef, KeyboardEvent, ChangeEvent, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Send, Plus, X, FileText, Images, File, Paperclip } from "lucide-react";
+import { Send, Plus, X, FileText, Images, File, Paperclip, Mic, Square } from "lucide-react";
 import { IFile } from "@/types/chat";
 import {
   DropdownMenu,
@@ -37,6 +37,11 @@ export function MessageInput({
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<IFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const timerRef = useRef<number | null>(null);
   
   const currentMessage = value !== undefined ? value : message;
   
@@ -90,6 +95,77 @@ export function MessageInput({
       fileInputRef.current.click();
     }
   };
+  
+  // Voice recording functions
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Create media recorder with the audio stream
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data);
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { 
+          type: 'audio/webm',
+          lastModified: Date.now()
+        });
+        
+        const audioFileObject: IFile = {
+          name: audioFile.name,
+          size: audioFile.size,
+          type: audioFile.type,
+          file: audioFile,
+          url: URL.createObjectURL(audioFile)
+        };
+        
+        setFiles(prev => [...prev, audioFileObject]);
+        
+        // Stop all audio tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      // Start recording
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      // Start timer
+      let seconds = 0;
+      timerRef.current = window.setInterval(() => {
+        seconds++;
+        setRecordingTime(seconds);
+      }, 1000);
+      
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+    }
+  }, []);
+  
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    setIsRecording(false);
+    setRecordingTime(0);
+  }, []);
+  
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const isSendDisabled = isLoading || disabled || (!currentMessage.trim() && files.length === 0);
 
@@ -104,6 +180,8 @@ export function MessageInput({
             >
               {file.type.startsWith("image/") ? (
                 <Images className="h-3 w-3" />
+              ) : file.type.startsWith("audio/") ? (
+                <Mic className="h-3 w-3" />
               ) : (
                 <FileText className="h-3 w-3" />
               )}
@@ -140,40 +218,60 @@ export function MessageInput({
           />
         </div>
         <div className="flex items-center px-3 pb-3">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            multiple
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {isRecording ? (
+            <div className="voice-recording mr-2" onClick={stopRecording}>
+              <div className="recording-indicator"></div>
+              <span>{formatTime(recordingTime)}</span>
+              <Square className="h-3 w-3 ml-1" />
+            </div>
+          ) : (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                multiple
+              />
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="rounded-full"
+                className="voice-record-button mr-1"
+                onClick={startRecording}
                 disabled={isLoading || disabled}
               >
-                <Plus className="h-5 w-5" />
+                <Mic className="h-5 w-5" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openFileInput("image/*")}>
-                <Images className="h-4 w-4 mr-2" />
-                <span>Изображение</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openFileInput(".pdf,.doc,.docx,.txt")}>
-                <File className="h-4 w-4 mr-2" />
-                <span>Документ</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openFileInput("*")}>
-                <Paperclip className="h-4 w-4 mr-2" />
-                <span>Любой файл</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-full"
+                    disabled={isLoading || disabled}
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => openFileInput("image/*")}>
+                    <Images className="h-4 w-4 mr-2" />
+                    <span>Изображение</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openFileInput(".pdf,.doc,.docx,.txt")}>
+                    <File className="h-4 w-4 mr-2" />
+                    <span>Документ</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openFileInput("*")}>
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    <span>Любой файл</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
           <Button
             type="button"
             size="icon"
