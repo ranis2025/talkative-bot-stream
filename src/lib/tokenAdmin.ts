@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 // Define interfaces for our token administration
@@ -15,6 +16,7 @@ export interface AssignedBot {
   bot_id: string;
   bot_token?: string;
   bot_name?: string;
+  token_id?: string; // Add this property to resolve the TypeScript error
 }
 
 // Functions for token administration that use Supabase and the token_admin edge function

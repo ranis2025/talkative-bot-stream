@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -23,15 +22,15 @@ serve(async (req) => {
     const action = url.pathname.split('/').pop();
 
     if (action === 'get_bots_by_token') {
-      const { token } = await req.json();
-      console.log('Getting bots for token:', token);
+      const { token_value } = await req.json();
+      console.log('Getting bots for token:', token_value);
 
       try {
         // First get the token ID from the access_tokens table
         const { data: tokenData, error: tokenError } = await supabaseClient
           .from('access_tokens')
           .select('id')
-          .eq('token', token)
+          .eq('token', token_value)
           .maybeSingle();
 
         if (tokenError) {
@@ -40,7 +39,7 @@ serve(async (req) => {
         }
 
         if (!tokenData) {
-          console.log('Token not found:', token);
+          console.log('Token not found:', token_value);
           return new Response(
             JSON.stringify({ bots: [] }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -82,23 +81,24 @@ serve(async (req) => {
             });
           }
 
-          // Enrich assignments with bot names
+          // Enrich assignments with bot names and make sure token_id is included
           const enrichedAssignments = assignments.map(assignment => ({
             id: assignment.id,
             bot_id: assignment.bot_id,
             bot_token: assignment.bot_token,
-            bot_name: botNames.get(assignment.bot_id) || null
+            bot_name: botNames.get(assignment.bot_id) || null,
+            token_id: tokenData.id // Ensure token_id is included in each bot assignment
           }));
 
-          console.log('Returning enriched assignments with names');
+          console.log('Returning enriched assignments with names and token_id');
           return new Response(
-            JSON.stringify({ bots: enrichedAssignments }),
+            JSON.stringify(enrichedAssignments),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
         return new Response(
-          JSON.stringify({ bots: assignments || [] }),
+          JSON.stringify(assignments ? assignments.map(a => ({...a, token_id: tokenData.id})) : []),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
