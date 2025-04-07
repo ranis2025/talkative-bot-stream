@@ -12,7 +12,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const { setToken } = useAuth();
+  const { setToken, fetchAssignedBots } = useAuth();
   
   // Extract application name from token if it follows the format "AppName:User"
   const getAppName = (tokenValue: string | null) => {
@@ -73,13 +73,24 @@ const Auth = () => {
       
       // Set token in context
       setToken(token);
+
+      // Check if there are bots assigned to this token
+      const bots = await fetchAssignedBots(token);
       
-      // Navigate to chat page with token
-      toast({
-        title: "Успешный вход по токену",
-        description: "Вы успешно вошли в систему",
-      });
-      navigate(`/chat?token=${token}`);
+      // Navigate based on whether there are bots assigned to this token
+      if (bots && bots.length > 0) {
+        toast({
+          title: "Успешный вход по токену",
+          description: "Открываем чат с вашими ботами",
+        });
+        navigate(`/chat?token=${token}`);
+      } else {
+        toast({
+          title: "Успешный вход по токену",
+          description: "Вы успешно вошли в систему",
+        });
+        navigate(`/chat?token=${token}`);
+      }
     } catch (error: any) {
       toast({
         title: "Ошибка аутентификации по токену",

@@ -1,201 +1,118 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Create a Supabase client with the Auth context of the function
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
-    // Get the authorization header from the request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    // Extract the token from the Authorization header
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) {
-      return new Response(
-        JSON.stringify({ error: 'No token provided' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const url = new URL(req.url);
+    const action = url.pathname.split('/').pop();
 
-    // Parse the request body
-    const { action, params } = await req.json();
-    
-    console.log(`Processing action: ${action} with params:`, params);
+    if (action === 'get_bots_by_token') {
+      const { token } = await req.json();
+      console.log('Getting bots for token:', token);
 
-    // Handle different actions
-    let result = null;
-    switch (action) {
-      case 'get_tokens':
-        // Fetch tokens from the database
-        const { data: tokens, error: tokensError } = await supabase
-          .from('access_tokens')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (tokensError) throw tokensError;
-        result = tokens;
-        break;
-        
-      case 'get_assigned_bots':
-        // Fetch assigned bots from the database
-        const { data: assignments, error: assignmentsError } = await supabase
-          .from('token_bot_assignments')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (assignmentsError) throw assignmentsError;
-        result = assignments;
-        break;
-
-      case 'get_bots_by_token':
-        // Fetch bots assigned to a specific token value
-        const { token_value } = params;
-        console.log(`Getting bots for token: ${token_value}`);
-
-        // First get the token id by token value
-        const { data: tokenData, error: tokenError } = await supabase
+      try {
+        // First get the token ID from the access_tokens table
+        const { data: tokenData, error: tokenError } = await supabaseClient
           .from('access_tokens')
           .select('id')
-          .eq('token', token_value)
-          .single();
+          .eq('token', token)
+          .maybeSingle();
 
         if (tokenError) {
-          if (tokenError.code === 'PGRST116') {
-            // No token found
-            console.log(`Token not found: ${token_value}`);
-            return new Response(
-              JSON.stringify({ error: 'Token not found' }),
-              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
+          console.error('Error fetching token:', tokenError);
           throw tokenError;
         }
 
-        console.log(`Found token ID: ${tokenData.id} for token value: ${token_value}`);
+        if (!tokenData) {
+          console.log('Token not found:', token);
+          return new Response(
+            JSON.stringify({ bots: [] }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
-        // Then get all bots assigned to this token id
-        const { data: botAssignments, error: botsError } = await supabase
+        console.log('Found token ID:', tokenData.id);
+
+        // Now get the bot assignments for this token
+        const { data: assignments, error: assignmentsError } = await supabaseClient
           .from('token_bot_assignments')
           .select('*')
           .eq('token_id', tokenData.id);
 
-        if (botsError) throw botsError;
-        
-        console.log(`Found ${botAssignments.length} bot assignments for token ID: ${tokenData.id}`);
-        result = botAssignments;
-        break;
-        
-      case 'add_token':
-        // Add a new token to the database
-        const { token: tokenValue, name, description } = params;
-        const { data: newToken, error: addTokenError } = await supabase
-          .from('access_tokens')
-          .insert({
-            token: tokenValue,
-            name,
-            description
-          })
-          .select('id')
-          .single();
-          
-        if (addTokenError) throw addTokenError;
-        result = { success: true, id: newToken.id };
-        break;
-        
-      case 'update_token':
-        // Update an existing token
-        const { id, name: updateName, description: updateDescription } = params;
-        const { error: updateError } = await supabase
-          .from('access_tokens')
-          .update({
-            name: updateName,
-            description: updateDescription,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id);
-          
-        if (updateError) throw updateError;
-        result = { success: true };
-        break;
-        
-      case 'delete_token':
-        // Delete a token (assignments will be automatically deleted due to ON DELETE CASCADE)
-        const { id: deleteId } = params;
-        const { error: deleteError } = await supabase
-          .from('access_tokens')
-          .delete()
-          .eq('id', deleteId);
-          
-        if (deleteError) throw deleteError;
-        result = { success: true };
-        break;
-        
-      case 'assign_bot_to_token':
-        // Assign a bot to a token
-        const { token_id, bot_id, bot_token } = params;
-        const { data: newAssignment, error: assignError } = await supabase
-          .from('token_bot_assignments')
-          .insert({
-            token_id,
-            bot_id,
-            bot_token
-          })
-          .select('id')
-          .single();
-          
-        if (assignError) throw assignError;
-        result = { 
-          success: true, 
-          id: newAssignment.id,
-          bot_id: bot_id,
-          bot_token: bot_token
-        };
-        break;
-        
-      case 'remove_assignment':
-        // Remove a bot assignment
-        const { id: assignmentId } = params;
-        const { error: removeError } = await supabase
-          .from('token_bot_assignments')
-          .delete()
-          .eq('id', assignmentId);
-          
-        if (removeError) throw removeError;
-        result = { success: true };
-        break;
-        
-      default:
+        if (assignmentsError) {
+          console.error('Error fetching assignments:', assignmentsError);
+          throw assignmentsError;
+        }
+
+        console.log('Found assignments:', assignments?.length || 0);
+
+        // Get bot data from chat_bots table for additional info if available
+        if (assignments && assignments.length > 0) {
+          const botIds = assignments.map(a => a.bot_id);
+          const { data: botData, error: botError } = await supabaseClient
+            .from('chat_bots')
+            .select('bot_id, name')
+            .in('bot_id', botIds);
+
+          if (botError) {
+            console.error('Error fetching bot details:', botError);
+          }
+
+          // Create a map of bot_id to name for easy lookup
+          const botNames = new Map();
+          if (botData) {
+            botData.forEach(bot => {
+              botNames.set(bot.bot_id, bot.name);
+            });
+          }
+
+          // Enrich assignments with bot names
+          const enrichedAssignments = assignments.map(assignment => ({
+            id: assignment.id,
+            bot_id: assignment.bot_id,
+            bot_token: assignment.bot_token,
+            bot_name: botNames.get(assignment.bot_id) || null
+          }));
+
+          console.log('Returning enriched assignments with names');
+          return new Response(
+            JSON.stringify({ bots: enrichedAssignments }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         return new Response(
-          JSON.stringify({ error: 'Invalid action' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ bots: assignments || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      } catch (error) {
+        console.error('Error in get_bots_by_token:', error);
+        throw error;
+      }
     }
 
     return new Response(
-      JSON.stringify(result),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Unknown action' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in token_admin function:', error);
+    console.error('Error handling request:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

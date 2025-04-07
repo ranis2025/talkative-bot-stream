@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Define interfaces for our token administration
@@ -13,10 +12,9 @@ export interface TokenRecord {
 
 export interface AssignedBot {
   id: string;
-  token_id: string;
   bot_id: string;
   bot_token?: string;
-  created_at: string;
+  bot_name?: string;
 }
 
 // Functions for token administration that use Supabase and the token_admin edge function

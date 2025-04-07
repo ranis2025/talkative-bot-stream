@@ -13,7 +13,7 @@ interface AuthContextType {
   assignedBots: AssignedBot[];
   setToken: (token: string | null) => void;
   logout: () => void;
-  fetchAssignedBots: (tokenValue: string) => Promise<void>;
+  fetchAssignedBots: (tokenValue: string) => Promise<AssignedBot[]>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const bots = await getBotsByToken(tokenValue);
       console.log("Fetched bots:", bots);
       setAssignedBots(bots);
+      return bots;
     } catch (error) {
       console.error("Error fetching assigned bots:", error);
       toast({
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Не удалось загрузить назначенных ботов",
         variant: "destructive",
       });
+      return [];
     }
   }, [toast]);
 

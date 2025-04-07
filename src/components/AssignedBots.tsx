@@ -4,12 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Bot, Key, AlertTriangle } from "lucide-react";
+import { Copy, Bot, Key, AlertTriangle, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export function AssignedBots() {
   const { assignedBots, token, fetchAssignedBots } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Refetch assigned bots when the component mounts or the token changes
   useEffect(() => {
@@ -35,6 +37,10 @@ export function AssignedBots() {
           variant: "destructive",
         });
       });
+  };
+
+  const openChat = (botId: string) => {
+    navigate(`/chat?token=${token}&bot=${botId}`);
   };
 
   if (!token) {
@@ -80,9 +86,19 @@ export function AssignedBots() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Bot className="h-5 w-5 text-primary" />
-                  <h3 className="font-medium">{bot.bot_id}</h3>
+                  <h3 className="font-medium">{bot.bot_name || "Бот"} ({bot.bot_id})</h3>
                 </div>
-                <Badge variant="outline">Бот</Badge>
+                <div className="flex gap-2">
+                  <Badge variant="outline">Бот</Badge>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => openChat(bot.bot_id)}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                    Чат
+                  </Button>
+                </div>
               </div>
               
               {bot.bot_token && (
