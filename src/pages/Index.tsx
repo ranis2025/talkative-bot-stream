@@ -118,8 +118,10 @@ const Index = () => {
         <Header 
           onNewChat={handleNewChat} 
           onNewGroupChat={handleNewGroupChat}
-          onToggleSidebar={isMobileView ? toggleSidebar : undefined}
+          onToggleSidebar={toggleSidebar}
           chatView={chatView}
+          showNewChatButton={true}
+          showNewGroupChatButton={true}
         />
       )}
 

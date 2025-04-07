@@ -110,18 +110,18 @@ export function MessageInput({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Fix: Create MediaRecorder instance correctly
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
+      // Create MediaRecorder instance correctly with proper typing
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
       
-      mediaRecorder.ondataavailable = (event) => {
+      recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
       
-      mediaRecorder.onstop = () => {
+      recorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
         const file = new File([audioBlob], "voice-message.webm", { type: 'audio/webm' });
@@ -140,7 +140,7 @@ export function MessageInput({
         stream.getTracks().forEach(track => track.stop());
       };
       
-      mediaRecorder.start(200);
+      recorder.start(200);
       setIsRecording(true);
       
       setRecordingTime(0);
