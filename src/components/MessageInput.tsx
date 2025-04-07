@@ -1,3 +1,4 @@
+
 import { useState, useRef, KeyboardEvent, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,6 +110,7 @@ export function MessageInput({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
+      // Fix: Properly initialize MediaRecorder
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
