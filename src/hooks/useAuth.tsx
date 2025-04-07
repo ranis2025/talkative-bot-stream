@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ interface AuthContextType {
   assignedBots: AssignedBot[];
   setToken: (token: string | null) => void;
   logout: () => void;
+  fetchAssignedBots: (tokenValue: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,43 +26,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchBotsByToken = async (tokenValue: string) => {
-      try {
-        const bots = await getBotsByToken(tokenValue);
-        setAssignedBots(bots);
-        console.log("Assigned bots loaded:", bots);
-      } catch (error) {
-        console.error("Error fetching assigned bots:", error);
-      }
-    };
-
-    const urlToken = searchParams.get("token");
-    
-    // Try to get token from local storage if not in URL
-    const storedToken = localStorage.getItem("auth_token");
-    
-    if (urlToken) {
-      checkOrCreateUserSettings(urlToken);
-      setToken(urlToken);
-      localStorage.setItem("auth_token", urlToken);
-      console.log("Token set from URL:", urlToken);
-      fetchBotsByToken(urlToken);
-    } else if (storedToken) {
-      checkOrCreateUserSettings(storedToken);
-      setToken(storedToken);
-      console.log("Token restored from storage:", storedToken);
-      fetchBotsByToken(storedToken);
-    } else {
+  // Function to fetch bots by token
+  const fetchAssignedBots = useCallback(async (tokenValue: string) => {
+    try {
+      console.log("Fetching bots for token:", tokenValue);
+      const bots = await getBotsByToken(tokenValue);
+      console.log("Fetched bots:", bots);
+      setAssignedBots(bots);
+    } catch (error) {
+      console.error("Error fetching assigned bots:", error);
       toast({
-        title: "Требуется токен",
-        description: "Для доступа к приложению необходим токен в URL",
+        title: "Ошибка",
+        description: "Не удалось загрузить назначенных ботов",
         variant: "destructive",
       });
     }
+  }, [toast]);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const urlToken = searchParams.get("token");
+      // Try to get token from local storage if not in URL
+      const storedToken = localStorage.getItem("auth_token");
+      
+      let tokenToUse = null;
+      if (urlToken) {
+        tokenToUse = urlToken;
+        localStorage.setItem("auth_token", urlToken);
+        console.log("Token set from URL:", urlToken);
+      } else if (storedToken) {
+        tokenToUse = storedToken;
+        console.log("Token restored from storage:", storedToken);
+      } else {
+        toast({
+          title: "Требуется токен",
+          description: "Для доступа к приложению необходим токен в URL",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Set token in state
+      setToken(tokenToUse);
+      
+      // Check or create user settings for this token
+      try {
+        await checkOrCreateUserSettings(tokenToUse);
+      } catch (error) {
+        console.error("Error checking or creating user settings:", error);
+      }
+      
+      // Fetch bots assigned to this token
+      if (tokenToUse) {
+        await fetchAssignedBots(tokenToUse);
+      }
+      
+      setIsLoading(false);
+    };
     
-    setIsLoading(false);
-  }, [searchParams, toast]);
+    initAuth();
+  }, [searchParams, toast, fetchAssignedBots]);
 
   const checkOrCreateUserSettings = async (token: string) => {
     try {
@@ -108,7 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     assignedBots,
     setToken,
-    logout
+    logout,
+    fetchAssignedBots
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,15 +1,22 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Bot, Key } from "lucide-react";
+import { Copy, Bot, Key, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function AssignedBots() {
-  const { assignedBots } = useAuth();
+  const { assignedBots, token, fetchAssignedBots } = useAuth();
   const { toast } = useToast();
+
+  // Refetch assigned bots when the component mounts or the token changes
+  useEffect(() => {
+    if (token) {
+      fetchAssignedBots(token);
+    }
+  }, [token, fetchAssignedBots]);
 
   const copyToClipboard = (text: string | undefined, type: string) => {
     if (!text) return;
@@ -30,19 +37,38 @@ export function AssignedBots() {
       });
   };
 
-  if (assignedBots.length === 0) {
+  if (!token) {
     return (
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle>Назначенные боты</CardTitle>
-          <CardDescription>К этому токену доступа не назначено ботов</CardDescription>
+          <CardDescription>Войдите с токеном доступа чтобы увидеть назначенных ботов</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
+  if (assignedBots.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Назначенные боты</CardTitle>
+          <CardDescription>К этому токену доступа не назначено ботов</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
+            <p className="text-amber-700 dark:text-amber-300">
+              К этому токену доступа пока не назначено ни одного бота. Обратитесь к администратору системы.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="mt-4">
+    <Card>
       <CardHeader>
         <CardTitle>Назначенные боты</CardTitle>
         <CardDescription>Боты, назначенные к вашему токену доступа</CardDescription>

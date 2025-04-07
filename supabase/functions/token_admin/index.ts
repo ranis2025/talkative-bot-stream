@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -39,6 +38,8 @@ serve(async (req) => {
 
     // Parse the request body
     const { action, params } = await req.json();
+    
+    console.log(`Processing action: ${action} with params:`, params);
 
     // Handle different actions
     let result = null;
@@ -68,6 +69,7 @@ serve(async (req) => {
       case 'get_bots_by_token':
         // Fetch bots assigned to a specific token value
         const { token_value } = params;
+        console.log(`Getting bots for token: ${token_value}`);
 
         // First get the token id by token value
         const { data: tokenData, error: tokenError } = await supabase
@@ -79,6 +81,7 @@ serve(async (req) => {
         if (tokenError) {
           if (tokenError.code === 'PGRST116') {
             // No token found
+            console.log(`Token not found: ${token_value}`);
             return new Response(
               JSON.stringify({ error: 'Token not found' }),
               { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -87,6 +90,8 @@ serve(async (req) => {
           throw tokenError;
         }
 
+        console.log(`Found token ID: ${tokenData.id} for token value: ${token_value}`);
+
         // Then get all bots assigned to this token id
         const { data: botAssignments, error: botsError } = await supabase
           .from('token_bot_assignments')
@@ -94,6 +99,8 @@ serve(async (req) => {
           .eq('token_id', tokenData.id);
 
         if (botsError) throw botsError;
+        
+        console.log(`Found ${botAssignments.length} bot assignments for token ID: ${tokenData.id}`);
         result = botAssignments;
         break;
         

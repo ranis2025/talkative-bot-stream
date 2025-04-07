@@ -19,7 +19,7 @@ export default function Index() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle>Информация о доступе</CardTitle>
           <CardDescription>Ваш токен доступа</CardDescription>
