@@ -86,17 +86,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Fix the MediaRecorder initialization
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      // Create a MediaRecorder instance correctly
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
       
       // Set up event handlers
-      mediaRecorderRef.current.addEventListener("dataavailable", (event) => {
+      mediaRecorder.addEventListener("dataavailable", (event) => {
         if (event.data.size > 0) {
           setRecordedChunks((prev) => [...prev, event.data]);
         }
       });
 
-      mediaRecorderRef.current.addEventListener("stop", () => {
+      mediaRecorder.addEventListener("stop", () => {
         const audioBlob = new Blob(recordedChunks, { type: "audio/webm" });
         const audioFile: IFile = {
           name: `Audio-${new Date().toISOString()}.webm`,
@@ -111,7 +112,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         setRecordedChunks([]);
       });
 
-      mediaRecorderRef.current.start();
+      mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);
