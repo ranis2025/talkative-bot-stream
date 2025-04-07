@@ -12,6 +12,8 @@ interface HeaderProps {
   showNewChatButton?: boolean;
   onNewGroupChat?: () => void;
   showNewGroupChatButton?: boolean;
+  onToggleSidebar?: () => void; // Add this prop for mobile sidebar toggle
+  chatView?: "individual" | "group"; // Add this prop for chat view type
 }
 
 export function Header({
@@ -21,6 +23,8 @@ export function Header({
   showNewChatButton = false,
   onNewGroupChat,
   showNewGroupChatButton = false,
+  onToggleSidebar,
+  chatView,
 }: HeaderProps) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
