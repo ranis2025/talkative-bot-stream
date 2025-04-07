@@ -44,7 +44,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     }
     
     // Auto-redirect to chat if user has bots assigned and they're not already on the chat page
-    if (assignedBots.length > 0 && location.pathname !== "/chat") {
+    if (token && assignedBots.length > 0 && location.pathname !== "/chat" && location.pathname !== "/") {
       console.log("Auto-redirecting to chat because user has bots assigned");
       navigate(`/chat?token=${token}`);
     }

@@ -23,6 +23,7 @@ export default function Index() {
   };
   
   const handleGoToChatClick = () => {
+    console.log("Navigating to chat with token:", token);
     navigate(`/chat?token=${token}`);
   };
 
