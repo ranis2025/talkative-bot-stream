@@ -15,14 +15,10 @@ export interface AssignedBot {
   id: string;
   token_id: string;
   bot_id: string;
-  bot_name: string;
   created_at: string;
 }
 
-// RPC methods for token administration
-// These are temporary implementations that will call our edge function
-// until we have actual database tables
-
+// Functions for token administration that use Supabase and the token_admin edge function
 export const getTokens = async (): Promise<TokenRecord[]> => {
   try {
     // Call our edge function
