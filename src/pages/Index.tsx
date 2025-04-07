@@ -14,6 +14,7 @@ export default function Index() {
   // Auto-redirect to chat if there are bots assigned
   useEffect(() => {
     if (assignedBots.length > 0) {
+      console.log("Auto-redirecting to chat from Index page", { token, botsCount: assignedBots.length });
       navigate(`/chat?token=${token}`);
     }
   }, [assignedBots, token, navigate]);
@@ -24,7 +25,8 @@ export default function Index() {
   
   const handleGoToChatClick = () => {
     console.log("Navigating to chat with token:", token);
-    navigate(`/chat?token=${token}`);
+    // Force a hard navigation instead of using React Router
+    window.location.href = `/chat?token=${token}`;
   };
 
   return (
