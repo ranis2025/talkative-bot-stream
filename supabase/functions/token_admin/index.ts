@@ -63,8 +63,16 @@ serve(async (req) => {
         result = { success: true };
         break;
       case 'assign_bot_to_token':
+        // Simplified to just use the bot_id directly without retrieving bot details
         // This would be replaced with actual DB operations once tables are created
-        result = { success: true, id: crypto.randomUUID() };
+        const { token_id, bot_id } = params;
+        
+        // We're not fetching bot_name anymore since we're just using the bot ID directly
+        result = { 
+          success: true, 
+          id: crypto.randomUUID(),
+          bot_id: bot_id  // Return the bot_id for confirmation
+        };
         break;
       case 'remove_assignment':
         // This would be replaced with actual DB operations once tables are created

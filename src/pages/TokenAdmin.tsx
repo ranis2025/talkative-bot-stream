@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -19,11 +20,9 @@ import {
   assignBotToToken, 
   removeAssignment 
 } from "@/lib/tokenAdmin";
-import { supabase } from "@/integrations/supabase/client";
 
 const TokenAdmin = () => {
   const [tokens, setTokens] = useState<TokenRecord[]>([]);
-  const [bots, setBots] = useState<any[]>([]);
   const [assignedBots, setAssignedBots] = useState<AssignedBot[]>([]);
   const [loading, setLoading] = useState(true);
   const [newToken, setNewToken] = useState({ name: "", description: "" });
@@ -32,6 +31,12 @@ const TokenAdmin = () => {
   const { toast } = useToast();
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
+  
+  // Admin authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
 
   // Ensure token is preserved in URL
   useEffect(() => {
@@ -40,14 +45,38 @@ const TokenAdmin = () => {
     }
   }, [token, searchParams, navigate]);
 
+  // Admin login handler
+  const handleAdminLogin = () => {
+    if (username === "admin" && password === "admin") {
+      setIsAuthenticated(true);
+      setAuthError("");
+      localStorage.setItem("token_admin_auth", "true");
+    } else {
+      setAuthError("Неверное имя пользователя или пароль");
+    }
+  };
+
+  // Check for existing admin authentication
+  useEffect(() => {
+    const isAdminAuth = localStorage.getItem("token_admin_auth") === "true";
+    if (isAdminAuth) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  // Admin logout handler
+  const handleAdminLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem("token_admin_auth");
+  };
+
   // Fetch tokens and bots data
   useEffect(() => {
-    if (token) {
+    if (token && isAuthenticated) {
       fetchTokens();
-      fetchBots();
       fetchAssignedBots();
     }
-  }, [token]);
+  }, [token, isAuthenticated]);
 
   const fetchTokens = async () => {
     try {
@@ -77,25 +106,6 @@ const TokenAdmin = () => {
       ]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchBots = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('chat_bots')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setBots(data || []);
-    } catch (error) {
-      console.error("Error fetching bots:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось загрузить данные ботов",
-        variant: "destructive"
-      });
     }
   };
 
@@ -214,7 +224,7 @@ const TokenAdmin = () => {
     if (!newAssignment.token_id || !newAssignment.bot_id) {
       toast({
         title: "Ошибка",
-        description: "Выберите токен и бота",
+        description: "Выберите токен и введите ID бота",
         variant: "destructive"
       });
       return;
@@ -282,14 +292,77 @@ const TokenAdmin = () => {
     navigate(token ? `/chat?token=${token}` : '/chat');
   };
 
+  // Admin Login Form
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto py-8 flex justify-center items-center min-h-[80vh]">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Вход в панель управления токенами</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="username" className="text-sm font-medium">Имя пользователя</label>
+                <Input 
+                  id="username"
+                  type="text" 
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Имя пользователя"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">Пароль</label>
+                <Input 
+                  id="password"
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Пароль"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAdminLogin();
+                    }
+                  }}
+                />
+              </div>
+              {authError && (
+                <div className="text-red-500 text-sm">{authError}</div>
+              )}
+              <Button 
+                className="w-full" 
+                onClick={handleAdminLogin}
+              >
+                Войти
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleBackToChat}
+              >
+                Вернуться к чату
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Управление токенами</h1>
-        <Button onClick={handleBackToChat} className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Вернуться к чату
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleAdminLogout} variant="outline">
+            Выйти из админ-панели
+          </Button>
+          <Button onClick={handleBackToChat} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Вернуться к чату
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -378,7 +451,7 @@ const TokenAdmin = () => {
           </CardContent>
         </Card>
 
-        {/* Token-Bot Assignments */}
+        {/* Token-Bot Assignments - Simplified version */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Назначение ботов токенам</CardTitle>
@@ -400,18 +473,11 @@ const TokenAdmin = () => {
                   ))}
                 </select>
                 
-                <select 
-                  className="border rounded px-3 py-2 w-full bg-background"
+                <Input 
+                  placeholder="ID бота"
                   value={newAssignment.bot_id}
                   onChange={(e) => setNewAssignment(prev => ({...prev, bot_id: e.target.value}))}
-                >
-                  <option value="">Выберите бота</option>
-                  {bots.map(bot => (
-                    <option key={bot.id} value={bot.id}>
-                      {bot.name} ({bot.bot_id})
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <Button onClick={assignBotToTokenHandler}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -423,7 +489,7 @@ const TokenAdmin = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Токен</TableHead>
-                  <TableHead>Бот</TableHead>
+                  <TableHead>ID Бота</TableHead>
                   <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>
@@ -434,7 +500,7 @@ const TokenAdmin = () => {
                   return (
                     <TableRow key={assignment.id}>
                       <TableCell>{token?.name || 'Unknown Token'}</TableCell>
-                      <TableCell>{assignment.bot_name}</TableCell>
+                      <TableCell>{assignment.bot_id}</TableCell>
                       <TableCell>
                         <Button 
                           size="sm" 
