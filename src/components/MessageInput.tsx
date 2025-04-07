@@ -110,7 +110,7 @@ export function MessageInput({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Create MediaRecorder instance correctly with proper typing
+      // Fixed: Create MediaRecorder instance with proper typing
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
@@ -140,7 +140,7 @@ export function MessageInput({
         stream.getTracks().forEach(track => track.stop());
       };
       
-      recorder.start(200);
+      recorder.start();
       setIsRecording(true);
       
       setRecordingTime(0);
