@@ -77,7 +77,7 @@ const Auth = () => {
       // Check if there are bots assigned to this token
       const bots = await fetchAssignedBots(token);
       
-      // Navigate based on whether there are bots assigned to this token
+      // Always navigate directly to the chat page if there are bots
       if (bots && bots.length > 0) {
         toast({
           title: "Успешный вход по токену",
@@ -87,9 +87,9 @@ const Auth = () => {
       } else {
         toast({
           title: "Успешный вход по токену",
-          description: "Вы успешно вошли в систему",
+          description: "У вас пока нет ботов, привязанных к этому токену",
         });
-        navigate(`/chat?token=${token}`);
+        navigate(`/?token=${token}`);
       }
     } catch (error: any) {
       toast({

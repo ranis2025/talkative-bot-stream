@@ -21,18 +21,20 @@ export default function Index() {
   const handleTokenAdminClick = () => {
     navigate(`/token-admin?token=${token}`);
   };
+  
+  const handleGoToChatClick = () => {
+    navigate(`/chat?token=${token}`);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Добро пожаловать</h1>
         <div className="flex gap-2">
-          {assignedBots.length > 0 && (
-            <Button onClick={() => navigate(`/chat?token=${token}`)}>
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Перейти в чат
-            </Button>
-          )}
+          <Button onClick={handleGoToChatClick}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Перейти в чат
+          </Button>
           <Button variant="outline" onClick={handleTokenAdminClick}>
             <Key className="mr-2 h-4 w-4" />
             Управление токенами

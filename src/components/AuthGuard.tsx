@@ -11,7 +11,7 @@ interface AuthGuardProps {
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { token, isLoading, setToken } = useAuth();
+  const { token, isLoading, setToken, assignedBots } = useAuth();
   const [searchParams] = useSearchParams();
   
   // Extract application name from token if it follows the format "AppName:User"
@@ -36,12 +36,19 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       console.log("Setting token from URL:", urlToken);
       setToken(urlToken);
     } else if (token && !searchParams.get("token") && 
-               (location.pathname === "/chat" || location.pathname === "/group-chats" || location.pathname === "/admin")) {
-      // If we have a token in context but not in URL, add it to the URL for chat, group-chats and admin routes
+               (location.pathname === "/chat" || location.pathname === "/group-chats" || 
+                location.pathname === "/admin" || location.pathname === "/token-admin")) {
+      // If we have a token in context but not in URL, add it to the URL for protected routes
       console.log("Adding token to URL:", token);
       navigate(`${location.pathname}?token=${token}`, { replace: true });
     }
-  }, [searchParams, token, setToken, location, navigate]);
+    
+    // Auto-redirect to chat if user has bots assigned and they're not already on the chat page
+    if (assignedBots.length > 0 && location.pathname !== "/chat") {
+      console.log("Auto-redirecting to chat because user has bots assigned");
+      navigate(`/chat?token=${token}`);
+    }
+  }, [searchParams, token, setToken, location, navigate, assignedBots]);
   
   // If loading, show loading state
   if (isLoading) {
