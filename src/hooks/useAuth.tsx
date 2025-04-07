@@ -4,9 +4,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
+import { User } from "@/types/user";
+import { getUserByToken } from "@/lib/authApi";
 
 interface AuthContextType {
   token: string | null;
+  user: User | null;
   isLoading: boolean;
   setToken: (token: string | null) => void;
   logout: () => void;
@@ -16,6 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -28,24 +32,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedToken = localStorage.getItem("auth_token");
     
     if (urlToken) {
-      checkOrCreateUserSettings(urlToken);
-      setToken(urlToken);
+      loadUserByToken(urlToken);
       localStorage.setItem("auth_token", urlToken);
       console.log("Token set from URL:", urlToken);
     } else if (storedToken) {
-      checkOrCreateUserSettings(storedToken);
-      setToken(storedToken);
+      loadUserByToken(storedToken);
       console.log("Token restored from storage:", storedToken);
     } else {
       toast({
         title: "Требуется токен",
-        description: "Для доступа к приложению необходим токен в URL",
+        description: "Для доступа к приложению необходим токен в URL либо выполнить вход",
         variant: "destructive",
       });
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   }, [searchParams, toast]);
+
+  const loadUserByToken = async (authToken: string) => {
+    try {
+      setToken(authToken);
+      
+      // Попытка получить пользователя по токену
+      const userData = await getUserByToken(authToken);
+      setUser(userData);
+      
+      // Проверяем или создаем настройки, даже если пользователя не нашли по токену
+      // (для обратной совместимости со старой системой)
+      await checkOrCreateUserSettings(authToken);
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading user by token:", error);
+      setIsLoading(false);
+    }
+  };
 
   const checkOrCreateUserSettings = async (token: string) => {
     try {
@@ -78,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setToken(null);
+    setUser(null);
     localStorage.removeItem("auth_token");
     toast({
       title: "Выход выполнен",
@@ -88,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = {
     token,
+    user,
     isLoading,
     setToken,
     logout
