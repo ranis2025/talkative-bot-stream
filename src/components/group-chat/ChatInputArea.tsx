@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { MessageInput } from "@/components/MessageInput";
+import { MessageInput } from "@/components/message-input";
 import { IFile } from "@/types/chat";
 import { AtSign } from "lucide-react";
 import {
