@@ -4,10 +4,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
+import { getBotsByToken } from "@/lib/tokenAdmin";
+import { AssignedBot } from "@/lib/tokenAdmin";
 
 interface AuthContextType {
   token: string | null;
   isLoading: boolean;
+  assignedBots: AssignedBot[];
   setToken: (token: string | null) => void;
   logout: () => void;
 }
@@ -17,11 +20,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [assignedBots, setAssignedBots] = useState<AssignedBot[]>([]);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchBotsByToken = async (tokenValue: string) => {
+      try {
+        const bots = await getBotsByToken(tokenValue);
+        setAssignedBots(bots);
+        console.log("Assigned bots loaded:", bots);
+      } catch (error) {
+        console.error("Error fetching assigned bots:", error);
+      }
+    };
+
     const urlToken = searchParams.get("token");
     
     // Try to get token from local storage if not in URL
@@ -32,10 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(urlToken);
       localStorage.setItem("auth_token", urlToken);
       console.log("Token set from URL:", urlToken);
+      fetchBotsByToken(urlToken);
     } else if (storedToken) {
       checkOrCreateUserSettings(storedToken);
       setToken(storedToken);
       console.log("Token restored from storage:", storedToken);
+      fetchBotsByToken(storedToken);
     } else {
       toast({
         title: "Требуется токен",
@@ -78,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setToken(null);
+    setAssignedBots([]);
     localStorage.removeItem("auth_token");
     toast({
       title: "Выход выполнен",
@@ -89,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     token,
     isLoading,
+    assignedBots,
     setToken,
     logout
   };
