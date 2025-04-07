@@ -146,18 +146,21 @@ export type Database = {
       token_bot_assignments: {
         Row: {
           bot_id: string
+          bot_token: string | null
           created_at: string
           id: string
           token_id: string
         }
         Insert: {
           bot_id: string
+          bot_token?: string | null
           created_at?: string
           id?: string
           token_id: string
         }
         Update: {
           bot_id?: string
+          bot_token?: string | null
           created_at?: string
           id?: string
           token_id?: string
