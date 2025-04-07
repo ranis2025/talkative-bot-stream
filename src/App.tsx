@@ -25,11 +25,8 @@ const App = () => (
             <Toaster />
             <Sonner />
             <Routes>
-              <Route path="/" element={
-                <AuthGuard>
-                  <Index />
-                </AuthGuard>
-              } />
+              {/* Redirect root to chat */}
+              <Route path="/" element={<Navigate to="/chat" replace />} />
               <Route 
                 path="/auth" 
                 element={<Auth />}

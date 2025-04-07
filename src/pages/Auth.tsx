@@ -74,23 +74,12 @@ const Auth = () => {
       // Set token in context
       setToken(token);
 
-      // Check if there are bots assigned to this token
-      const bots = await fetchAssignedBots(token);
-      
-      // Always navigate directly to the chat page if there are bots
-      if (bots && bots.length > 0) {
-        toast({
-          title: "Успешный вход по токену",
-          description: "Открываем чат с вашими ботами",
-        });
-        window.location.href = `/chat?token=${token}`;
-      } else {
-        toast({
-          title: "Успешный вход по токену",
-          description: "У вас пока нет ботов, привязанных к этому токену",
-        });
-        window.location.href = `/?token=${token}`;
-      }
+      // Always redirect directly to chat regardless of bot assignment status
+      toast({
+        title: "Успешный вход по токену",
+        description: "Открываем чат",
+      });
+      window.location.href = `/chat?token=${token}`;
     } catch (error: any) {
       toast({
         title: "Ошибка аутентификации по токену",
