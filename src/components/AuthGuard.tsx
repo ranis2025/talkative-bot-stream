@@ -47,7 +47,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     // Don't redirect from the home page to prevent navigation loops
     if (token && assignedBots.length > 0 && location.pathname !== "/chat" && location.pathname !== "/") {
       console.log("Auto-redirecting to chat because user has bots assigned");
-      navigate(`/chat?token=${token}`);
+      // Use hard navigation for more reliable redirects
+      window.location.href = `/chat?token=${token}`;
     }
   }, [searchParams, token, setToken, location, navigate, assignedBots]);
   

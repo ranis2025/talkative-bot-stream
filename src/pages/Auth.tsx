@@ -40,7 +40,7 @@ const Auth = () => {
         variant: "destructive",
       });
       // Redirect to chat with a demo token
-      navigate("/chat?token=demo-token");
+      window.location.href = "/chat?token=demo-token";
     }
   }, [searchParams, navigate, toast, setToken]);
 
@@ -83,13 +83,13 @@ const Auth = () => {
           title: "Успешный вход по токену",
           description: "Открываем чат с вашими ботами",
         });
-        navigate(`/chat?token=${token}`);
+        window.location.href = `/chat?token=${token}`;
       } else {
         toast({
           title: "Успешный вход по токену",
           description: "У вас пока нет ботов, привязанных к этому токену",
         });
-        navigate(`/?token=${token}`);
+        window.location.href = `/?token=${token}`;
       }
     } catch (error: any) {
       toast({
@@ -98,7 +98,7 @@ const Auth = () => {
         variant: "destructive",
       });
       // Redirect to chat with a demo token on error
-      navigate("/chat?token=demo-token");
+      window.location.href = "/chat?token=demo-token";
     } finally {
       setTokenLoading(false);
     }

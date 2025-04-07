@@ -25,7 +25,11 @@ const App = () => (
             <Toaster />
             <Sonner />
             <Routes>
-              <Route path="/" element={<Navigate to="/auth" replace />} />
+              <Route path="/" element={
+                <AuthGuard>
+                  <Index />
+                </AuthGuard>
+              } />
               <Route 
                 path="/auth" 
                 element={<Auth />}

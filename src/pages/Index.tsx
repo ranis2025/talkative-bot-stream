@@ -13,9 +13,10 @@ export default function Index() {
   
   // Auto-redirect to chat if there are bots assigned
   useEffect(() => {
-    if (assignedBots.length > 0) {
+    if (assignedBots && assignedBots.length > 0) {
       console.log("Auto-redirecting to chat from Index page", { token, botsCount: assignedBots.length });
-      navigate(`/chat?token=${token}`);
+      // Use hard navigation for more reliable redirects
+      window.location.href = `/chat?token=${token}`;
     }
   }, [assignedBots, token, navigate]);
 
