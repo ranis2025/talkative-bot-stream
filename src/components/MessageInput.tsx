@@ -1,192 +1,186 @@
 
-import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
+import React, { useState, useRef, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { Send, Plus, X, FileText, Images, File, Paperclip } from "lucide-react";
-import { IFile } from "@/types/chat";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ReactNode } from "react";
+  Check,
+  Paperclip,
+  SendHorizonal,
+  Mic,
+  Square,
+  CornerUpLeft,
+} from "lucide-react";
+import { IFile } from "@/types/chat";
+import { FileAttachments } from "./message-input/FileAttachments";
+import { FileInputButton } from "./message-input/FileInputButton";
+import { VoiceRecorder } from "./message-input/VoiceRecorder";
 
 interface MessageInputProps {
   onSendMessage: (message: string, files?: IFile[]) => void;
-  isLoading?: boolean;
+  isLoading: boolean;
+  canSend?: boolean;
+  botId?: string;
+  isGroupChat?: boolean;
   placeholder?: string;
-  disabled?: boolean;
-  activeBotsCount?: number;
-  value?: string;
-  onChange?: (value: string) => void;
-  leftIcon?: ReactNode;
 }
 
-export function MessageInput({ 
-  onSendMessage, 
-  isLoading = false, 
-  placeholder = "Напишите сообщение...",
-  disabled = false,
-  activeBotsCount = 0,
-  value,
-  onChange,
-  leftIcon
-}: MessageInputProps) {
+const MessageInput: React.FC<MessageInputProps> = ({
+  onSendMessage,
+  isLoading,
+  canSend = true,
+  botId,
+  isGroupChat = false,
+  placeholder = "Введите сообщение..."
+}) => {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<IFile[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const currentMessage = value !== undefined ? value : message;
-  
-  const handleSend = () => {
-    if (isLoading || disabled || (!currentMessage.trim() && files.length === 0)) return;
-    
-    onSendMessage(currentMessage.trim(), files.length > 0 ? files : undefined);
-    
-    if (value === undefined) {
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleSendMessage = () => {
+    const trimmedMessage = message.trim();
+    if ((trimmedMessage.length > 0 || files.length > 0) && !isLoading) {
+      onSendMessage(trimmedMessage, files.length > 0 ? files : undefined);
       setMessage("");
-    }
-    setFiles([]);
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+      setFiles([]);
+      textareaRef.current?.focus();
     }
   };
 
-  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    if (onChange) {
-      onChange(newValue);
-    } else {
-      setMessage(newValue);
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleSendMessage();
     }
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files).map((file) => ({
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const newFiles: IFile[] = Array.from(event.target.files).map((file) => ({
         name: file.name,
         size: file.size,
         type: file.type,
-        file,
         url: URL.createObjectURL(file),
+        file: file
       }));
+
       setFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
-  const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (fileIndex: number) => {
+    setFiles((prevFiles) => {
+      const updatedFiles = [...prevFiles];
+      if (updatedFiles[fileIndex].url) {
+        URL.revokeObjectURL(updatedFiles[fileIndex].url);
+      }
+      updatedFiles.splice(fileIndex, 1);
+      return updatedFiles;
+    });
   };
 
-  const openFileInput = (accept: string) => {
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = accept;
-      fileInputRef.current.click();
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Fix the MediaRecorder initialization
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      
+      // Set up event handlers
+      mediaRecorderRef.current.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          setRecordedChunks((prev) => [...prev, event.data]);
+        }
+      });
+
+      mediaRecorderRef.current.addEventListener("stop", () => {
+        const audioBlob = new Blob(recordedChunks, { type: "audio/webm" });
+        const audioFile: IFile = {
+          name: `Audio-${new Date().toISOString()}.webm`,
+          size: audioBlob.size,
+          type: audioBlob.type,
+          url: URL.createObjectURL(audioBlob),
+          file: new File([audioBlob], `Audio-${new Date().toISOString()}.webm`, {
+            type: "audio/webm",
+          }),
+        };
+        setFiles((prev) => [...prev, audioFile]);
+        setRecordedChunks([]);
+      });
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Error starting recording:", error);
     }
   };
 
-  const isSendDisabled = isLoading || disabled || (!currentMessage.trim() && files.length === 0);
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Stop all tracks in the stream
+      mediaRecorderRef.current.stream?.getTracks().forEach((track) => {
+        track.stop();
+      });
+    }
+  };
 
   return (
-    <div className="bg-card/50 border rounded-md focus-within:ring-1 focus-within:ring-primary">
-      {files.length > 0 && (
-        <div className="p-2 border-b flex flex-wrap gap-2">
-          {files.map((file, index) => (
-            <div
-              key={index}
-              className="flex items-center bg-secondary/30 p-1 rounded text-xs gap-1"
-            >
-              {file.type.startsWith("image/") ? (
-                <Images className="h-3 w-3" />
-              ) : (
-                <FileText className="h-3 w-3" />
-              )}
-              <span className="truncate max-w-[100px]">{file.name}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-4 w-4 rounded-full"
-                onClick={() => removeFile(index)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex items-end">
-        <div className="flex-1 relative">
-          {leftIcon && (
-            <div className="absolute left-3 top-3">
-              {leftIcon}
-            </div>
-          )}
+    <div className="border-t bg-background p-4">
+      <FileAttachments files={files} removeFile={removeFile} />
+      
+      <div className="flex items-end gap-2">
+        <div className="relative flex-1">
           <Textarea
+            ref={textareaRef}
             placeholder={placeholder}
-            value={currentMessage}
-            onChange={handleInputChange}
+            className="resize-none pr-12 min-h-[80px]"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={cn(
-              "min-h-[60px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 p-3",
-              leftIcon && "pl-10"
-            )}
-            disabled={isLoading || disabled}
+            disabled={isLoading}
           />
+          <div className="absolute right-3 bottom-3">
+            {!isRecording ? (
+              <FileInputButton 
+                fileInputRef={fileInputRef} 
+                handleFileChange={handleFileChange} 
+              />
+            ) : null}
+          </div>
         </div>
-        <div className="flex items-center px-3 pb-3">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            multiple
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="rounded-full"
-                disabled={isLoading || disabled}
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openFileInput("image/*")}>
-                <Images className="h-4 w-4 mr-2" />
-                <span>Изображение</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openFileInput(".pdf,.doc,.docx,.txt")}>
-                <File className="h-4 w-4 mr-2" />
-                <span>Документ</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openFileInput("*")}>
-                <Paperclip className="h-4 w-4 mr-2" />
-                <span>Любой файл</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            type="button"
-            size="icon"
-            onClick={handleSend}
-            disabled={isSendDisabled}
-            className={cn("rounded-full ml-1", 
-              isSendDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-primary"
-            )}
-          >
-            <Send className="h-5 w-5" />
-          </Button>
-        </div>
+        
+        <VoiceRecorder
+          isRecording={isRecording}
+          startRecording={startRecording}
+          stopRecording={stopRecording}
+        />
+        
+        <Button
+          type="submit"
+          size="icon"
+          disabled={
+            (message.trim().length === 0 && files.length === 0) ||
+            isLoading ||
+            !canSend
+          }
+          onClick={handleSendMessage}
+        >
+          {isLoading ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : (
+            <SendHorizonal className="h-4 w-4" />
+          )}
+          <span className="sr-only">Отправить</span>
+        </Button>
       </div>
     </div>
   );
-}
+};
+
+export default MessageInput;

@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut } from "lucide-react";
+import { PlusCircle, Menu, MessageSquare, Users, Settings, LogOut, Key } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -47,6 +47,10 @@ export function Header({
 
   const handleAdminClick = () => {
     navigate(token ? `/admin?token=${token}` : '/admin');
+  };
+
+  const handleTokenAdminClick = () => {
+    navigate(token ? `/token-admin?token=${token}` : '/token-admin');
   };
 
   return (
@@ -104,6 +108,16 @@ export function Header({
         >
           <Settings className="h-5 w-5" />
           <span className="sr-only">Настройки</span>
+        </Button>
+
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={handleTokenAdminClick}
+          title="Управление токенами"
+        >
+          <Key className="h-5 w-5" />
+          <span className="sr-only">Токены</span>
         </Button>
 
         <ThemeToggle />
