@@ -1,3 +1,4 @@
+
 import { useState, useRef, KeyboardEvent, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ReactNode } from "react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 
 interface MessageInputProps {
   onSendMessage: (message: string, files?: IFile[]) => void;

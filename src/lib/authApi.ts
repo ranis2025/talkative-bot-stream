@@ -20,20 +20,19 @@ const verifyPassword = async (password: string, hashedPassword: string): Promise
 export async function registerUser(credentials: RegisterCredentials): Promise<AuthResponse> {
   try {
     // Проверяем, существует ли пользователь с таким именем
-    const { data: existingUser, error: checkError } = await supabase
+    const { data: existingUsers, error: checkError } = await supabase
       .from("app_users")
       .select("*")
-      .eq("username", credentials.username)
-      .maybeSingle();
+      .eq("username", credentials.username);
 
-    if (existingUser) {
+    if (existingUsers && existingUsers.length > 0) {
       return {
         success: false,
         message: "Пользователь с таким именем уже существует"
       };
     }
 
-    if (checkError && checkError.code !== "PGRST116") {
+    if (checkError) {
       throw checkError;
     }
 
@@ -98,22 +97,23 @@ export async function registerUser(credentials: RegisterCredentials): Promise<Au
 export async function loginUser(credentials: LoginCredentials): Promise<AuthResponse> {
   try {
     // Ищем пользователя по имени
-    const { data: user, error: userError } = await supabase
+    const { data: users, error: userError } = await supabase
       .from("app_users")
       .select("*")
-      .eq("username", credentials.username)
-      .maybeSingle();
+      .eq("username", credentials.username);
 
-    if (userError && userError.code !== "PGRST116") {
+    if (userError) {
       throw userError;
     }
 
-    if (!user) {
+    if (!users || users.length === 0) {
       return {
         success: false,
         message: "Пользователь не найден"
       };
     }
+    
+    const user = users[0];
 
     // Проверяем пароль
     const isPasswordValid = await verifyPassword(credentials.password, user.password);
@@ -181,11 +181,11 @@ export async function getUserByToken(token: string): Promise<User | null> {
     // Сначала получаем settings по токену
     const { data: settings, error: settingsError } = await supabase
       .from("user_settings")
-      .select("app_user_id")
+      .select("*")
       .eq("token", token)
       .maybeSingle();
 
-    if (settingsError && settingsError.code !== "PGRST116") {
+    if (settingsError) {
       throw settingsError;
     }
 
@@ -194,16 +194,21 @@ export async function getUserByToken(token: string): Promise<User | null> {
     }
 
     // Затем получаем данные пользователя
-    const { data: user, error: userError } = await supabase
+    const { data: users, error: userError } = await supabase
       .from("app_users")
       .select("*")
-      .eq("id", settings.app_user_id)
-      .single();
+      .eq("id", settings.app_user_id);
 
     if (userError) {
       throw userError;
     }
 
+    if (!users || users.length === 0) {
+      return null;
+    }
+
+    const user = users[0];
+    
     return {
       id: user.id,
       username: user.username,
