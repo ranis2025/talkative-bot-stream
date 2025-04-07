@@ -1,6 +1,6 @@
 
 import { useRef, useEffect } from "react";
-import { Message } from "@/components/Message";
+import { Message } from "@/components/message";
 import { IChat } from "@/types/chat";
 import { AlertTriangle } from "lucide-react";
 
