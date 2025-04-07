@@ -1,7 +1,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import { Message } from "./Message";
-import { MessageInput } from "./MessageInput";
+import MessageInput from "./MessageInput";
 import { IChat, ChatBot, IMessage, IFile } from "@/types/chat";
 import { AlertTriangle, UserPlus, AtSign, Settings, Bot } from "lucide-react";
 import { Button } from "./ui/button";

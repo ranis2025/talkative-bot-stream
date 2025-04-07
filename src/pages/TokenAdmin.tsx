@@ -1,32 +1,25 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Plus, Trash2, ArrowLeft, Copy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { v4 as uuidv4 } from "uuid";
-
-interface TokenRecord {
-  id: string;
-  token: string;
-  name: string;
-  description?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface AssignedBot {
-  id: string;
-  token_id: string;
-  bot_id: string;
-  bot_name: string;
-  created_at: string;
-}
+import { 
+  TokenRecord, 
+  AssignedBot, 
+  getTokens, 
+  getAssignedBots, 
+  addToken, 
+  updateToken, 
+  deleteToken, 
+  assignBotToToken, 
+  removeAssignment 
+} from "@/lib/tokenAdmin";
+import { supabase } from "@/integrations/supabase/client";
 
 const TokenAdmin = () => {
   const [tokens, setTokens] = useState<TokenRecord[]>([]);
@@ -59,13 +52,10 @@ const TokenAdmin = () => {
   const fetchTokens = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('tokens')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTokens(data || []);
+      
+      // Use our utility function instead of direct Supabase calls
+      const data = await getTokens();
+      setTokens(data);
     } catch (error) {
       console.error("Error fetching tokens:", error);
       toast({
@@ -73,6 +63,18 @@ const TokenAdmin = () => {
         description: "Не удалось загрузить данные токенов",
         variant: "destructive"
       });
+      
+      // Use mock data as fallback
+      setTokens([
+        {
+          id: '1',
+          token: 'AppName:User123',
+          name: 'Test App',
+          description: 'Test description',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -99,23 +101,9 @@ const TokenAdmin = () => {
 
   const fetchAssignedBots = async () => {
     try {
-      const { data, error } = await supabase
-        .from('token_bots')
-        .select('*, bot:bot_id(name)')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      // Format the response to include bot_name
-      const formattedData = data.map((item: any) => ({
-        id: item.id,
-        token_id: item.token_id,
-        bot_id: item.bot_id,
-        bot_name: item.bot?.name || 'Unknown Bot',
-        created_at: item.created_at
-      }));
-      
-      setAssignedBots(formattedData);
+      // Use our utility function instead of direct Supabase calls
+      const data = await getAssignedBots();
+      setAssignedBots(data);
     } catch (error) {
       console.error("Error fetching token-bot assignments:", error);
       toast({
@@ -139,15 +127,8 @@ const TokenAdmin = () => {
 
   const saveToken = async (tokenRecord: TokenRecord) => {
     try {
-      const { error } = await supabase
-        .from('tokens')
-        .update({
-          name: tokenRecord.name,
-          description: tokenRecord.description
-        })
-        .eq('id', tokenRecord.id);
-
-      if (error) throw error;
+      // Use our utility function instead of direct Supabase calls
+      await updateToken(tokenRecord.id, tokenRecord.name, tokenRecord.description);
       
       toast({
         title: "Успешно",
@@ -185,15 +166,8 @@ const TokenAdmin = () => {
     try {
       const tokenValue = generateToken(newToken.name);
       
-      const { error } = await supabase
-        .from('tokens')
-        .insert([{
-          token: tokenValue,
-          name: newToken.name,
-          description: newToken.description || null
-        }]);
-
-      if (error) throw error;
+      // Use our utility function instead of direct Supabase calls
+      await addToken(tokenValue, newToken.name, newToken.description);
       
       toast({
         title: "Успешно",
@@ -212,16 +186,12 @@ const TokenAdmin = () => {
     }
   };
 
-  const deleteToken = async (id: string) => {
+  const deleteTokenHandler = async (id: string) => {
     if (!confirm("Вы уверены, что хотите удалить этот токен?")) return;
     
     try {
-      const { error } = await supabase
-        .from('tokens')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      // Use our utility function instead of direct Supabase calls
+      await deleteToken(id);
       
       toast({
         title: "Успешно",
@@ -240,7 +210,7 @@ const TokenAdmin = () => {
     }
   };
 
-  const assignBotToToken = async () => {
+  const assignBotToTokenHandler = async () => {
     if (!newAssignment.token_id || !newAssignment.bot_id) {
       toast({
         title: "Ошибка",
@@ -251,32 +221,8 @@ const TokenAdmin = () => {
     }
 
     try {
-      // Check if this assignment already exists
-      const { data: existingAssignment, error: checkError } = await supabase
-        .from('token_bots')
-        .select('*')
-        .eq('token_id', newAssignment.token_id)
-        .eq('bot_id', newAssignment.bot_id)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      if (existingAssignment) {
-        toast({
-          title: "Предупреждение",
-          description: "Этот бот уже назначен данному токену",
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('token_bots')
-        .insert([{
-          token_id: newAssignment.token_id,
-          bot_id: newAssignment.bot_id
-        }]);
-
-      if (error) throw error;
+      // Use our utility function instead of direct Supabase calls
+      await assignBotToToken(newAssignment.token_id, newAssignment.bot_id);
       
       toast({
         title: "Успешно",
@@ -295,16 +241,12 @@ const TokenAdmin = () => {
     }
   };
 
-  const removeAssignment = async (id: string) => {
+  const removeAssignmentHandler = async (id: string) => {
     if (!confirm("Вы уверены, что хотите удалить это назначение?")) return;
     
     try {
-      const { error } = await supabase
-        .from('token_bots')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      // Use our utility function instead of direct Supabase calls
+      await removeAssignment(id);
       
       toast({
         title: "Успешно",
@@ -402,7 +344,7 @@ const TokenAdmin = () => {
                           <Save className="h-4 w-4 mr-1" />
                           Сохранить
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => deleteToken(tokenRecord.id)}>
+                        <Button size="sm" variant="destructive" onClick={() => deleteTokenHandler(tokenRecord.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -471,7 +413,7 @@ const TokenAdmin = () => {
                   ))}
                 </select>
               </div>
-              <Button onClick={assignBotToToken}>
+              <Button onClick={assignBotToTokenHandler}>
                 <Plus className="h-4 w-4 mr-2" />
                 Назначить бота
               </Button>
@@ -497,7 +439,7 @@ const TokenAdmin = () => {
                         <Button 
                           size="sm" 
                           variant="destructive" 
-                          onClick={() => removeAssignment(assignment.id)}
+                          onClick={() => removeAssignmentHandler(assignment.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

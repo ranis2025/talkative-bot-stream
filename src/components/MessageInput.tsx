@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +21,11 @@ interface MessageInputProps {
   botId?: string;
   isGroupChat?: boolean;
   placeholder?: string;
+  disabled?: boolean;
+  activeBotsCount?: number;
+  value?: string;
+  onChange?: (value: string) => void;
+  leftIcon?: React.ReactNode;
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({
@@ -30,7 +34,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
   canSend = true,
   botId,
   isGroupChat = false,
-  placeholder = "Введите сообщение..."
+  placeholder = "Введите сообщение...",
+  disabled,
+  activeBotsCount,
+  value,
+  onChange,
+  leftIcon
 }) => {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<IFile[]>([]);
@@ -86,11 +95,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Create a MediaRecorder instance correctly
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       
-      // Set up event handlers
       mediaRecorder.addEventListener("dataavailable", (event) => {
         if (event.data.size > 0) {
           setRecordedChunks((prev) => [...prev, event.data]);
@@ -124,7 +131,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       
-      // Stop all tracks in the stream
       mediaRecorderRef.current.stream?.getTracks().forEach((track) => {
         track.stop();
       });
@@ -141,10 +147,17 @@ const MessageInput: React.FC<MessageInputProps> = ({
             ref={textareaRef}
             placeholder={placeholder}
             className="resize-none pr-12 min-h-[80px]"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={value !== undefined ? value : message}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              if (onChange) {
+                onChange(newValue);
+              } else {
+                setMessage(newValue);
+              }
+            }}
             onKeyDown={handleKeyDown}
-            disabled={isLoading}
+            disabled={isLoading || disabled}
           />
           <div className="absolute right-3 bottom-3">
             {!isRecording ? (
@@ -168,7 +181,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
           disabled={
             (message.trim().length === 0 && files.length === 0) ||
             isLoading ||
-            !canSend
+            !canSend ||
+            disabled
           }
           onClick={handleSendMessage}
         >
