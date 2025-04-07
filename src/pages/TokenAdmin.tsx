@@ -31,7 +31,7 @@ const TokenAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [newToken, setNewToken] = useState({ name: "", description: "" });
-  const [newAssignment, setNewAssignment] = useState({ token_id: "", bot_id: "" });
+  const [newAssignment, setNewAssignment] = useState({ token_id: "", bot_id: "", bot_token: "" });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -284,14 +284,14 @@ const TokenAdmin = () => {
     try {
       setIsSubmitting(true);
       // Use our utility function to assign a bot to a token in the database
-      await assignBotToToken(newAssignment.token_id, newAssignment.bot_id);
+      await assignBotToToken(newAssignment.token_id, newAssignment.bot_id, newAssignment.bot_token);
       
       toast({
         title: "Успешно",
         description: "Бот назначен токену",
       });
       
-      setNewAssignment({ token_id: "", bot_id: "" });
+      setNewAssignment({ token_id: "", bot_id: "", bot_token: "" });
       fetchAssignedBots();
     } catch (error) {
       console.error("Error assigning bot to token:", error);
@@ -685,6 +685,20 @@ const TokenAdmin = () => {
                       <p className="text-xs text-destructive">{errors.bot_id}</p>
                     )}
                   </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium mb-1 block">Токен бота (опционально)</label>
+                    <Input 
+                      placeholder="Введите токен бота (если есть)"
+                      value={newAssignment.bot_token}
+                      onChange={(e) => {
+                        setNewAssignment(prev => ({...prev, bot_token: e.target.value}));
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Токен бота используется для аутентификации бота в системе
+                    </p>
+                  </div>
                 </div>
                 <Button type="submit" disabled={isSubmitting || tokens.length === 0} className="w-full">
                   {isSubmitting ? (
@@ -722,6 +736,7 @@ const TokenAdmin = () => {
                         <TableRow>
                           <TableHead>Токен</TableHead>
                           <TableHead>ID Бота</TableHead>
+                          <TableHead>Токен Бота</TableHead>
                           <TableHead>Действия</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -749,6 +764,34 @@ const TokenAdmin = () => {
                                 <code className="bg-secondary px-2 py-1 rounded text-xs font-mono">
                                   {assignment.bot_id}
                                 </code>
+                              </TableCell>
+                              <TableCell>
+                                {assignment.bot_token ? (
+                                  <div className="flex items-center gap-2">
+                                    <code className="bg-secondary px-2 py-1 rounded text-xs font-mono truncate max-w-32">
+                                      {assignment.bot_token}
+                                    </code>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={() => copyToClipboard(assignment.bot_token || '')}
+                                            className="h-7 w-7"
+                                          >
+                                            <Copy className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Копировать токен бота</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">Не указан</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <TooltipProvider>

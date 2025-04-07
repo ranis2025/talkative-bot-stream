@@ -15,6 +15,7 @@ export interface AssignedBot {
   id: string;
   token_id: string;
   bot_id: string;
+  bot_token?: string;
   created_at: string;
 }
 
@@ -101,13 +102,13 @@ export const deleteToken = async (id: string): Promise<void> => {
   }
 };
 
-export const assignBotToToken = async (tokenId: string, botId: string): Promise<string> => {
+export const assignBotToToken = async (tokenId: string, botId: string, botToken?: string): Promise<string> => {
   try {
     // Call our edge function
     const { data, error } = await supabase.functions.invoke('token_admin', {
       body: { 
         action: 'assign_bot_to_token', 
-        params: { token_id: tokenId, bot_id: botId } 
+        params: { token_id: tokenId, bot_id: botId, bot_token: botToken } 
       },
     });
 

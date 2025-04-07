@@ -112,12 +112,13 @@ serve(async (req) => {
         
       case 'assign_bot_to_token':
         // Assign a bot to a token
-        const { token_id, bot_id } = params;
+        const { token_id, bot_id, bot_token } = params;
         const { data: newAssignment, error: assignError } = await supabase
           .from('token_bot_assignments')
           .insert({
             token_id,
-            bot_id
+            bot_id,
+            bot_token
           })
           .select('id')
           .single();
@@ -126,7 +127,8 @@ serve(async (req) => {
         result = { 
           success: true, 
           id: newAssignment.id,
-          bot_id: bot_id
+          bot_id: bot_id,
+          bot_token: bot_token
         };
         break;
         
