@@ -42,14 +42,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       console.log("Adding token to URL:", token);
       navigate(`${location.pathname}?token=${token}`, { replace: true });
     }
-    
-    // Always redirect to chat if the current path is not already /chat
-    if (token && location.pathname !== "/chat") {
-      console.log("Redirecting to chat page");
-      // Use hard navigation for more reliable redirects
-      window.location.href = `/chat?token=${token}`;
-    }
-  }, [searchParams, token, setToken, location, navigate, assignedBots]);
+  }, [searchParams, token, setToken, location, navigate]);
   
   // If loading, show loading state
   if (isLoading) {
