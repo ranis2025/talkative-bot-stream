@@ -1,2 +1,0 @@
-
-export { MessageInput } from './MessageInput';

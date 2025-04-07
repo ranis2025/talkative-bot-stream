@@ -5,12 +5,14 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Header } from "@/components/Header";
 import { ChatList } from "@/components/ChatList";
 import { Chat } from "@/components/Chat";
+import { GroupChat } from "@/components/GroupChat";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Users, MessageSquare } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const {
@@ -21,6 +23,7 @@ const Index = () => {
     isInitialized,
     setCurrentChatId,
     createChat,
+    createGroupChat,
     sendChatMessage,
     deleteChat,
     renameChat,
@@ -29,6 +32,8 @@ const Index = () => {
     setCurrentBotId,
     chatView,
     switchChatView,
+    addBotToGroupChat,
+    removeBotFromGroupChat
   } = useChat();
 
   const { token } = useAuth();
@@ -118,10 +123,9 @@ const Index = () => {
         <Header 
           onNewChat={handleNewChat} 
           onNewGroupChat={handleNewGroupChat}
-          onToggleSidebar={toggleSidebar}
+          isMobile={isMobileView} 
+          onToggleSidebar={isMobileView ? toggleSidebar : undefined}
           chatView={chatView}
-          showNewChatButton={true}
-          showNewGroupChatButton={true}
         />
       )}
 

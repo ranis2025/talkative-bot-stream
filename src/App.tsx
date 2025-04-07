@@ -12,7 +12,6 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import GroupChats from "./pages/GroupChats";
-import UserProfile from "./pages/UserProfile";
 
 const queryClient = new QueryClient();
 
@@ -51,14 +50,6 @@ const App = () => (
                 element={
                   <AuthGuard>
                     <Admin />
-                  </AuthGuard>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <AuthGuard>
-                    <UserProfile />
                   </AuthGuard>
                 } 
               />

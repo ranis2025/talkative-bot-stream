@@ -1,6 +1,6 @@
 
 import { useRef, useEffect } from "react";
-import { Message } from "./message";  // Updated import path
+import { Message } from "./Message";
 import { MessageInput } from "./MessageInput";
 import { IChat, IFile } from "@/types/chat";
 import { AlertTriangle } from "lucide-react";

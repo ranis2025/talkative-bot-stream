@@ -1,9 +1,9 @@
 
-import { useState, useRef, KeyboardEvent, ChangeEvent, useEffect } from "react";
+import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Send, Plus, X, FileText, Images, File, Paperclip, Mic, MicOff, Loader2 } from "lucide-react";
+import { Send, Plus, X, FileText, Images, File, Paperclip } from "lucide-react";
 import { IFile } from "@/types/chat";
 import {
   DropdownMenu,
@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ReactNode } from "react";
-import { toast } from "@/components/ui/use-toast";
 
 interface MessageInputProps {
   onSendMessage: (message: string, files?: IFile[]) => void;
@@ -38,22 +37,8 @@ export function MessageInput({
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<IFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<number | null>(null);
   
   const currentMessage = value !== undefined ? value : message;
-  
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
-      stopRecording();
-    };
-  }, []);
   
   const handleSend = () => {
     if (isLoading || disabled || (!currentMessage.trim() && files.length === 0)) return;
@@ -105,86 +90,6 @@ export function MessageInput({
       fileInputRef.current.click();
     }
   };
-  
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Fix: Properly initialize MediaRecorder
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-      
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      
-      recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        
-        const file = new File([audioBlob], "voice-message.webm", { type: 'audio/webm' });
-        const audioURL = URL.createObjectURL(audioBlob);
-        
-        const newFile: IFile = {
-          name: "Голосовое сообщение.webm",
-          size: file.size,
-          type: file.type,
-          file,
-          url: audioURL,
-        };
-        
-        setFiles(prev => [...prev, newFile]);
-        
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      recorder.start();
-      setIsRecording(true);
-      
-      setRecordingTime(0);
-      timerRef.current = window.setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-      
-    } catch (error) {
-      console.error("Error starting recording:", error);
-      toast({
-        title: "Ошибка записи",
-        description: "Не удалось получить доступ к микрофону",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    
-    if (timerRef.current) {
-      window.clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    setIsRecording(false);
-    setRecordingTime(0);
-  };
-  
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-  
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const isSendDisabled = isLoading || disabled || (!currentMessage.trim() && files.length === 0);
 
@@ -199,8 +104,6 @@ export function MessageInput({
             >
               {file.type.startsWith("image/") ? (
                 <Images className="h-3 w-3" />
-              ) : file.type.startsWith("audio/") ? (
-                <Mic className="h-3 w-3" />
               ) : (
                 <FileText className="h-3 w-3" />
               )}
@@ -225,22 +128,16 @@ export function MessageInput({
             </div>
           )}
           <Textarea
-            placeholder={isRecording ? "Запись голосового сообщения..." : placeholder}
+            placeholder={placeholder}
             value={currentMessage}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             className={cn(
-              "min-h-[60px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 p-3 focus:outline-none",
+              "min-h-[60px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 p-3",
               leftIcon && "pl-10"
             )}
-            disabled={isLoading || disabled || isRecording}
+            disabled={isLoading || disabled}
           />
-          {isRecording && (
-            <div className="absolute bottom-3 left-3 text-red-500 flex items-center gap-2 animate-pulse">
-              <Mic className="h-4 w-4" />
-              <span className="text-xs font-medium">{formatTime(recordingTime)}</span>
-            </div>
-          )}
         </div>
         <div className="flex items-center px-3 pb-3">
           <input
@@ -250,23 +147,6 @@ export function MessageInput({
             className="hidden"
             multiple
           />
-          
-          <Button
-            type="button"
-            size="icon"
-            variant={isRecording ? "destructive" : "ghost"}
-            className="rounded-full"
-            onClick={toggleRecording}
-            disabled={isLoading || disabled}
-            title={isRecording ? "Остановить запись" : "Записать голосовое сообщение"}
-          >
-            {isRecording ? (
-              <MicOff className="h-5 w-5" />
-            ) : (
-              <Mic className="h-5 w-5" />
-            )}
-          </Button>
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -274,7 +154,7 @@ export function MessageInput({
                 size="icon"
                 variant="ghost"
                 className="rounded-full"
-                disabled={isLoading || disabled || isRecording}
+                disabled={isLoading || disabled}
               >
                 <Plus className="h-5 w-5" />
               </Button>
@@ -294,7 +174,6 @@ export function MessageInput({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
           <Button
             type="button"
             size="icon"
@@ -304,11 +183,7 @@ export function MessageInput({
               isSendDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-primary"
             )}
           >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
+            <Send className="h-5 w-5" />
           </Button>
         </div>
       </div>
