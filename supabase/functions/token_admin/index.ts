@@ -7,24 +7,14 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-  
   try {
     // Get the authorization header from the request
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -33,7 +23,7 @@ serve(async (req) => {
     if (!token) {
       return new Response(
         JSON.stringify({ error: 'No token provided' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -44,122 +34,65 @@ serve(async (req) => {
     let result = null;
     switch (action) {
       case 'get_tokens':
-        // Fetch tokens from the database
-        const { data: tokens, error: tokensError } = await supabase
-          .from('access_tokens')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (tokensError) throw tokensError;
-        result = tokens;
+        // This would be replaced with actual DB queries once tables are created
+        result = [
+          {
+            id: '1',
+            token: 'AppName:User123',
+            name: 'Test App',
+            description: 'Test description',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        ];
         break;
-        
       case 'get_assigned_bots':
-        // Fetch assigned bots from the database
-        const { data: assignments, error: assignmentsError } = await supabase
-          .from('token_bot_assignments')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (assignmentsError) throw assignmentsError;
-        result = assignments;
+        // This would be replaced with actual DB queries once tables are created
+        result = [];
         break;
-        
       case 'add_token':
-        // Add a new token to the database
-        const { token: tokenValue, name, description } = params;
-        const { data: newToken, error: addTokenError } = await supabase
-          .from('access_tokens')
-          .insert({
-            token: tokenValue,
-            name,
-            description
-          })
-          .select('id')
-          .single();
-          
-        if (addTokenError) throw addTokenError;
-        result = { success: true, id: newToken.id };
+        // This would be replaced with actual DB operations once tables are created
+        result = { success: true, id: crypto.randomUUID() };
         break;
-        
       case 'update_token':
-        // Update an existing token
-        const { id, name: updateName, description: updateDescription } = params;
-        const { error: updateError } = await supabase
-          .from('access_tokens')
-          .update({
-            name: updateName,
-            description: updateDescription,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id);
-          
-        if (updateError) throw updateError;
+        // This would be replaced with actual DB operations once tables are created
         result = { success: true };
         break;
-        
       case 'delete_token':
-        // Delete a token (assignments will be automatically deleted due to ON DELETE CASCADE)
-        const { id: deleteId } = params;
-        const { error: deleteError } = await supabase
-          .from('access_tokens')
-          .delete()
-          .eq('id', deleteId);
-          
-        if (deleteError) throw deleteError;
+        // This would be replaced with actual DB operations once tables are created
         result = { success: true };
         break;
-        
       case 'assign_bot_to_token':
-        // Assign a bot to a token
-        const { token_id, bot_id, bot_token } = params;
-        const { data: newAssignment, error: assignError } = await supabase
-          .from('token_bot_assignments')
-          .insert({
-            token_id,
-            bot_id,
-            bot_token
-          })
-          .select('id')
-          .single();
-          
-        if (assignError) throw assignError;
+        // Simplified to just use the bot_id directly without retrieving bot details
+        // This would be replaced with actual DB operations once tables are created
+        const { token_id, bot_id } = params;
+        
+        // We're not fetching bot_name anymore since we're just using the bot ID directly
         result = { 
           success: true, 
-          id: newAssignment.id,
-          bot_id: bot_id,
-          bot_token: bot_token
+          id: crypto.randomUUID(),
+          bot_id: bot_id  // Return the bot_id for confirmation
         };
         break;
-        
       case 'remove_assignment':
-        // Remove a bot assignment
-        const { id: assignmentId } = params;
-        const { error: removeError } = await supabase
-          .from('token_bot_assignments')
-          .delete()
-          .eq('id', assignmentId);
-          
-        if (removeError) throw removeError;
+        // This would be replaced with actual DB operations once tables are created
         result = { success: true };
         break;
-        
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
     }
 
     return new Response(
       JSON.stringify(result),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in token_admin function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 });
