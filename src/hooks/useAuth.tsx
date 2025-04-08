@@ -36,14 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return bots;
     } catch (error) {
       console.error("Error fetching assigned bots:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось загрузить назначенных ботов",
-        variant: "destructive",
-      });
       return [];
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -59,65 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (storedToken) {
         tokenToUse = storedToken;
         console.log("Token restored from storage:", storedToken);
-      } else {
-        toast({
-          title: "Требуется токен",
-          description: "Для доступа к приложению необходим токен в URL",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
       }
       
-      // Set token in state
+      // Set token in state without validation
       setToken(tokenToUse);
-      
-      // Check or create user settings for this token
-      try {
-        await checkOrCreateUserSettings(tokenToUse);
-      } catch (error) {
-        console.error("Error checking or creating user settings:", error);
-      }
-      
-      // Fetch bots assigned to this token
-      if (tokenToUse) {
-        await fetchAssignedBots(tokenToUse);
-      }
-      
       setIsLoading(false);
     };
     
     initAuth();
-  }, [searchParams, toast, fetchAssignedBots]);
-
-  const checkOrCreateUserSettings = async (token: string) => {
-    try {
-      const { data: existingSettings, error: checkError } = await supabase
-        .from("user_settings")
-        .select("*")
-        .eq("token", token)
-        .maybeSingle();
-      
-      if (!existingSettings && checkError?.code === "PGRST116") {
-        const userId = uuidv4();
-        const { error: createError } = await supabase
-          .from("user_settings")
-          .insert({ 
-            token: token,
-            theme: 'dark',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            user_id: userId
-          });
-        
-        if (createError) {
-          console.error("Error creating user settings:", createError);
-        }
-      }
-    } catch (error) {
-      console.error("Error checking or creating user settings:", error);
-    }
-  };
+  }, [searchParams]);
 
   const logout = () => {
     setToken(null);
