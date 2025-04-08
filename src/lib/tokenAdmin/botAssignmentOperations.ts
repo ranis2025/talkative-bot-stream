@@ -23,11 +23,16 @@ export const assignBotToToken = async (
   botId: string, 
   botToken: string, 
   botName: string
-): Promise<string> => {
+): Promise<{ id: string, bot_id: string, bot_name: string }> => {
   try {
     console.log('Assigning bot to token via edge function:', { tokenId, botId, botToken, botName });
     
-    const data = await invokeTokenAdminFunction<{ id: string }>('assign_bot_to_token', { 
+    const data = await invokeTokenAdminFunction<{ 
+      id: string, 
+      bot_id: string, 
+      bot_name: string,
+      bot_token?: string 
+    }>('assign_bot_to_token', { 
       token_id: tokenId, 
       bot_id: botId, 
       bot_token: botToken, 
@@ -38,7 +43,11 @@ export const assignBotToToken = async (
       throw new Error('No data returned from assign_bot_to_token function');
     }
     
-    return data.id;
+    return {
+      id: data.id,
+      bot_id: data.bot_id,
+      bot_name: data.bot_name
+    };
   } catch (error) {
     console.error('Error assigning bot to token:', error);
     throw error;

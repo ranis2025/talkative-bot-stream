@@ -137,8 +137,10 @@ async function assignBotToToken(params) {
     return { 
       success: true, 
       id: existingAssignment.id,
+      token_id: existingAssignment.token_id,
       bot_id: existingAssignment.bot_id,
-      bot_name: bot_name
+      bot_name: existingAssignment.bot_name,
+      bot_token: existingAssignment.bot_token
     };
   }
   
@@ -150,8 +152,10 @@ async function assignBotToToken(params) {
   return { 
     success: true, 
     id: newAssignment.id,
-    bot_id,
-    bot_name
+    token_id: newAssignment.token_id,
+    bot_id: newAssignment.bot_id,
+    bot_name: newAssignment.bot_name,
+    bot_token: newAssignment.bot_token
   };
 }
 
