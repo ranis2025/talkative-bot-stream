@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,6 @@ interface AuthContextType {
   assignedBots: AssignedBot[];
   setToken: (token: string | null) => void;
   logout: () => void;
-  fetchAssignedBots: (tokenValue: string) => Promise<AssignedBot[]>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,43 +25,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Function to fetch bots by token
-  const fetchAssignedBots = useCallback(async (tokenValue: string) => {
-    try {
-      console.log("Fetching bots for token:", tokenValue);
-      const bots = await getBotsByToken(tokenValue);
-      console.log("Fetched bots:", bots);
-      setAssignedBots(bots);
-      return bots;
-    } catch (error) {
-      console.error("Error fetching assigned bots:", error);
-      return [];
-    }
-  }, []);
-
   useEffect(() => {
-    const initAuth = async () => {
-      const urlToken = searchParams.get("token");
-      // Try to get token from local storage if not in URL
-      const storedToken = localStorage.getItem("auth_token");
-      
-      let tokenToUse = null;
-      if (urlToken) {
-        tokenToUse = urlToken;
-        localStorage.setItem("auth_token", urlToken);
-        console.log("Token set from URL:", urlToken);
-      } else if (storedToken) {
-        tokenToUse = storedToken;
-        console.log("Token restored from storage:", storedToken);
+    const fetchBotsByToken = async (tokenValue: string) => {
+      try {
+        const bots = await getBotsByToken(tokenValue);
+        setAssignedBots(bots);
+        console.log("Assigned bots loaded:", bots);
+      } catch (error) {
+        console.error("Error fetching assigned bots:", error);
       }
-      
-      // Set token in state without validation
-      setToken(tokenToUse);
-      setIsLoading(false);
     };
+
+    const urlToken = searchParams.get("token");
     
-    initAuth();
-  }, [searchParams]);
+    // Try to get token from local storage if not in URL
+    const storedToken = localStorage.getItem("auth_token");
+    
+    if (urlToken) {
+      checkOrCreateUserSettings(urlToken);
+      setToken(urlToken);
+      localStorage.setItem("auth_token", urlToken);
+      console.log("Token set from URL:", urlToken);
+      fetchBotsByToken(urlToken);
+    } else if (storedToken) {
+      checkOrCreateUserSettings(storedToken);
+      setToken(storedToken);
+      console.log("Token restored from storage:", storedToken);
+      fetchBotsByToken(storedToken);
+    } else {
+      toast({
+        title: "Требуется токен",
+        description: "Для доступа к приложению необходим токен в URL",
+        variant: "destructive",
+      });
+    }
+    
+    setIsLoading(false);
+  }, [searchParams, toast]);
+
+  const checkOrCreateUserSettings = async (token: string) => {
+    try {
+      const { data: existingSettings, error: checkError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
+      
+      if (!existingSettings && checkError?.code === "PGRST116") {
+        const userId = uuidv4();
+        const { error: createError } = await supabase
+          .from("user_settings")
+          .insert({ 
+            token: token,
+            theme: 'dark',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            user_id: userId
+          });
+        
+        if (createError) {
+          console.error("Error creating user settings:", createError);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking or creating user settings:", error);
+    }
+  };
 
   const logout = () => {
     setToken(null);
@@ -80,8 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     assignedBots,
     setToken,
-    logout,
-    fetchAssignedBots
+    logout
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

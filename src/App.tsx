@@ -25,8 +25,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <Routes>
-              {/* Redirect root to chat */}
-              <Route path="/" element={<Navigate to="/chat" replace />} />
+              <Route path="/" element={<Navigate to="/auth" replace />} />
               <Route 
                 path="/auth" 
                 element={<Auth />}

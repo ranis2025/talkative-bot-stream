@@ -13,10 +13,10 @@ export interface TokenRecord {
 
 export interface AssignedBot {
   id: string;
+  token_id: string;
   bot_id: string;
   bot_token?: string;
-  bot_name?: string;
-  token_id?: string; // Add this property to resolve the TypeScript error
+  created_at: string;
 }
 
 // Functions for token administration that use Supabase and the token_admin edge function
@@ -121,23 +121,13 @@ export const deleteToken = async (id: string): Promise<void> => {
   }
 };
 
-export const assignBotToToken = async (
-  tokenId: string, 
-  botId: string, 
-  botToken?: string,
-  botName?: string
-): Promise<string> => {
+export const assignBotToToken = async (tokenId: string, botId: string, botToken?: string): Promise<string> => {
   try {
     // Call our edge function
     const { data, error } = await supabase.functions.invoke('token_admin', {
       body: { 
         action: 'assign_bot_to_token', 
-        params: { 
-          token_id: tokenId, 
-          bot_id: botId, 
-          bot_token: botToken,
-          bot_name: botName
-        } 
+        params: { token_id: tokenId, bot_id: botId, bot_token: botToken } 
       },
     });
 

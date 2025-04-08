@@ -31,7 +31,7 @@ const TokenAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [newToken, setNewToken] = useState({ name: "", description: "" });
-  const [newAssignment, setNewAssignment] = useState({ token_id: "", bot_id: "", bot_token: "", bot_name: "" });
+  const [newAssignment, setNewAssignment] = useState({ token_id: "", bot_id: "", bot_token: "" });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -51,14 +51,6 @@ const TokenAdmin = () => {
       navigate(`/token-admin?token=${token}`, { replace: true });
     }
   }, [token, searchParams, navigate]);
-
-  // Check for existing admin authentication
-  useEffect(() => {
-    const isAdminAuth = localStorage.getItem("token_admin_auth") === "true";
-    if (isAdminAuth) {
-      setIsAuthenticated(true);
-    }
-  }, []);
 
   // Admin login handler
   const handleAdminLogin = () => {
@@ -85,6 +77,14 @@ const TokenAdmin = () => {
       setIsSubmitting(false);
     }, 600);
   };
+
+  // Check for existing admin authentication
+  useEffect(() => {
+    const isAdminAuth = localStorage.getItem("token_admin_auth") === "true";
+    if (isAdminAuth) {
+      setIsAuthenticated(true);
+    }
+  }, []);
 
   // Admin logout handler
   const handleAdminLogout = () => {
@@ -284,19 +284,14 @@ const TokenAdmin = () => {
     try {
       setIsSubmitting(true);
       // Use our utility function to assign a bot to a token in the database
-      await assignBotToToken(
-        newAssignment.token_id, 
-        newAssignment.bot_id, 
-        newAssignment.bot_token,
-        newAssignment.bot_name
-      );
+      await assignBotToToken(newAssignment.token_id, newAssignment.bot_id, newAssignment.bot_token);
       
       toast({
         title: "Успешно",
         description: "Бот назначен токену",
       });
       
-      setNewAssignment({ token_id: "", bot_id: "", bot_token: "", bot_name: "" });
+      setNewAssignment({ token_id: "", bot_id: "", bot_token: "" });
       fetchAssignedBots();
     } catch (error) {
       console.error("Error assigning bot to token:", error);

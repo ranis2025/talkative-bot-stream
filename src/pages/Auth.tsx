@@ -31,24 +31,67 @@ const Auth = () => {
   useEffect(() => {
     const token = searchParams.get("token");
     if (token) {
-      // Skip validation and directly use the token
-      setTokenLoading(true);
+      handleTokenAuth(token);
+    } else {
+      // If no token, show error and redirect to chat with a demo token
+      toast({
+        title: "Требуется токен",
+        description: "Для доступа к приложению необходим токен в URL",
+        variant: "destructive",
+      });
+      // Redirect to chat with a demo token
+      navigate("/chat?token=demo-token");
+    }
+  }, [searchParams, navigate, toast, setToken]);
+
+  // Handle token-based authentication
+  const handleTokenAuth = async (token: string) => {
+    setTokenLoading(true);
+    try {
+      // Create or get user settings for this token
+      const { data: existingSettings, error: settingsError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
+      
+      if (!existingSettings) {
+        // If no settings found for this token, create new settings
+        const userId = uuidv4();
+        const { error: createError } = await supabase
+          .from("user_settings")
+          .insert({ 
+            token: token,
+            theme: 'dark',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            user_id: userId
+          });
+        
+        if (createError) throw createError;
+      }
       
       // Set token in context
       setToken(token);
       
-      // Redirect to chat
-      navigate(`/chat?token=${token}`, { replace: true });
-      setTokenLoading(false);
-    } else {
-      // If no token, redirect to chat with a demo token
+      // Navigate to chat page with token
       toast({
-        title: "Демо режим",
-        description: "Используется демо токен для доступа к приложению",
+        title: "Успешный вход по токену",
+        description: "Вы успешно вошли в систему",
       });
-      navigate("/chat?token=demo-token", { replace: true });
+      navigate(`/chat?token=${token}`);
+    } catch (error: any) {
+      toast({
+        title: "Ошибка аутентификации по токену",
+        description: error.message || "Произошла ошибка при входе по токену",
+        variant: "destructive",
+      });
+      // Redirect to chat with a demo token on error
+      navigate("/chat?token=demo-token");
+    } finally {
+      setTokenLoading(false);
     }
-  }, [searchParams, navigate, toast, setToken]);
+  };
 
   const appName = getAppName(searchParams.get("token"));
 
@@ -57,7 +100,7 @@ const Auth = () => {
       <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
         <div className="flex items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="text-lg">Выполняется вход...</span>
+          <span className="text-lg">Выполняется вход по токену...</span>
         </div>
       </div>
     );
@@ -76,7 +119,7 @@ const Auth = () => {
           </div>
           <h2 className="text-2xl font-bold">Вход в {appName} Чат</h2>
           <p className="text-muted-foreground mt-2">
-            Выполняется вход...
+            Для доступа к приложению необходим токен в URL
           </p>
         </div>
       </div>
