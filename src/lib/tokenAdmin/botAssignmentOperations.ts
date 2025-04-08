@@ -39,6 +39,8 @@ export const assignBotToToken = async (
       bot_name: botName 
     });
     
+    console.log('Response from assign_bot_to_token function:', data);
+    
     if (!data || !data.id) {
       throw new Error('No data returned from assign_bot_to_token function');
     }

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from "../_shared/cors.ts";
@@ -86,6 +85,8 @@ async function deleteToken(params) {
 
 // Check if a bot assignment already exists
 async function checkExistingAssignment(tokenId, botId) {
+  console.log(`Checking for existing assignment with tokenId=${tokenId} and botId=${botId}`);
+  
   const { data: existingAssignment, error: checkError } = await supabase
     .from('token_bot_assignments')
     .select('*')
@@ -98,11 +99,14 @@ async function checkExistingAssignment(tokenId, botId) {
     throw checkError;
   }
   
+  console.log('Existing assignment check result:', existingAssignment);
   return existingAssignment;
 }
 
 // Create a new bot assignment
 async function createBotAssignment(tokenId, botId, botToken, botName) {
+  console.log('Creating new bot assignment with params:', { tokenId, botId, botToken, botName });
+  
   const { data: newAssignment, error: assignError } = await supabase
     .from('token_bot_assignments')
     .insert([{ 
@@ -119,6 +123,7 @@ async function createBotAssignment(tokenId, botId, botToken, botName) {
     throw assignError;
   }
   
+  console.log('New assignment created:', newAssignment);
   return newAssignment;
 }
 
@@ -129,34 +134,45 @@ async function assignBotToToken(params) {
   // Log received data for debugging
   console.log('Assigning bot to token with params:', { token_id, bot_id, bot_token, bot_name });
   
-  // First check if this assignment already exists to avoid duplicates
-  const existingAssignment = await checkExistingAssignment(token_id, bot_id);
-  
-  if (existingAssignment) {
-    console.log('Assignment already exists, returning existing data');
-    return { 
-      success: true, 
-      id: existingAssignment.id,
-      token_id: existingAssignment.token_id,
-      bot_id: existingAssignment.bot_id,
-      bot_name: existingAssignment.bot_name,
-      bot_token: existingAssignment.bot_token
-    };
+  // Verify all required parameters are present
+  if (!token_id || !bot_id || !bot_token || !bot_name) {
+    console.error('Missing required parameters:', { token_id, bot_id, bot_token, bot_name });
+    throw new Error('Missing required parameters for bot assignment');
   }
   
-  // Insert the new assignment
-  const newAssignment = await createBotAssignment(token_id, bot_id, bot_token, bot_name);
-  
-  console.log('Assignment successful, returning data:', newAssignment);
-  
-  return { 
-    success: true, 
-    id: newAssignment.id,
-    token_id: newAssignment.token_id,
-    bot_id: newAssignment.bot_id,
-    bot_name: newAssignment.bot_name,
-    bot_token: newAssignment.bot_token
-  };
+  try {
+    // First check if this assignment already exists to avoid duplicates
+    const existingAssignment = await checkExistingAssignment(token_id, bot_id);
+    
+    if (existingAssignment) {
+      console.log('Assignment already exists, returning existing data');
+      return { 
+        success: true, 
+        id: existingAssignment.id,
+        token_id: existingAssignment.token_id,
+        bot_id: existingAssignment.bot_id,
+        bot_name: existingAssignment.bot_name,
+        bot_token: existingAssignment.bot_token
+      };
+    }
+    
+    // Insert the new assignment
+    const newAssignment = await createBotAssignment(token_id, bot_id, bot_token, bot_name);
+    
+    console.log('Assignment successful, returning data:', newAssignment);
+    
+    return { 
+      success: true, 
+      id: newAssignment.id,
+      token_id: newAssignment.token_id,
+      bot_id: newAssignment.bot_id,
+      bot_name: newAssignment.bot_name,
+      bot_token: newAssignment.bot_token
+    };
+  } catch (error) {
+    console.error('Error in assignBotToToken:', error);
+    throw error;
+  }
 }
 
 // Remove a bot assignment from token_bot_assignments table

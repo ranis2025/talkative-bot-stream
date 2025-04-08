@@ -47,11 +47,25 @@ const BotAssignmentForm = ({ tokens, onSuccess, onClose }: BotAssignmentFormProp
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      await assignBotToToken(values.token_id, values.bot_id, values.bot_token, values.bot_name);
+      console.log('Submitting form with values:', values);
+      
+      const selectedToken = tokens.find(t => t.id === values.token_id);
+      if (selectedToken) {
+        console.log('Selected token:', selectedToken);
+      }
+      
+      const result = await assignBotToToken(
+        values.token_id, 
+        values.bot_id, 
+        values.bot_token, 
+        values.bot_name
+      );
+      
+      console.log('Bot assignment result:', result);
       
       toast({
         title: "Успешно",
-        description: "Бот назначен токену",
+        description: `Бот "${values.bot_name}" назначен токену`,
       });
       
       form.reset();
@@ -79,6 +93,15 @@ const BotAssignmentForm = ({ tokens, onSuccess, onClose }: BotAssignmentFormProp
               <select 
                 className="flex w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 {...field}
+                onChange={(e) => {
+                  field.onChange(e);
+                  const tokenId = e.target.value;
+                  console.log('Token selected:', tokenId);
+                  const selectedToken = tokens.find(t => t.id === tokenId);
+                  if (selectedToken) {
+                    console.log('Selected token details:', selectedToken);
+                  }
+                }}
               >
                 <option value="">Выберите токен</option>
                 {tokens.map(token => (
