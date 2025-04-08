@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Database } from "lucide-react";
+import { executeCustomQuery } from "@/lib/tokenAdmin/api";
 
 const DbAdmin = () => {
   const [magicToken, setMagicToken] = useState("");
@@ -80,7 +81,7 @@ const DbAdmin = () => {
         description: `Found ${combinedResults.length} bots for token ${magicToken}`,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching bots:", error);
       toast({
         title: "Error fetching bots",
@@ -104,17 +105,13 @@ const DbAdmin = () => {
 
     setIsQueryLoading(true);
     try {
-      // Execute the custom query using rpc
-      const { data, error } = await supabase.rpc('execute_query', {
-        query_text: sqlQuery
-      });
-
-      if (error) throw error;
-
-      if (Array.isArray(data) && data.length > 0) {
+      // Execute the custom query using our API function
+      const results = await executeCustomQuery(sqlQuery);
+      
+      if (Array.isArray(results) && results.length > 0) {
         // Extract column names from the first result
-        setQueryColumns(Object.keys(data[0]));
-        setQueryResults(data);
+        setQueryColumns(Object.keys(results[0]));
+        setQueryResults(results);
       } else {
         setQueryColumns([]);
         setQueryResults([]);
@@ -123,7 +120,7 @@ const DbAdmin = () => {
           description: "No results returned or query was not a SELECT statement",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error executing query:", error);
       toast({
         title: "Error executing query",
