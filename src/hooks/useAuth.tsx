@@ -10,6 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   setToken: (token: string | null) => void;
   logout: () => void;
+  validateToken: (token: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,24 +29,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedToken = localStorage.getItem("auth_token");
     
     if (urlToken) {
-      checkOrCreateUserSettings(urlToken);
-      setToken(urlToken);
-      localStorage.setItem("auth_token", urlToken);
-      console.log("Token set from URL:", urlToken);
+      validateAndSetToken(urlToken);
     } else if (storedToken) {
-      checkOrCreateUserSettings(storedToken);
-      setToken(storedToken);
-      console.log("Token restored from storage:", storedToken);
+      validateAndSetToken(storedToken);
     } else {
-      toast({
-        title: "Требуется токен",
-        description: "Для доступа к приложению необходим токен в URL",
-        variant: "destructive",
-      });
+      setIsLoading(false);
+    }
+  }, [searchParams, toast]);
+
+  const validateAndSetToken = async (token: string) => {
+    if (token.startsWith("demo-")) {
+      // Demo tokens are always valid
+      checkOrCreateUserSettings(token);
+      setToken(token);
+      localStorage.setItem("auth_token", token);
+      setIsLoading(false);
+      return;
     }
     
-    setIsLoading(false);
-  }, [searchParams, toast]);
+    try {
+      // Check if token exists in the database
+      const { data: tokenExists, error: tokenError } = await supabase
+        .from("access_tokens")
+        .select("id")
+        .eq("token", token)
+        .maybeSingle();
+      
+      if (tokenExists) {
+        // Token is valid
+        checkOrCreateUserSettings(token);
+        setToken(token);
+        localStorage.setItem("auth_token", token);
+        console.log("Token validated and set:", token);
+      } else {
+        // Token not found, redirect to auth page
+        console.log("Invalid token, redirecting to auth page");
+        if (window.location.pathname !== "/auth") {
+          navigate("/auth");
+        }
+        setToken(null);
+        localStorage.removeItem("auth_token");
+      }
+    } catch (error) {
+      console.error("Error validating token:", error);
+      // On error, we'll allow the token for now and let the API calls fail if needed
+      checkOrCreateUserSettings(token);
+      setToken(token);
+      localStorage.setItem("auth_token", token);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const validateToken = async (token: string): Promise<boolean> => {
+    if (token.startsWith("demo-")) {
+      return true;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from("access_tokens")
+        .select("id")
+        .eq("token", token)
+        .maybeSingle();
+      
+      return !!data;
+    } catch (error) {
+      console.error("Error validating token:", error);
+      return false;
+    }
+  };
 
   const checkOrCreateUserSettings = async (token: string) => {
     try {
@@ -90,7 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     token,
     isLoading,
     setToken,
-    logout
+    logout,
+    validateToken
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

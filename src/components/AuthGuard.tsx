@@ -11,7 +11,7 @@ interface AuthGuardProps {
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { token, isLoading, setToken } = useAuth();
+  const { token, isLoading, setToken, validateToken } = useAuth();
   const [searchParams] = useSearchParams();
   
   // Extract application name from token if it follows the format "AppName:User"
@@ -34,14 +34,25 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     const urlToken = searchParams.get("token");
     if (urlToken && urlToken !== token) {
       console.log("Setting token from URL:", urlToken);
-      setToken(urlToken);
+      
+      // Validate the token before setting it
+      validateToken(urlToken).then(isValid => {
+        if (isValid) {
+          setToken(urlToken);
+        } else if (location.pathname !== "/auth") {
+          // If token is invalid, redirect to auth page
+          navigate("/auth");
+        }
+      });
     } else if (token && !searchParams.get("token") && 
-               (location.pathname === "/chat" || location.pathname === "/group-chats" || location.pathname === "/admin")) {
-      // If we have a token in context but not in URL, add it to the URL for chat, group-chats and admin routes
+               (location.pathname === "/chat" || location.pathname === "/group-chats" || 
+                location.pathname === "/admin" || location.pathname === "/token-admin" || 
+                location.pathname === "/db-admin")) {
+      // If we have a token in context but not in URL, add it to the URL for protected routes
       console.log("Adding token to URL:", token);
       navigate(`${location.pathname}?token=${token}`, { replace: true });
     }
-  }, [searchParams, token, setToken, location, navigate]);
+  }, [searchParams, token, setToken, location, navigate, validateToken]);
   
   // If loading, show loading state
   if (isLoading) {
