@@ -26,3 +26,15 @@ export const invokeTokenAdminFunction = async <T>(
     throw error;
   }
 };
+
+/**
+ * Execute a custom SQL query
+ */
+export const executeCustomQuery = async (query: string): Promise<any[]> => {
+  try {
+    return await invokeTokenAdminFunction<any[]>('execute_query', { query });
+  } catch (error) {
+    console.error('Error executing custom query:', error);
+    throw error;
+  }
+};

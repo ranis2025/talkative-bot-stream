@@ -13,6 +13,7 @@ import {
   assignBotToToken, 
   removeAssignment 
 } from "./assignmentHandlers.ts";
+import { executeCustomQuery } from "../_shared/dbAdmin.ts";
 
 // Process a request based on the action
 async function processAction(action: string, params: Record<string, any>) {
@@ -42,6 +43,9 @@ async function processAction(action: string, params: Record<string, any>) {
     
     case 'remove_assignment':
       return await removeAssignment(params);
+      
+    case 'execute_query':
+      return await executeCustomQuery({ query: params.query });
     
     default:
       console.error('Invalid action requested:', action);

@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import GroupChats from "./pages/GroupChats";
 import TokenAdmin from "./pages/TokenAdmin";
+import DbAdmin from "./pages/DbAdmin";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,14 @@ const App = () => (
                 element={
                   <AuthGuard>
                     <TokenAdmin />
+                  </AuthGuard>
+                } 
+              />
+              <Route 
+                path="/db-admin" 
+                element={
+                  <AuthGuard>
+                    <DbAdmin />
                   </AuthGuard>
                 } 
               />
