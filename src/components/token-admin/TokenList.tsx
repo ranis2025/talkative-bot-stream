@@ -40,6 +40,7 @@ interface TokenListProps {
 const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListProps) => {
   const [newToken, setNewToken] = useState({ name: "", description: "" });
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,6 +56,7 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
 
   const saveToken = async (tokenRecord: TokenRecord) => {
     try {
+      setSaving(tokenRecord.id);
       await updateToken(tokenRecord.id, tokenRecord.name, tokenRecord.description);
       
       toast({
@@ -62,6 +64,7 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
         description: "Токен обновлен",
       });
       
+      setSaving(null);
       fetchTokens();
     } catch (error) {
       console.error("Error updating token:", error);
@@ -70,6 +73,7 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
         description: "Не удалось обновить токен",
         variant: "destructive"
       });
+      setSaving(null);
     }
   };
 
@@ -132,8 +136,8 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(
-      () => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
         setCopiedToken(text);
         setTimeout(() => setCopiedToken(null), 2000);
         
@@ -141,16 +145,15 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
           title: "Скопировано",
           description: "Токен скопирован в буфер обмена",
         });
-      },
-      (err) => {
+      })
+      .catch((err) => {
         console.error("Не удалось скопировать токен: ", err);
         toast({
           title: "Ошибка",
           description: "Не удалось скопировать токен",
           variant: "destructive"
         });
-      }
-    );
+      });
   };
 
   if (loadingTokens) {
@@ -163,14 +166,14 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
 
   return (
     <>
-      <div className="border rounded-md">
+      <div className="border rounded-md mb-6">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Название</TableHead>
-              <TableHead>Токен</TableHead>
-              <TableHead>Описание</TableHead>
-              <TableHead className="text-right">Действия</TableHead>
+              <TableHead className="w-1/4">Название</TableHead>
+              <TableHead className="w-1/3">Токен</TableHead>
+              <TableHead className="w-1/4">Описание</TableHead>
+              <TableHead className="text-right w-1/6">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -191,28 +194,22 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className="truncate max-w-[120px] font-mono text-sm">
+                      <div className="font-mono text-sm bg-muted p-2 rounded-md overflow-hidden overflow-ellipsis w-full max-w-[220px]">
                         {tokenRecord.token}
                       </div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => copyToClipboard(tokenRecord.token)}
-                            className="h-8 w-8"
-                          >
-                            {copiedToken === tokenRecord.token ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Скопировать токен</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => copyToClipboard(tokenRecord.token)}
+                        className="h-8 w-8 flex-shrink-0"
+                        aria-label="Скопировать токен"
+                      >
+                        {copiedToken === tokenRecord.token ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -223,17 +220,18 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
                     />
                   </TableCell>
                   <TableCell className="flex justify-end space-x-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="sm" onClick={() => saveToken(tokenRecord)}>
-                          <Save className="h-4 w-4 mr-1" />
-                          Сохранить
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Сохранить изменения</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <Button 
+                      size="sm" 
+                      onClick={() => saveToken(tokenRecord)}
+                      disabled={saving === tokenRecord.id}
+                    >
+                      {saving === tokenRecord.id ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-1" />
+                      )}
+                      Сохранить
+                    </Button>
                     
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

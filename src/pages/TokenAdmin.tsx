@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -29,6 +29,7 @@ const TokenAdmin = () => {
   
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [refreshData, setRefreshData] = useState(0);
 
   useEffect(() => {
     if (token && !searchParams.get("token")) {
@@ -63,7 +64,7 @@ const TokenAdmin = () => {
       fetchTokens();
       fetchAssignedBots();
     }
-  }, [token, isAuthenticated]);
+  }, [token, isAuthenticated, refreshData]);
 
   const fetchTokens = async () => {
     try {
@@ -111,6 +112,10 @@ const TokenAdmin = () => {
     }
   };
 
+  const refreshAllData = () => {
+    setRefreshData(prev => prev + 1);
+  };
+
   const handleBackToChat = () => {
     navigate(token ? `/chat?token=${token}` : '/chat');
   };
@@ -131,7 +136,11 @@ const TokenAdmin = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Управление Magic токенами</h1>
           <div className="flex gap-2">
-            <Button onClick={handleAdminLogout} variant="outline">
+            <Button onClick={refreshAllData} variant="outline">
+              Обновить данные
+            </Button>
+            <Button onClick={handleAdminLogout} variant="outline" className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
               Выйти из админ-панели
             </Button>
             <Button onClick={handleBackToChat} className="flex items-center gap-2">
