@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from "../_shared/cors.ts";
@@ -21,6 +22,27 @@ async function getTokens() {
     throw tokensError;
   }
   return tokens;
+}
+
+// Get token value by ID
+async function getTokenValue(params) {
+  const { token_id } = params;
+  
+  console.log(`Getting token value for ID: ${token_id}`);
+  
+  const { data: token, error: tokenError } = await supabase
+    .from('access_tokens')
+    .select('token')
+    .eq('id', token_id)
+    .single();
+  
+  if (tokenError) {
+    console.error('Error fetching token value:', tokenError);
+    throw tokenError;
+  }
+  
+  console.log('Token value retrieved:', token);
+  return { token: token.token };
 }
 
 // Get all bot assignments from token_bot_assignments table
@@ -127,12 +149,71 @@ async function createBotAssignment(tokenId, botId, botToken, botName) {
   return newAssignment;
 }
 
+// Sync bot assignment with chat_bots table
+async function syncWithChatBots(botId, botToken, botName, tokenValue) {
+  console.log('Syncing bot assignment with chat_bots table:', { botId, botName, tokenValue });
+  
+  if (!tokenValue) {
+    console.log('No token value provided, skipping chat_bots sync');
+    return;
+  }
+
+  // Check if a record already exists
+  const { data: existingBot, error: checkError } = await supabase
+    .from('chat_bots')
+    .select('*')
+    .eq('bot_id', botId)
+    .eq('token', tokenValue)
+    .maybeSingle();
+    
+  if (checkError) {
+    console.error('Error checking existing chat bot:', checkError);
+    // Don't throw - we don't want this to block the main operation
+  }
+  
+  if (existingBot) {
+    console.log('Existing chat bot found, updating:', existingBot);
+    // Update existing record
+    const { error: updateError } = await supabase
+      .from('chat_bots')
+      .update({ 
+        bot_token: botToken,
+        name: botName,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingBot.id);
+      
+    if (updateError) {
+      console.error('Error updating chat bot:', updateError);
+      // Don't throw - we don't want this to block the main operation
+    }
+  } else {
+    console.log('No existing chat bot found, creating new one');
+    // Create new record
+    const { error: insertError } = await supabase
+      .from('chat_bots')
+      .insert([{ 
+        bot_id: botId, 
+        bot_token: botToken, 
+        name: botName,
+        token: tokenValue
+      }]);
+      
+    if (insertError) {
+      console.error('Error inserting chat bot:', insertError);
+      // Don't throw - we don't want this to block the main operation
+    }
+  }
+  
+  console.log('Sync with chat_bots completed');
+}
+
 // Assign a bot to a token
 async function assignBotToToken(params) {
-  const { token_id, bot_id, bot_token, bot_name } = params;
+  const { token_id, bot_id, bot_token, bot_name, token_value } = params;
   
   // Log received data for debugging
-  console.log('Assigning bot to token with params:', { token_id, bot_id, bot_token, bot_name });
+  console.log('Assigning bot to token with params:', { token_id, bot_id, bot_token, bot_name, token_value });
   
   // Verify all required parameters are present
   if (!token_id || !bot_id || !bot_token || !bot_name) {
@@ -144,30 +225,34 @@ async function assignBotToToken(params) {
     // First check if this assignment already exists to avoid duplicates
     const existingAssignment = await checkExistingAssignment(token_id, bot_id);
     
+    let assignment;
     if (existingAssignment) {
       console.log('Assignment already exists, returning existing data');
-      return { 
-        success: true, 
-        id: existingAssignment.id,
-        token_id: existingAssignment.token_id,
-        bot_id: existingAssignment.bot_id,
-        bot_name: existingAssignment.bot_name,
-        bot_token: existingAssignment.bot_token
-      };
+      assignment = existingAssignment;
+    } else {
+      // Insert the new assignment
+      assignment = await createBotAssignment(token_id, bot_id, bot_token, bot_name);
+      console.log('New assignment created:', assignment);
     }
     
-    // Insert the new assignment
-    const newAssignment = await createBotAssignment(token_id, bot_id, bot_token, bot_name);
+    // Sync with chat_bots table
+    try {
+      await syncWithChatBots(bot_id, bot_token, bot_name, token_value);
+    } catch (syncError) {
+      console.error('Error syncing with chat_bots:', syncError);
+      // Continue even if sync fails
+    }
     
-    console.log('Assignment successful, returning data:', newAssignment);
+    console.log('Assignment successful, returning data:', assignment);
     
     return { 
       success: true, 
-      id: newAssignment.id,
-      token_id: newAssignment.token_id,
-      bot_id: newAssignment.bot_id,
-      bot_name: newAssignment.bot_name,
-      bot_token: newAssignment.bot_token
+      id: assignment.id,
+      token_id: assignment.token_id,
+      bot_id: assignment.bot_id,
+      bot_name: assignment.bot_name,
+      bot_token: assignment.bot_token,
+      token_value
     };
   } catch (error) {
     console.error('Error in assignBotToToken:', error);
@@ -175,12 +260,53 @@ async function assignBotToToken(params) {
   }
 }
 
-// Remove a bot assignment from token_bot_assignments table
+// Remove a bot assignment and also clean up chat_bots entry if exists
 async function removeAssignment(params) {
   const { id: removeId } = params;
   
   console.log('Removing assignment with ID:', removeId);
   
+  // First, get the assignment details to retrieve token_id and bot_id
+  const { data: assignment, error: getError } = await supabase
+    .from('token_bot_assignments')
+    .select('*')
+    .eq('id', removeId)
+    .single();
+    
+  if (getError) {
+    console.error('Error getting assignment details:', getError);
+    throw getError;
+  }
+  
+  // Get the token value for the token_id
+  const { data: tokenData, error: tokenError } = await supabase
+    .from('access_tokens')
+    .select('token')
+    .eq('id', assignment.token_id)
+    .single();
+    
+  if (!tokenError && tokenData) {
+    // Try to remove matching entry from chat_bots
+    try {
+      const { error: chatBotDeleteError } = await supabase
+        .from('chat_bots')
+        .delete()
+        .eq('bot_id', assignment.bot_id)
+        .eq('token', tokenData.token);
+        
+      if (chatBotDeleteError) {
+        console.log('Note: Could not delete from chat_bots:', chatBotDeleteError);
+        // Continue anyway
+      } else {
+        console.log('Successfully removed matching chat_bots entry');
+      }
+    } catch (e) {
+      console.log('Error trying to clean up chat_bots:', e);
+      // Continue anyway
+    }
+  }
+  
+  // Now delete the assignment from token_bot_assignments
   const { error: removeError } = await supabase
     .from('token_bot_assignments')
     .delete()
@@ -204,6 +330,9 @@ async function processAction(action, params) {
     case 'get_tokens':
       return await getTokens();
     
+    case 'get_token_value':
+      return await getTokenValue(params);
+      
     case 'get_assigned_bots':
       return await getAssignedBots();
     

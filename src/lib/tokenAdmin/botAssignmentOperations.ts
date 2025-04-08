@@ -27,16 +27,22 @@ export const assignBotToToken = async (
   try {
     console.log('Assigning bot to token via edge function:', { tokenId, botId, botToken, botName });
     
+    // First, find the token's value to use in chat_bots table
+    const tokenData = await invokeTokenAdminFunction<{ token: string | null }>('get_token_value', { token_id: tokenId });
+    console.log('Token data retrieved:', tokenData);
+    
     const data = await invokeTokenAdminFunction<{ 
       id: string, 
       bot_id: string, 
       bot_name: string,
-      bot_token?: string 
+      bot_token?: string,
+      token_value?: string
     }>('assign_bot_to_token', { 
       token_id: tokenId, 
       bot_id: botId, 
       bot_token: botToken, 
-      bot_name: botName 
+      bot_name: botName,
+      token_value: tokenData.token
     });
     
     console.log('Response from assign_bot_to_token function:', data);
