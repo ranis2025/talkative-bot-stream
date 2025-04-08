@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -73,13 +72,11 @@ const TokenAdmin = () => {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
   
-  // Admin authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
 
-  // Define the form schema
   const formSchema = z.object({
     token_id: z.string().min(1, "Выберите токен"),
     bot_id: z.string().min(1, "ID бота обязателен"),
@@ -87,7 +84,6 @@ const TokenAdmin = () => {
     bot_name: z.string().min(1, "Название бота обязательно"),
   });
 
-  // Initialize react-hook-form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -98,14 +94,12 @@ const TokenAdmin = () => {
     },
   });
 
-  // Ensure token is preserved in URL
   useEffect(() => {
     if (token && !searchParams.get("token")) {
       navigate(`/token-admin?token=${token}`, { replace: true });
     }
   }, [token, searchParams, navigate]);
 
-  // Admin login handler
   const handleAdminLogin = () => {
     if (username === "admin" && password === "admin") {
       setIsAuthenticated(true);
@@ -116,7 +110,6 @@ const TokenAdmin = () => {
     }
   };
 
-  // Check for existing admin authentication
   useEffect(() => {
     const isAdminAuth = localStorage.getItem("token_admin_auth") === "true";
     if (isAdminAuth) {
@@ -124,13 +117,11 @@ const TokenAdmin = () => {
     }
   }, []);
 
-  // Admin logout handler
   const handleAdminLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem("token_admin_auth");
   };
 
-  // Fetch tokens and bots data
   useEffect(() => {
     if (token && isAuthenticated) {
       fetchTokens();
@@ -142,7 +133,6 @@ const TokenAdmin = () => {
     try {
       setLoadingTokens(true);
       
-      // Use our utility function instead of direct Supabase calls
       const data = await getTokens();
       setTokens(data);
     } catch (error) {
@@ -153,7 +143,6 @@ const TokenAdmin = () => {
         variant: "destructive"
       });
       
-      // Use mock data as fallback
       setTokens([
         {
           id: '1',
@@ -172,7 +161,6 @@ const TokenAdmin = () => {
   const fetchAssignedBots = async () => {
     try {
       setLoadingAssignments(true);
-      // Use our utility function instead of direct Supabase calls
       const data = await getAssignedBots();
       setAssignedBots(data);
     } catch (error) {
@@ -200,7 +188,6 @@ const TokenAdmin = () => {
 
   const saveToken = async (tokenRecord: TokenRecord) => {
     try {
-      // Use our utility function instead of direct Supabase calls
       await updateToken(tokenRecord.id, tokenRecord.name, tokenRecord.description);
       
       toast({
@@ -220,7 +207,6 @@ const TokenAdmin = () => {
   };
 
   const generateToken = (name?: string) => {
-    // Generate a token in format AppName:UserID
     const appName = name?.replace(/\s+/g, '') || 'App';
     const userId = uuidv4().slice(0, 8);
     return `${appName}:${userId}`;
@@ -239,7 +225,6 @@ const TokenAdmin = () => {
     try {
       const tokenValue = generateToken(newToken.name);
       
-      // Use our utility function instead of direct Supabase calls
       await addToken(tokenValue, newToken.name, newToken.description);
       
       toast({
@@ -261,7 +246,6 @@ const TokenAdmin = () => {
 
   const deleteTokenHandler = async (id: string) => {
     try {
-      // Use our utility function instead of direct Supabase calls
       await deleteToken(id);
       
       toast({
@@ -270,7 +254,7 @@ const TokenAdmin = () => {
       });
       
       fetchTokens();
-      fetchAssignedBots(); // Refresh assignments as they might have been deleted by cascade
+      fetchAssignedBots();
     } catch (error) {
       console.error("Error deleting token:", error);
       toast({
@@ -283,7 +267,6 @@ const TokenAdmin = () => {
 
   const onSubmitAssignment = async (values: z.infer<typeof formSchema>) => {
     try {
-      // Use our utility function instead of direct Supabase calls
       await assignBotToToken(values.token_id, values.bot_id, values.bot_token, values.bot_name);
       
       toast({
@@ -306,7 +289,6 @@ const TokenAdmin = () => {
 
   const removeAssignmentHandler = async (id: string) => {
     try {
-      // Use our utility function instead of direct Supabase calls
       await removeAssignment(id);
       
       toast({
@@ -351,7 +333,6 @@ const TokenAdmin = () => {
     navigate(token ? `/chat?token=${token}` : '/chat');
   };
 
-  // Admin Login Form
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto py-8 flex justify-center items-center min-h-[80vh]">
@@ -414,7 +395,7 @@ const TokenAdmin = () => {
     <TooltipProvider>
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Управление токенами</h1>
+          <h1 className="text-2xl font-bold">Управление Magic токенами</h1>
           <div className="flex gap-2">
             <Button onClick={handleAdminLogout} variant="outline">
               Выйти из админ-панели
@@ -427,11 +408,10 @@ const TokenAdmin = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Tokens Management */}
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Токены доступа</CardTitle>
-              <CardDescription>Управление токенами для доступа к API</CardDescription>
+              <CardTitle>Magic токены</CardTitle>
+              <CardDescription>Управление Magic токенами для доступа к API</CardDescription>
             </CardHeader>
             <CardContent>
               {loadingTokens ? (
@@ -453,7 +433,7 @@ const TokenAdmin = () => {
                       {tokens.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                            Нет доступных токенов
+                            Нет доступных Magic токенов
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -546,7 +526,7 @@ const TokenAdmin = () => {
               )}
 
               <div className="mt-6 border-t pt-4">
-                <h3 className="text-lg font-medium mb-3">Добавить новый токен</h3>
+                <h3 className="text-lg font-medium mb-3">Добавить новый Magic токен</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Input 
                     name="name"
@@ -563,17 +543,16 @@ const TokenAdmin = () => {
                 </div>
                 <Button onClick={addNewToken} className="mt-3">
                   <Plus className="h-4 w-4 mr-2" />
-                  Добавить токен
+                  Добавить Magic токен
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Token-Bot Assignments - Updated to include bot token and name */}
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Назначение ботов токенам</CardTitle>
-              <CardDescription>Управление связями между токенами и ботами</CardDescription>
+              <CardDescription>Управление связями между Magic токенами и ботами</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-6">
@@ -586,9 +565,9 @@ const TokenAdmin = () => {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                      <DialogTitle>Назначить бота токену</DialogTitle>
+                      <DialogTitle>Назначить бота Magic токену</DialogTitle>
                       <DialogDescription>
-                        Свяжите бота с токеном авторизации для доступа к API.
+                        Свяжите бота с Magic токеном авторизации для доступа к API.
                       </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -598,7 +577,7 @@ const TokenAdmin = () => {
                           name="token_id"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Токен авторизации</FormLabel>
+                              <FormLabel>Magic токен авторизации</FormLabel>
                               <select 
                                 className="flex w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 {...field}
@@ -778,7 +757,7 @@ const TokenAdmin = () => {
               <div className="flex items-center p-4 bg-muted/50 rounded-md">
                 <Info className="h-5 w-5 mr-2 text-blue-500" />
                 <p className="text-sm">
-                  Каждый токен авторизации может быть связан с несколькими ботами. 
+                  Каждый Magic токен авторизации может быть связан с несколькими ботами. 
                   При удалении токена все его назначения ботам также будут удалены.
                 </p>
               </div>
