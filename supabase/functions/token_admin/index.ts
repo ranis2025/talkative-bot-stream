@@ -1,18 +1,214 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 // Create a Supabase client with the Auth context of the function
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// ========== HANDLER FUNCTIONS ==========
+
+// Get all tokens from access_tokens table
+async function getTokens() {
+  const { data: tokens, error: tokensError } = await supabase
+    .from('access_tokens')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (tokensError) {
+    console.error('Error fetching tokens:', tokensError);
+    throw tokensError;
+  }
+  return tokens;
+}
+
+// Get all bot assignments from token_bot_assignments table
+async function getAssignedBots() {
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from('token_bot_assignments')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (assignmentsError) {
+    console.error('Error fetching assignments:', assignmentsError);
+    throw assignmentsError;
+  }
+  return assignments;
+}
+
+// Add a new token to access_tokens table
+async function addToken(params) {
+  const { token: tokenValue, name, description } = params;
+  const { data: newToken, error: addError } = await supabase
+    .from('access_tokens')
+    .insert([{ token: tokenValue, name, description }])
+    .select()
+    .single();
+  
+  if (addError) {
+    console.error('Error adding token:', addError);
+    throw addError;
+  }
+  return { success: true, id: newToken.id };
+}
+
+// Update a token in access_tokens table
+async function updateToken(params) {
+  const { id: updateId, name: updateName, description: updateDesc } = params;
+  const { error: updateError } = await supabase
+    .from('access_tokens')
+    .update({ name: updateName, description: updateDesc, updated_at: new Date().toISOString() })
+    .eq('id', updateId);
+  
+  if (updateError) {
+    console.error('Error updating token:', updateError);
+    throw updateError;
+  }
+  return { success: true };
+}
+
+// Delete a token from access_tokens table
+async function deleteToken(params) {
+  const { id: deleteId } = params;
+  const { error: deleteError } = await supabase
+    .from('access_tokens')
+    .delete()
+    .eq('id', deleteId);
+  
+  if (deleteError) {
+    console.error('Error deleting token:', deleteError);
+    throw deleteError;
+  }
+  return { success: true };
+}
+
+// Check if a bot assignment already exists
+async function checkExistingAssignment(tokenId, botId) {
+  const { data: existingAssignment, error: checkError } = await supabase
+    .from('token_bot_assignments')
+    .select('*')
+    .eq('token_id', tokenId)
+    .eq('bot_id', botId)
+    .maybeSingle();
+  
+  if (checkError) {
+    console.error('Error checking existing assignment:', checkError);
+    throw checkError;
+  }
+  
+  return existingAssignment;
+}
+
+// Create a new bot assignment
+async function createBotAssignment(tokenId, botId, botToken, botName) {
+  const { data: newAssignment, error: assignError } = await supabase
+    .from('token_bot_assignments')
+    .insert([{ 
+      token_id: tokenId, 
+      bot_id: botId, 
+      bot_token: botToken, 
+      bot_name: botName 
+    }])
+    .select()
+    .single();
+  
+  if (assignError) {
+    console.error('Database error when assigning bot:', assignError);
+    throw assignError;
+  }
+  
+  return newAssignment;
+}
+
+// Assign a bot to a token
+async function assignBotToToken(params) {
+  const { token_id, bot_id, bot_token, bot_name } = params;
+  
+  // Log received data for debugging
+  console.log('Assigning bot to token with params:', { token_id, bot_id, bot_token, bot_name });
+  
+  // First check if this assignment already exists to avoid duplicates
+  const existingAssignment = await checkExistingAssignment(token_id, bot_id);
+  
+  if (existingAssignment) {
+    console.log('Assignment already exists, returning existing data');
+    return { 
+      success: true, 
+      id: existingAssignment.id,
+      bot_id: existingAssignment.bot_id,
+      bot_name: bot_name
+    };
+  }
+  
+  // Insert the new assignment
+  const newAssignment = await createBotAssignment(token_id, bot_id, bot_token, bot_name);
+  
+  console.log('Assignment successful, returning data:', newAssignment);
+  
+  return { 
+    success: true, 
+    id: newAssignment.id,
+    bot_id,
+    bot_name
+  };
+}
+
+// Remove a bot assignment from token_bot_assignments table
+async function removeAssignment(params) {
+  const { id: removeId } = params;
+  
+  console.log('Removing assignment with ID:', removeId);
+  
+  const { error: removeError } = await supabase
+    .from('token_bot_assignments')
+    .delete()
+    .eq('id', removeId);
+  
+  if (removeError) {
+    console.error('Error removing assignment:', removeError);
+    throw removeError;
+  }
+  
+  console.log('Assignment removed successfully');
+  
+  return { success: true };
+}
+
+// Process a request based on the action
+async function processAction(action, params) {
+  console.log(`Processing action: ${action} with params:`, params);
+  
+  switch (action) {
+    case 'get_tokens':
+      return await getTokens();
+    
+    case 'get_assigned_bots':
+      return await getAssignedBots();
+    
+    case 'add_token':
+      return await addToken(params);
+    
+    case 'update_token':
+      return await updateToken(params);
+    
+    case 'delete_token':
+      return await deleteToken(params);
+    
+    case 'assign_bot_to_token':
+      return await assignBotToToken(params);
+    
+    case 'remove_assignment':
+      return await removeAssignment(params);
+    
+    default:
+      console.error('Invalid action requested:', action);
+      throw new Error('Invalid action');
+  }
+}
+
+// ========== MAIN HANDLER ==========
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -44,171 +240,9 @@ serve(async (req) => {
 
     // Parse the request body
     const { action, params } = await req.json();
-    console.log(`Processing action: ${action} with params:`, params);
 
-    // Handle different actions
-    let result = null;
-    switch (action) {
-      case 'get_tokens':
-        // Get all tokens from access_tokens table
-        const { data: tokens, error: tokensError } = await supabase
-          .from('access_tokens')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (tokensError) {
-          console.error('Error fetching tokens:', tokensError);
-          throw tokensError;
-        }
-        result = tokens;
-        break;
-
-      case 'get_assigned_bots':
-        // Get all bot assignments from token_bot_assignments table
-        const { data: assignments, error: assignmentsError } = await supabase
-          .from('token_bot_assignments')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (assignmentsError) {
-          console.error('Error fetching assignments:', assignmentsError);
-          throw assignmentsError;
-        }
-        result = assignments;
-        break;
-
-      case 'add_token':
-        // Add a new token to access_tokens table
-        const { token: tokenValue, name, description } = params;
-        const { data: newToken, error: addError } = await supabase
-          .from('access_tokens')
-          .insert([{ token: tokenValue, name, description }])
-          .select()
-          .single();
-        
-        if (addError) {
-          console.error('Error adding token:', addError);
-          throw addError;
-        }
-        result = { success: true, id: newToken.id };
-        break;
-
-      case 'update_token':
-        // Update a token in access_tokens table
-        const { id: updateId, name: updateName, description: updateDesc } = params;
-        const { error: updateError } = await supabase
-          .from('access_tokens')
-          .update({ name: updateName, description: updateDesc, updated_at: new Date().toISOString() })
-          .eq('id', updateId);
-        
-        if (updateError) {
-          console.error('Error updating token:', updateError);
-          throw updateError;
-        }
-        result = { success: true };
-        break;
-
-      case 'delete_token':
-        // Delete a token from access_tokens table
-        const { id: deleteId } = params;
-        const { error: deleteError } = await supabase
-          .from('access_tokens')
-          .delete()
-          .eq('id', deleteId);
-        
-        if (deleteError) {
-          console.error('Error deleting token:', deleteError);
-          throw deleteError;
-        }
-        result = { success: true };
-        break;
-
-      case 'assign_bot_to_token':
-        // Add a bot assignment to token_bot_assignments table
-        const { token_id, bot_id, bot_token, bot_name } = params;
-        
-        // Log received data for debugging
-        console.log('Assigning bot to token with params:', { token_id, bot_id, bot_token, bot_name });
-        
-        // First check if this assignment already exists to avoid duplicates
-        const { data: existingAssignment, error: checkError } = await supabase
-          .from('token_bot_assignments')
-          .select('*')
-          .eq('token_id', token_id)
-          .eq('bot_id', bot_id)
-          .maybeSingle();
-        
-        if (checkError) {
-          console.error('Error checking existing assignment:', checkError);
-          throw checkError;
-        }
-        
-        if (existingAssignment) {
-          console.log('Assignment already exists, returning existing data');
-          result = { 
-            success: true, 
-            id: existingAssignment.id,
-            bot_id: existingAssignment.bot_id,
-            bot_name: bot_name
-          };
-          break;
-        }
-        
-        // Insert the new assignment
-        const { data: newAssignment, error: assignError } = await supabase
-          .from('token_bot_assignments')
-          .insert([{ 
-            token_id, 
-            bot_id, 
-            bot_token, 
-            bot_name 
-          }])
-          .select()
-          .single();
-        
-        if (assignError) {
-          console.error('Database error when assigning bot:', assignError);
-          throw assignError;
-        }
-        
-        console.log('Assignment successful, returning data:', newAssignment);
-        
-        result = { 
-          success: true, 
-          id: newAssignment.id,
-          bot_id,
-          bot_name
-        };
-        break;
-
-      case 'remove_assignment':
-        // Remove a bot assignment from token_bot_assignments table
-        const { id: removeId } = params;
-        
-        console.log('Removing assignment with ID:', removeId);
-        
-        const { error: removeError } = await supabase
-          .from('token_bot_assignments')
-          .delete()
-          .eq('id', removeId);
-        
-        if (removeError) {
-          console.error('Error removing assignment:', removeError);
-          throw removeError;
-        }
-        
-        console.log('Assignment removed successfully');
-        
-        result = { success: true };
-        break;
-
-      default:
-        console.error('Invalid action requested:', action);
-        return new Response(
-          JSON.stringify({ error: 'Invalid action' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-    }
+    // Process the action and get the result
+    const result = await processAction(action, params);
 
     return new Response(
       JSON.stringify(result),
