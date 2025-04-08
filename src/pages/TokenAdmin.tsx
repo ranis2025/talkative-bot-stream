@@ -20,13 +20,34 @@ import {
   assignBotToToken, 
   removeAssignment 
 } from "@/lib/tokenAdmin";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 const TokenAdmin = () => {
   const [tokens, setTokens] = useState<TokenRecord[]>([]);
   const [assignedBots, setAssignedBots] = useState<AssignedBot[]>([]);
   const [loading, setLoading] = useState(true);
   const [newToken, setNewToken] = useState({ name: "", description: "" });
-  const [newAssignment, setNewAssignment] = useState({ token_id: "", bot_id: "" });
+  const [newAssignment, setNewAssignment] = useState({ token_id: "", bot_id: "", bot_token: "", bot_name: "" });
+  const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { token } = useAuth();
@@ -37,6 +58,25 @@ const TokenAdmin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
+
+  // Define the form schema
+  const formSchema = z.object({
+    token_id: z.string().min(1, "Выберите токен"),
+    bot_id: z.string().min(1, "ID бота обязателен"),
+    bot_token: z.string().min(1, "Токен бота обязателен"),
+    bot_name: z.string().min(1, "Название бота обязательно"),
+  });
+
+  // Initialize react-hook-form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      token_id: "",
+      bot_id: "",
+      bot_token: "",
+      bot_name: "",
+    },
+  });
 
   // Ensure token is preserved in URL
   useEffect(() => {
@@ -220,26 +260,18 @@ const TokenAdmin = () => {
     }
   };
 
-  const assignBotToTokenHandler = async () => {
-    if (!newAssignment.token_id || !newAssignment.bot_id) {
-      toast({
-        title: "Ошибка",
-        description: "Выберите токен и введите ID бота",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const onSubmitAssignment = async (values: z.infer<typeof formSchema>) => {
     try {
       // Use our utility function instead of direct Supabase calls
-      await assignBotToToken(newAssignment.token_id, newAssignment.bot_id);
+      await assignBotToToken(values.token_id, values.bot_id, values.bot_token, values.bot_name);
       
       toast({
         title: "Успешно",
         description: "Бот назначен токену",
       });
       
-      setNewAssignment({ token_id: "", bot_id: "" });
+      setDialogOpen(false);
+      form.reset();
       fetchAssignedBots();
     } catch (error) {
       console.error("Error assigning bot to token:", error);
@@ -451,77 +483,148 @@ const TokenAdmin = () => {
           </CardContent>
         </Card>
 
-        {/* Token-Bot Assignments - Simplified version */}
+        {/* Token-Bot Assignments - Updated to include bot token and name */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Назначение ботов токенам</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3">Добавить назначение</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                <select 
-                  className="border rounded px-3 py-2 w-full bg-background"
-                  value={newAssignment.token_id}
-                  onChange={(e) => setNewAssignment(prev => ({...prev, token_id: e.target.value}))}
-                >
-                  <option value="">Выберите токен</option>
-                  {tokens.map(token => (
-                    <option key={token.id} value={token.id}>
-                      {token.name} ({token.token})
-                    </option>
-                  ))}
-                </select>
-                
-                <Input 
-                  placeholder="ID бота"
-                  value={newAssignment.bot_id}
-                  onChange={(e) => setNewAssignment(prev => ({...prev, bot_id: e.target.value}))}
-                />
-              </div>
-              <Button onClick={assignBotToTokenHandler}>
-                <Plus className="h-4 w-4 mr-2" />
-                Назначить бота
-              </Button>
-            </div>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="mb-4">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Назначить бота
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Назначить бота токену</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmitAssignment)} className="space-y-4 py-4">
+                      <FormField
+                        control={form.control}
+                        name="token_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Токен авторизации</FormLabel>
+                            <select 
+                              className="w-full p-2 border rounded"
+                              {...field}
+                            >
+                              <option value="">Выберите токен</option>
+                              {tokens.map(token => (
+                                <option key={token.id} value={token.id}>
+                                  {token.name} ({token.token})
+                                </option>
+                              ))}
+                            </select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="bot_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ID Бота</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Введите ID бота" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="bot_token"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Токен Бота</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Введите токен бота" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="bot_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Название Бота</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Введите название бота" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <DialogFooter>
+                        <Button type="submit">Назначить</Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Токен</TableHead>
-                  <TableHead>ID Бота</TableHead>
-                  <TableHead>Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assignedBots.map((assignment) => {
-                  const token = tokens.find(t => t.id === assignment.token_id);
-                  
-                  return (
-                    <TableRow key={assignment.id}>
-                      <TableCell>{token?.name || 'Unknown Token'}</TableCell>
-                      <TableCell>{assignment.bot_id}</TableCell>
-                      <TableCell>
-                        <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          onClick={() => removeAssignmentHandler(assignment.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Токен</TableHead>
+                    <TableHead>Бот</TableHead>
+                    <TableHead>Токен бота</TableHead>
+                    <TableHead>Действия</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignedBots.map((assignment) => {
+                    const token = tokens.find(t => t.id === assignment.token_id);
+                    
+                    return (
+                      <TableRow key={assignment.id}>
+                        <TableCell>{token?.name || 'Unknown Token'}</TableCell>
+                        <TableCell>
+                          <div>ID: {assignment.bot_id}</div>
+                          <div className="text-sm text-muted-foreground">Имя: {assignment.bot_name}</div>
+                        </TableCell>
+                        <TableCell className="flex items-center gap-2">
+                          <div className="truncate max-w-[140px]">{assignment.bot_token}</div>
+                          {assignment.bot_token && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => copyToClipboard(assignment.bot_token || '')}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            onClick={() => removeAssignmentHandler(assignment.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {assignedBots.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center">
+                        Нет назначений
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-                {assignedBots.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center">
-                      Нет назначений
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

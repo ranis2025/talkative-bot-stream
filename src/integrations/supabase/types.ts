@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      access_tokens: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_users: {
         Row: {
           created_at: string | null
@@ -115,6 +142,38 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      token_bot_assignments: {
+        Row: {
+          bot_id: string
+          bot_token: string | null
+          created_at: string
+          id: string
+          token_id: string
+        }
+        Insert: {
+          bot_id: string
+          bot_token?: string | null
+          created_at?: string
+          id?: string
+          token_id: string
+        }
+        Update: {
+          bot_id?: string
+          bot_token?: string | null
+          created_at?: string
+          id?: string
+          token_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_bot_assignments_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "access_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_settings: {
         Row: {
