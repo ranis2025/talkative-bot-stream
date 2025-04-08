@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, LogIn } from "lucide-react";
@@ -8,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 
 const Auth = () => {
@@ -21,19 +20,6 @@ const Auth = () => {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  
-  // Extract application name from token if it follows the format "AppName:User"
-  const getAppName = (tokenValue: string | null) => {
-    if (!tokenValue) return "ProTalk";
-    
-    // Check if token follows the expected format
-    const tokenParts = tokenValue.split(':');
-    if (tokenParts.length === 2) {
-      return tokenParts[0]; // Return the app name part
-    }
-    
-    return "ProTalk"; // Default fallback
-  };
   
   // Check for token in URL
   useEffect(() => {
@@ -159,8 +145,6 @@ const Auth = () => {
     }
   };
 
-  const appName = getAppName(searchParams.get("token"));
-
   if (tokenLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
@@ -175,20 +159,7 @@ const Auth = () => {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4">
       <Card className="w-full max-w-md shadow-lg border">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <img
-              src="/lovable-uploads/bf49cbb2-32bd-471b-9256-7db1562592e2.png"
-              alt={`${appName} Logo`}
-              className="h-12 w-auto"
-            />
-          </div>
-          <CardTitle className="text-2xl text-center">{appName} Чат</CardTitle>
-          <CardDescription className="text-center">
-            Пожалуйста, введите логин и пароль для входа
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="login">Логин</Label>
