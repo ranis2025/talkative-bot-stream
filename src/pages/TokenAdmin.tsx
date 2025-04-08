@@ -4,9 +4,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, Save, Plus, Trash2, ArrowLeft, Copy } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Loader2, Save, Plus, Trash2, ArrowLeft, Copy, Info, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { v4 as uuidv4 } from "uuid";
 import { 
@@ -27,7 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger 
+  DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -36,7 +37,25 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,9 +63,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 const TokenAdmin = () => {
   const [tokens, setTokens] = useState<TokenRecord[]>([]);
   const [assignedBots, setAssignedBots] = useState<AssignedBot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingTokens, setLoadingTokens] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [newToken, setNewToken] = useState({ name: "", description: "" });
-  const [newAssignment, setNewAssignment] = useState({ token_id: "", bot_id: "", bot_token: "", bot_name: "" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -120,7 +140,7 @@ const TokenAdmin = () => {
 
   const fetchTokens = async () => {
     try {
-      setLoading(true);
+      setLoadingTokens(true);
       
       // Use our utility function instead of direct Supabase calls
       const data = await getTokens();
@@ -145,12 +165,13 @@ const TokenAdmin = () => {
         }
       ]);
     } finally {
-      setLoading(false);
+      setLoadingTokens(false);
     }
   };
 
   const fetchAssignedBots = async () => {
     try {
+      setLoadingAssignments(true);
       // Use our utility function instead of direct Supabase calls
       const data = await getAssignedBots();
       setAssignedBots(data);
@@ -161,6 +182,8 @@ const TokenAdmin = () => {
         description: "Не удалось загрузить данные назначений",
         variant: "destructive"
       });
+    } finally {
+      setLoadingAssignments(false);
     }
   };
 
@@ -237,8 +260,6 @@ const TokenAdmin = () => {
   };
 
   const deleteTokenHandler = async (id: string) => {
-    if (!confirm("Вы уверены, что хотите удалить этот токен?")) return;
-    
     try {
       // Use our utility function instead of direct Supabase calls
       await deleteToken(id);
@@ -284,8 +305,6 @@ const TokenAdmin = () => {
   };
 
   const removeAssignmentHandler = async (id: string) => {
-    if (!confirm("Вы уверены, что хотите удалить это назначение?")) return;
-    
     try {
       // Use our utility function instead of direct Supabase calls
       await removeAssignment(id);
@@ -309,6 +328,9 @@ const TokenAdmin = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(
       () => {
+        setCopiedToken(text);
+        setTimeout(() => setCopiedToken(null), 2000);
+        
         toast({
           title: "Скопировано",
           description: "Токен скопирован в буфер обмена",
@@ -316,6 +338,11 @@ const TokenAdmin = () => {
       },
       (err) => {
         console.error("Не удалось скопировать токен: ", err);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось скопировать токен",
+          variant: "destructive"
+        });
       }
     );
   };
@@ -331,27 +358,28 @@ const TokenAdmin = () => {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Вход в панель управления токенами</CardTitle>
+            <CardDescription>Введите учетные данные для доступа к панели администратора</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="username" className="text-sm font-medium">Имя пользователя</label>
+                <FormLabel htmlFor="username">Имя пользователя</FormLabel>
                 <Input 
                   id="username"
                   type="text" 
                   value={username} 
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Имя пользователя"
+                  placeholder="admin"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">Пароль</label>
+                <FormLabel htmlFor="password">Пароль</FormLabel>
                 <Input 
                   id="password"
                   type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Пароль"
+                  placeholder="••••••••"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleAdminLogin();
@@ -383,252 +411,382 @@ const TokenAdmin = () => {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Управление токенами</h1>
-        <div className="flex gap-2">
-          <Button onClick={handleAdminLogout} variant="outline">
-            Выйти из админ-панели
-          </Button>
-          <Button onClick={handleBackToChat} className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Вернуться к чату
-          </Button>
+    <TooltipProvider>
+      <div className="container mx-auto py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Управление токенами</h1>
+          <div className="flex gap-2">
+            <Button onClick={handleAdminLogout} variant="outline">
+              Выйти из админ-панели
+            </Button>
+            <Button onClick={handleBackToChat} className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Вернуться к чату
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Tokens Management */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle>Токены доступа</CardTitle>
+              <CardDescription>Управление токенами для доступа к API</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingTokens ? (
+                <div className="flex justify-center p-6">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : (
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Название</TableHead>
+                        <TableHead>Токен</TableHead>
+                        <TableHead>Описание</TableHead>
+                        <TableHead className="text-right">Действия</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tokens.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                            Нет доступных токенов
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        tokens.map((tokenRecord, index) => (
+                          <TableRow key={tokenRecord.id}>
+                            <TableCell>
+                              <Input 
+                                value={tokenRecord.name} 
+                                onChange={(e) => handleTokenChange(index, 'name', e.target.value)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="truncate max-w-[120px] font-mono text-sm">
+                                  {tokenRecord.token}
+                                </div>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      onClick={() => copyToClipboard(tokenRecord.token)}
+                                      className="h-8 w-8"
+                                    >
+                                      {copiedToken === tokenRecord.token ? (
+                                        <Check className="h-4 w-4 text-green-500" />
+                                      ) : (
+                                        <Copy className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Скопировать токен</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Input 
+                                value={tokenRecord.description || ''} 
+                                onChange={(e) => handleTokenChange(index, 'description', e.target.value)}
+                                placeholder="Описание"
+                              />
+                            </TableCell>
+                            <TableCell className="flex justify-end space-x-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="sm" onClick={() => saveToken(tokenRecord)}>
+                                    <Save className="h-4 w-4 mr-1" />
+                                    Сохранить
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Сохранить изменения</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Удаление токена</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Вы уверены, что хотите удалить токен "{tokenRecord.name}"? 
+                                      Это действие нельзя отменить, и все связанные с этим токеном назначения будут также удалены.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deleteTokenHandler(tokenRecord.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Удалить
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              <div className="mt-6 border-t pt-4">
+                <h3 className="text-lg font-medium mb-3">Добавить новый токен</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input 
+                    name="name"
+                    value={newToken.name}
+                    onChange={handleInputChange}
+                    placeholder="Название приложения"
+                  />
+                  <Input 
+                    name="description"
+                    value={newToken.description}
+                    onChange={handleInputChange}
+                    placeholder="Описание (опционально)"
+                  />
+                </div>
+                <Button onClick={addNewToken} className="mt-3">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Добавить токен
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Token-Bot Assignments - Updated to include bot token and name */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle>Назначение ботов токенам</CardTitle>
+              <CardDescription>Управление связями между токенами и ботами</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-6">
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="mb-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Назначить бота
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>Назначить бота токену</DialogTitle>
+                      <DialogDescription>
+                        Свяжите бота с токеном авторизации для доступа к API.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmitAssignment)} className="space-y-4 py-4">
+                        <FormField
+                          control={form.control}
+                          name="token_id"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Токен авторизации</FormLabel>
+                              <select 
+                                className="flex w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                {...field}
+                              >
+                                <option value="">Выберите токен</option>
+                                {tokens.map(token => (
+                                  <option key={token.id} value={token.id}>
+                                    {token.name} ({token.token})
+                                  </option>
+                                ))}
+                              </select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="bot_id"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>ID Бота</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Введите ID бота" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Уникальный идентификатор бота в системе
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="bot_token"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Токен Бота</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Введите токен бота" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Секретный токен для API доступа бота
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="bot_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Название Бота</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Введите название бота" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Отображаемое имя бота
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter>
+                          <Button type="submit">Назначить</Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+
+                {loadingAssignments ? (
+                  <div className="flex justify-center p-6">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Токен</TableHead>
+                          <TableHead>Бот</TableHead>
+                          <TableHead>Токен бота</TableHead>
+                          <TableHead className="text-right">Действия</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignedBots.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                              Нет назначений ботов к токенам
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          assignedBots.map((assignment) => {
+                            const token = tokens.find(t => t.id === assignment.token_id);
+                            
+                            return (
+                              <TableRow key={assignment.id}>
+                                <TableCell>
+                                  <div className="font-medium">{token?.name || 'Неизвестный токен'}</div>
+                                  <div className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                    {token?.token}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{assignment.bot_name}</div>
+                                  <div className="text-xs text-muted-foreground">ID: {assignment.bot_id}</div>
+                                </TableCell>
+                                <TableCell className="font-mono">
+                                  <div className="flex items-center gap-2">
+                                    <div className="truncate max-w-[120px] text-sm font-mono">
+                                      {assignment.bot_token}
+                                    </div>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={() => copyToClipboard(assignment.bot_token || '')}
+                                          className="h-8 w-8"
+                                          disabled={!assignment.bot_token}
+                                        >
+                                          {copiedToken === assignment.bot_token ? (
+                                            <Check className="h-4 w-4 text-green-500" />
+                                          ) : (
+                                            <Copy className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Скопировать токен бота</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button 
+                                        size="sm" 
+                                        variant="destructive" 
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Удаление назначения</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Вы уверены, что хотите удалить связь между ботом "{assignment.bot_name}" и токеном? 
+                                          Это действие нельзя отменить.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                          onClick={() => removeAssignmentHandler(assignment.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Удалить
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center p-4 bg-muted/50 rounded-md">
+                <Info className="h-5 w-5 mr-2 text-blue-500" />
+                <p className="text-sm">
+                  Каждый токен авторизации может быть связан с несколькими ботами. 
+                  При удалении токена все его назначения ботам также будут удалены.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Tokens Management */}
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Токены доступа</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center p-6">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead>Токен</TableHead>
-                    <TableHead>Описание</TableHead>
-                    <TableHead>Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tokens.map((tokenRecord, index) => (
-                    <TableRow key={tokenRecord.id}>
-                      <TableCell>
-                        <Input 
-                          value={tokenRecord.name} 
-                          onChange={(e) => handleTokenChange(index, 'name', e.target.value)}
-                        />
-                      </TableCell>
-                      <TableCell className="flex items-center gap-2">
-                        <div className="truncate max-w-[140px]">{tokenRecord.token}</div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => copyToClipboard(tokenRecord.token)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          value={tokenRecord.description || ''} 
-                          onChange={(e) => handleTokenChange(index, 'description', e.target.value)}
-                          placeholder="Описание"
-                        />
-                      </TableCell>
-                      <TableCell className="flex space-x-2">
-                        <Button size="sm" onClick={() => saveToken(tokenRecord)}>
-                          <Save className="h-4 w-4 mr-1" />
-                          Сохранить
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => deleteTokenHandler(tokenRecord.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-
-            <div className="mt-6 border-t pt-4">
-              <h3 className="text-lg font-medium mb-3">Добавить новый токен</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input 
-                  name="name"
-                  value={newToken.name}
-                  onChange={handleInputChange}
-                  placeholder="Название приложения"
-                />
-                <Input 
-                  name="description"
-                  value={newToken.description}
-                  onChange={handleInputChange}
-                  placeholder="Описание (опционально)"
-                />
-              </div>
-              <Button onClick={addNewToken} className="mt-3">
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить токен
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Token-Bot Assignments - Updated to include bot token and name */}
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Назначение ботов токенам</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-6">
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="mb-4">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Назначить бота
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Назначить бота токену</DialogTitle>
-                  </DialogHeader>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmitAssignment)} className="space-y-4 py-4">
-                      <FormField
-                        control={form.control}
-                        name="token_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Токен авторизации</FormLabel>
-                            <select 
-                              className="w-full p-2 border rounded"
-                              {...field}
-                            >
-                              <option value="">Выберите токен</option>
-                              {tokens.map(token => (
-                                <option key={token.id} value={token.id}>
-                                  {token.name} ({token.token})
-                                </option>
-                              ))}
-                            </select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="bot_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>ID Бота</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Введите ID бота" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="bot_token"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Токен Бота</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Введите токен бота" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="bot_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Название Бота</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Введите название бота" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <DialogFooter>
-                        <Button type="submit">Назначить</Button>
-                      </DialogFooter>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Токен</TableHead>
-                    <TableHead>Бот</TableHead>
-                    <TableHead>Токен бота</TableHead>
-                    <TableHead>Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assignedBots.map((assignment) => {
-                    const token = tokens.find(t => t.id === assignment.token_id);
-                    
-                    return (
-                      <TableRow key={assignment.id}>
-                        <TableCell>{token?.name || 'Unknown Token'}</TableCell>
-                        <TableCell>
-                          <div>ID: {assignment.bot_id}</div>
-                          <div className="text-sm text-muted-foreground">Имя: {assignment.bot_name}</div>
-                        </TableCell>
-                        <TableCell className="flex items-center gap-2">
-                          <div className="truncate max-w-[140px]">{assignment.bot_token}</div>
-                          {assignment.bot_token && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => copyToClipboard(assignment.bot_token || '')}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
-                            onClick={() => removeAssignmentHandler(assignment.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {assignedBots.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center">
-                        Нет назначений
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
