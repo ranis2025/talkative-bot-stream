@@ -50,25 +50,6 @@ export const getAssignedBots = async (): Promise<AssignedBot[]> => {
   }
 };
 
-// New function to get bots by token value
-export const getBotsByToken = async (tokenValue: string): Promise<AssignedBot[]> => {
-  try {
-    // Call our edge function
-    const { data, error } = await supabase.functions.invoke('token_admin', {
-      body: { 
-        action: 'get_bots_by_token', 
-        params: { token_value: tokenValue } 
-      },
-    });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error getting bots by token:', error);
-    throw error;
-  }
-};
-
 export const addToken = async (token: string, name: string, description?: string): Promise<string> => {
   try {
     // Call our edge function

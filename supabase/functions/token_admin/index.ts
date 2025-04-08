@@ -64,38 +64,6 @@ serve(async (req) => {
         if (assignmentsError) throw assignmentsError;
         result = assignments;
         break;
-
-      case 'get_bots_by_token':
-        // Fetch bots assigned to a specific token value
-        const { token_value } = params;
-
-        // First get the token id by token value
-        const { data: tokenData, error: tokenError } = await supabase
-          .from('access_tokens')
-          .select('id')
-          .eq('token', token_value)
-          .single();
-
-        if (tokenError) {
-          if (tokenError.code === 'PGRST116') {
-            // No token found
-            return new Response(
-              JSON.stringify({ error: 'Token not found' }),
-              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-          throw tokenError;
-        }
-
-        // Then get all bots assigned to this token id
-        const { data: botAssignments, error: botsError } = await supabase
-          .from('token_bot_assignments')
-          .select('*')
-          .eq('token_id', tokenData.id);
-
-        if (botsError) throw botsError;
-        result = botAssignments;
-        break;
         
       case 'add_token':
         // Add a new token to the database
