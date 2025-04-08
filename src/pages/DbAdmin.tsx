@@ -69,10 +69,10 @@ const DbAdmin = () => {
         assignedBots = assignments || [];
       }
 
-      // Combine results with source information
+      // Combine results with a standardized source of "chat_bots"
       const combinedResults = [
         ...(chatBots || []).map((bot: any) => ({ ...bot, source: 'chat_bots' })),
-        ...(assignedBots || []).map((bot: any) => ({ ...bot, source: 'token_bot_assignments' }))
+        ...(assignedBots || []).map((bot: any) => ({ ...bot, source: 'chat_bots' }))
       ];
 
       setBotResults(combinedResults);
