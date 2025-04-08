@@ -44,6 +44,7 @@ serve(async (req) => {
 
     // Parse the request body
     const { action, params } = await req.json();
+    console.log(`Processing action: ${action} with params:`, params);
 
     // Handle different actions
     let result = null;
@@ -55,7 +56,10 @@ serve(async (req) => {
           .select('*')
           .order('created_at', { ascending: false });
         
-        if (tokensError) throw tokensError;
+        if (tokensError) {
+          console.error('Error fetching tokens:', tokensError);
+          throw tokensError;
+        }
         result = tokens;
         break;
 
@@ -66,7 +70,10 @@ serve(async (req) => {
           .select('*')
           .order('created_at', { ascending: false });
         
-        if (assignmentsError) throw assignmentsError;
+        if (assignmentsError) {
+          console.error('Error fetching assignments:', assignmentsError);
+          throw assignmentsError;
+        }
         result = assignments;
         break;
 
@@ -79,7 +86,10 @@ serve(async (req) => {
           .select()
           .single();
         
-        if (addError) throw addError;
+        if (addError) {
+          console.error('Error adding token:', addError);
+          throw addError;
+        }
         result = { success: true, id: newToken.id };
         break;
 
@@ -91,7 +101,10 @@ serve(async (req) => {
           .update({ name: updateName, description: updateDesc, updated_at: new Date().toISOString() })
           .eq('id', updateId);
         
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error updating token:', updateError);
+          throw updateError;
+        }
         result = { success: true };
         break;
 
@@ -103,7 +116,10 @@ serve(async (req) => {
           .delete()
           .eq('id', deleteId);
         
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error('Error deleting token:', deleteError);
+          throw deleteError;
+        }
         result = { success: true };
         break;
 
@@ -114,6 +130,31 @@ serve(async (req) => {
         // Log received data for debugging
         console.log('Assigning bot to token with params:', { token_id, bot_id, bot_token, bot_name });
         
+        // First check if this assignment already exists to avoid duplicates
+        const { data: existingAssignment, error: checkError } = await supabase
+          .from('token_bot_assignments')
+          .select('*')
+          .eq('token_id', token_id)
+          .eq('bot_id', bot_id)
+          .maybeSingle();
+        
+        if (checkError) {
+          console.error('Error checking existing assignment:', checkError);
+          throw checkError;
+        }
+        
+        if (existingAssignment) {
+          console.log('Assignment already exists, returning existing data');
+          result = { 
+            success: true, 
+            id: existingAssignment.id,
+            bot_id: existingAssignment.bot_id,
+            bot_name: bot_name
+          };
+          break;
+        }
+        
+        // Insert the new assignment
         const { data: newAssignment, error: assignError } = await supabase
           .from('token_bot_assignments')
           .insert([{ 
@@ -130,11 +171,12 @@ serve(async (req) => {
           throw assignError;
         }
         
+        console.log('Assignment successful, returning data:', newAssignment);
+        
         result = { 
           success: true, 
           id: newAssignment.id,
           bot_id,
-          bot_token,
           bot_name
         };
         break;
@@ -142,16 +184,26 @@ serve(async (req) => {
       case 'remove_assignment':
         // Remove a bot assignment from token_bot_assignments table
         const { id: removeId } = params;
+        
+        console.log('Removing assignment with ID:', removeId);
+        
         const { error: removeError } = await supabase
           .from('token_bot_assignments')
           .delete()
           .eq('id', removeId);
         
-        if (removeError) throw removeError;
+        if (removeError) {
+          console.error('Error removing assignment:', removeError);
+          throw removeError;
+        }
+        
+        console.log('Assignment removed successfully');
+        
         result = { success: true };
         break;
 
       default:
+        console.error('Invalid action requested:', action);
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

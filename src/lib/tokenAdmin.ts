@@ -148,6 +148,10 @@ export const assignBotToToken = async (tokenId: string, botId: string, botToken:
       throw error;
     }
     
+    if (!data || !data.id) {
+      throw new Error('No data returned from assign_bot_to_token function');
+    }
+    
     return data.id;
   } catch (error) {
     console.error('Error assigning bot to token:', error);
