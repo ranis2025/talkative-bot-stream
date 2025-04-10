@@ -16,6 +16,25 @@ export async function getTokens() {
   return tokens;
 }
 
+// Get tokens for a specific admin
+export async function getAdminTokens(params: { admin_id: string }) {
+  const supabase = getSupabaseClient();
+  const { admin_id } = params;
+  
+  console.log(`Getting tokens for admin ID: ${admin_id}`);
+  
+  // Call the database function to get admin tokens
+  const { data: tokens, error: tokensError } = await supabase
+    .rpc('get_admin_tokens', { admin_id });
+  
+  if (tokensError) {
+    console.error('Error fetching admin tokens:', tokensError);
+    throw tokensError;
+  }
+  
+  return tokens;
+}
+
 // Get token value by ID
 export async function getTokenValue(params: { token_id: string }) {
   const supabase = getSupabaseClient();
@@ -107,6 +126,25 @@ export async function deleteToken(params: { id: string }) {
   return { success: true };
 }
 
+// Transfer token ownership to another admin
+export async function transferToken(params: { token_id: string, new_admin_id: string }) {
+  const supabase = getSupabaseClient();
+  const { token_id, new_admin_id } = params;
+  
+  console.log(`Transferring token ${token_id} to admin ${new_admin_id}`);
+  
+  // Call the database function to transfer the token
+  const { data, error } = await supabase
+    .rpc('transfer_token', { token_id, new_admin_id });
+  
+  if (error) {
+    console.error('Error transferring token:', error);
+    throw error;
+  }
+  
+  return { success: true };
+}
+
 // Function to dispatch token operations based on action type
 export function handleTokenOperation(action: string, params: any) {
   console.log(`Handling token operation: ${action}`);
@@ -115,6 +153,9 @@ export function handleTokenOperation(action: string, params: any) {
     case 'token_get_all':
     case 'get_tokens':
       return getTokens();
+    case 'token_get_admin':
+    case 'get_admin_tokens':
+      return getAdminTokens(params);
     case 'token_get_value':
     case 'get_token_value':
       return getTokenValue(params);
@@ -127,6 +168,9 @@ export function handleTokenOperation(action: string, params: any) {
     case 'token_delete':
     case 'delete_token':
       return deleteToken(params);
+    case 'token_transfer':
+    case 'transfer_token':
+      return transferToken(params);
     default:
       throw new Error(`Unknown token action: ${action}`);
   }

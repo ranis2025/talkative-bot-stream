@@ -10,7 +10,8 @@ import {
   TokenRecord, 
   AssignedBot, 
   getTokens, 
-  getAssignedBots
+  getAssignedBots,
+  getAdminTokens
 } from "@/lib/tokenAdmin";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import TokenList from "@/components/token-admin/TokenList";
@@ -118,13 +119,24 @@ const TokenAdmin = () => {
       fetchTokens();
       fetchAssignedBots();
     }
-  }, [isAuthenticated, refreshData]);
+  }, [isAuthenticated, refreshData, adminId]);
 
   const fetchTokens = async () => {
     try {
       setLoadingTokens(true);
       
-      const data = await getTokens();
+      let data;
+      if (adminRole === 'super_admin') {
+        // Super admin gets all tokens
+        data = await getTokens();
+      } else if (adminId) {
+        // Regular admin gets only their tokens
+        data = await getAdminTokens(adminId);
+      } else {
+        // Fallback to empty array if no adminId
+        data = [];
+      }
+      
       setTokens(data);
     } catch (error) {
       console.error("Error fetching tokens:", error);

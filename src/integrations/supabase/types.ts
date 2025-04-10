@@ -265,7 +265,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_admin_tokens: {
+        Args: { admin_id: string }
+        Returns: {
+          admin_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          token: string
+          updated_at: string
+        }[]
+      }
+      transfer_token: {
+        Args: { token_id: string; new_admin_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

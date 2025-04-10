@@ -38,3 +38,46 @@ export const executeCustomQuery = async (query: string): Promise<any[]> => {
     throw error;
   }
 };
+
+/**
+ * Get tokens belonging to a specific admin
+ */
+export const getAdminTokens = async (adminId: string) => {
+  try {
+    console.log('Fetching tokens for admin:', adminId);
+    const { data, error } = await supabase.rpc('get_admin_tokens', { admin_id: adminId });
+    
+    if (error) {
+      console.error('Error fetching admin tokens:', error);
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in getAdminTokens:', error);
+    throw error;
+  }
+};
+
+/**
+ * Transfer token ownership to another admin
+ */
+export const transferToken = async (tokenId: string, newAdminId: string) => {
+  try {
+    console.log('Transferring token:', tokenId, 'to admin:', newAdminId);
+    const { data, error } = await supabase.rpc('transfer_token', { 
+      token_id: tokenId, 
+      new_admin_id: newAdminId 
+    });
+    
+    if (error) {
+      console.error('Error transferring token:', error);
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in transferToken:', error);
+    throw error;
+  }
+};
