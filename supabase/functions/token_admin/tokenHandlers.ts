@@ -106,3 +106,28 @@ export async function deleteToken(params: { id: string }) {
   }
   return { success: true };
 }
+
+// Function to dispatch token operations based on action type
+export function handleTokenOperation(action: string, params: any) {
+  console.log(`Handling token operation: ${action}`);
+  
+  switch (action) {
+    case 'token_get_all':
+    case 'get_tokens':
+      return getTokens();
+    case 'token_get_value':
+    case 'get_token_value':
+      return getTokenValue(params);
+    case 'token_add':
+    case 'add_token':
+      return addToken(params);
+    case 'token_update':
+    case 'update_token':
+      return updateToken(params);
+    case 'token_delete':
+    case 'delete_token':
+      return deleteToken(params);
+    default:
+      throw new Error(`Unknown token action: ${action}`);
+  }
+}

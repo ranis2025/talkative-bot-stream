@@ -20,7 +20,8 @@ serve(async (req) => {
     let result;
 
     // Route to the appropriate handler based on the action
-    if (action.startsWith("token_")) {
+    if (action.startsWith("token_") || action.startsWith("get_") || action.startsWith("add_") || 
+        action.startsWith("update_") || action.startsWith("delete_")) {
       result = await handleTokenOperation(action, params);
     } else if (action.startsWith("assignment_")) {
       result = await handleAssignmentOperation(action, params);

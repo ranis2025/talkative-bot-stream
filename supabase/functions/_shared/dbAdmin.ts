@@ -15,12 +15,7 @@ export async function executeCustomQuery(params: { query: string }) {
   }
   
   try {
-    // Execute the query directly instead of using a stored procedure
-    const { data, error } = await supabase
-      .from('_unsafe_query')  // This is a special endpoint for raw queries
-      .select('*')
-      .limit(1000)
-      .csv(`${query}`);
+    const { data, error } = await supabase.rpc('execute_query', { query_text: query });
     
     if (error) {
       console.error('Error executing query:', error);

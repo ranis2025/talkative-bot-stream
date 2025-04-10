@@ -8,7 +8,7 @@ import { invokeTokenAdminFunction } from "./api";
 export const getTokens = async (): Promise<TokenRecord[]> => {
   try {
     console.log('Fetching tokens from edge function');
-    return await invokeTokenAdminFunction<TokenRecord[]>('get_tokens');
+    return await invokeTokenAdminFunction<TokenRecord[]>('token_get_all');
   } catch (error) {
     console.error('Error getting tokens:', error);
     throw error;
@@ -23,7 +23,7 @@ export const addToken = async (token: string, name: string, description?: string
     console.log('Adding token via edge function:', { token, name, description, adminId });
     
     // Make sure adminId is not undefined before passing it to the edge function
-    const data = await invokeTokenAdminFunction<{ id: string }>('add_token', { 
+    const data = await invokeTokenAdminFunction<{ id: string }>('token_add', { 
       token, 
       name, 
       description,
@@ -43,7 +43,7 @@ export const addToken = async (token: string, name: string, description?: string
 export const updateToken = async (id: string, name: string, description?: string): Promise<void> => {
   try {
     console.log('Updating token via edge function:', { id, name, description });
-    await invokeTokenAdminFunction('update_token', { 
+    await invokeTokenAdminFunction('token_update', { 
       id, 
       name, 
       description 
@@ -60,7 +60,7 @@ export const updateToken = async (id: string, name: string, description?: string
 export const deleteToken = async (id: string): Promise<void> => {
   try {
     console.log('Deleting token via edge function:', { id });
-    await invokeTokenAdminFunction('delete_token', { id });
+    await invokeTokenAdminFunction('token_delete', { id });
   } catch (error) {
     console.error('Error deleting token:', error);
     throw error;
