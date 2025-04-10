@@ -15,7 +15,7 @@ const DbAdmin = () => {
   const [magicToken, setMagicToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [botResults, setBotResults] = useState<any[]>([]);
-  const [sqlQuery, setSqlQuery] = useState("");
+  const [sqlQuery, setSqlQuery] = useState("SELECT * FROM admin_roles");
   const [queryResults, setQueryResults] = useState<any[]>([]);
   const [queryColumns, setQueryColumns] = useState<string[]>([]);
   const [isQueryLoading, setIsQueryLoading] = useState(false);
@@ -72,7 +72,7 @@ const DbAdmin = () => {
       // Combine results with a standardized source of "chat_bots"
       const combinedResults = [
         ...(chatBots || []).map((bot: any) => ({ ...bot, source: 'chat_bots' })),
-        ...(assignedBots || []).map((bot: any) => ({ ...bot, source: 'chat_bots' }))
+        ...(assignedBots || []).map((bot: any) => ({ ...bot, source: 'assignments' }))
       ];
 
       setBotResults(combinedResults);

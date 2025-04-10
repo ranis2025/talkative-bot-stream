@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, LogOut, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, LogOut, UserPlus, Users, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -171,12 +172,24 @@ const SuperAdmin = () => {
     navigate("/token-admin");
   };
 
+  const handleGoToDbAdmin = () => {
+    navigate("/db-admin");
+  };
+
   return (
     <TooltipProvider>
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Панель Super Admin</h1>
           <div className="flex gap-2">
+            <Button 
+              onClick={handleGoToDbAdmin} 
+              variant="outline" 
+              className="flex items-center gap-2"
+            >
+              <Database className="h-4 w-4" />
+              Инструменты БД
+            </Button>
             <Button 
               onClick={handleGoToTokenAdmin} 
               variant="outline" 

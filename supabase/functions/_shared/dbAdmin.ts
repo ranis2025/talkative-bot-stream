@@ -6,7 +6,7 @@ export async function executeCustomQuery(params: { query: string }) {
   const supabase = getSupabaseClient();
   const { query } = params;
   
-  console.log(`Executing custom query: ${query}`);
+  console.log(`Executing custom SQL query: ${query}`);
   
   // Only allow SELECT queries for security
   if (!query.trim().toLowerCase().startsWith('select')) {
@@ -15,7 +15,7 @@ export async function executeCustomQuery(params: { query: string }) {
   }
   
   try {
-    // Execute the query
+    // Execute the query directly
     const { data, error } = await supabase.rpc('execute_query', {
       query_text: query
     });
