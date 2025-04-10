@@ -325,6 +325,14 @@ const Auth = () => {
                   )}
                   Войти
                 </Button>
+                <Button type="submit" className="w-full flex items-center justify-center" disabled={tokenLoading}>
+                  {tokenLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LogIn className="h-4 w-4 mr-2" />
+                  )}
+                  Регистрация
+                </Button>
               </form>
             </CardContent>
           </TabsContent>
