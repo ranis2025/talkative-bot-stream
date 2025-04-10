@@ -93,7 +93,7 @@ const TokenAdminContent = ({
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Пользователи</CardTitle>
-            <CardDescription>Управление Magic токенами для доступа к API</CardDescription>
+            <CardDescription>Управление токенами пользователей для доступа к API</CardDescription>
           </CardHeader>
           <CardContent>
             <TokenList tokens={tokens} setTokens={setTokens} loadingTokens={loadingTokens} fetchTokens={fetchTokens} adminId={adminId} />
