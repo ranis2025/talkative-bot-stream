@@ -66,11 +66,7 @@ const App = () => (
               />
               <Route 
                 path="/db-admin" 
-                element={
-                  <AuthGuard>
-                    <DbAdmin />
-                  </AuthGuard>
-                } 
+                element={<DbAdmin />} 
               />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
