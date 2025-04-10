@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, LogIn } from "lucide-react";
@@ -48,9 +49,7 @@ const Auth = () => {
 
   const clearAllSessionData = () => {
     localStorage.clear();
-    sessionStorage.removeItem("admin_role");
-    sessionStorage.removeItem("admin_username");
-    sessionStorage.removeItem("admin_id");
+    sessionStorage.clear();
     console.log("All session data cleared during authentication");
   };
 

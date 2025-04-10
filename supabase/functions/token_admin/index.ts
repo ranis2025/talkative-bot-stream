@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { handleTokenOperation } from "./tokenHandlers.ts";
 import { handleAssignmentOperation } from "./assignmentHandlers.ts";
 import { executeCustomQuery } from "../_shared/dbAdmin.ts";
+import { handleBotAssignmentOperation } from "./botAssignmentHandler.ts";
 
 serve(async (req) => {
   // Handle CORS preflight request
@@ -25,6 +26,8 @@ serve(async (req) => {
       result = await handleTokenOperation(action, params);
     } else if (action.startsWith("assignment_")) {
       result = await handleAssignmentOperation(action, params);
+    } else if (action === "assign_bot_to_token" || action === "get_assigned_bots") {
+      result = await handleBotAssignmentOperation(action, params);
     } else if (action === "execute_query") {
       // Handle custom query execution
       result = await executeCustomQuery(params);

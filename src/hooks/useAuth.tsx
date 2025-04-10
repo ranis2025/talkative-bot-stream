@@ -37,7 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [searchParams, toast]);
 
+  const clearAllStorageData = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log("All local and session storage data cleared");
+  };
+
   const validateAndSetToken = async (token: string) => {
+    // Clear all existing storage data first to prevent conflicts
+    clearAllStorageData();
+    
     if (token.startsWith("demo-")) {
       // Demo tokens are always valid
       checkOrCreateUserSettings(token);
@@ -131,9 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     // Clear everything from storage when logging out
+    clearAllStorageData();
     setToken(null);
-    localStorage.clear();
-    sessionStorage.clear();
     
     toast({
       title: "Выход выполнен",
