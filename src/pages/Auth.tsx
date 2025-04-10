@@ -248,7 +248,7 @@ const Auth = () => {
                   <Input id="password" type="password" placeholder="Введите ваш пароль" value={password} onChange={e => setPassword(e.target.value)} />
                 </div>
                 {loginError && <div className="text-destructive text-sm">{loginError}</div>}
-                <Button type="submit" disabled={tokenLoading} className="w-[48%] flex items-center justify-center">
+                <Button type="submit" disabled={tokenLoading} className="w-[48%]">
                   {tokenLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogIn className="h-4 w-4 mr-2" />}
                   Войти
                 </Button>
