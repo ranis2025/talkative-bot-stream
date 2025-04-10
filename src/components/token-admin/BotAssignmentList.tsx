@@ -101,9 +101,9 @@ const BotAssignmentList = ({
         </DialogTrigger>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Назначить бота Magic токену</DialogTitle>
+            <DialogTitle>Назначить бота пользователю</DialogTitle>
             <DialogDescription>
-              Свяжите бота с Magic токеном авторизации для доступа к API.
+              Свяжите бота с пользователем для доступа к API.
             </DialogDescription>
           </DialogHeader>
           <BotAssignmentForm 
@@ -123,7 +123,7 @@ const BotAssignmentList = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Токен</TableHead>
+                <TableHead>Пользователь</TableHead>
                 <TableHead>Бот</TableHead>
                 <TableHead>Токен бота</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
@@ -133,7 +133,7 @@ const BotAssignmentList = ({
               {assignedBots.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                    Нет назначений ботов к токенам
+                    Нет назначений ботов к пользователям
                   </TableCell>
                 </TableRow>
               ) : (
@@ -193,7 +193,7 @@ const BotAssignmentList = ({
                             <AlertDialogHeader>
                               <AlertDialogTitle>Удаление назначения</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Вы уверены, что хотите удалить связь между ботом "{assignment.bot_name}" и токеном? 
+                                Вы уверены, что хотите удалить связь между ботом "{assignment.bot_name}" и пользователем? 
                                 Это действие нельзя отменить.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
