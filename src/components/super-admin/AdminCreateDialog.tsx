@@ -16,12 +16,14 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
   const resetForm = () => {
     setUsername("");
     setPassword("");
     setFormError("");
+    setIsCreating(false);
   };
 
   const handleCreateAdmin = async () => {
@@ -31,6 +33,8 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
     }
     
     try {
+      setIsCreating(true);
+      
       // Check if username already exists
       const { data: existingUser } = await supabase
         .from("admin_roles")
@@ -40,11 +44,12 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
       
       if (existingUser) {
         setFormError("Администратор с таким именем уже существует");
+        setIsCreating(false);
         return;
       }
       
       // Create new admin
-      const { error } = await supabase
+      const { data: newAdmin, error } = await supabase
         .from("admin_roles")
         .insert({
           username,
@@ -52,13 +57,17 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
           role: "admin",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        });
+        })
+        .select()
+        .single();
       
       if (error) throw error;
       
+      console.log("Admin created successfully with ID:", newAdmin.id);
+      
       toast({
         title: "Администратор создан",
-        description: `Администратор ${username} успешно создан`
+        description: `Администратор ${username} успешно создан с ID: ${newAdmin.id}`
       });
       
       // Reset form
@@ -67,15 +76,10 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
       // Refresh admin list
       onAdminCreated();
       
-      // Close dialog (will be handled by the DialogClose component)
-      
     } catch (error: any) {
       console.error("Error creating admin:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать администратора",
-        variant: "destructive"
-      });
+      setFormError("Не удалось создать администратора");
+      setIsCreating(false);
     }
   };
 
@@ -121,7 +125,9 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
           <DialogClose asChild>
             <Button variant="outline">Отмена</Button>
           </DialogClose>
-          <Button onClick={handleCreateAdmin}>Создать</Button>
+          <Button onClick={handleCreateAdmin} disabled={isCreating}>
+            {isCreating ? "Создание..." : "Создать"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

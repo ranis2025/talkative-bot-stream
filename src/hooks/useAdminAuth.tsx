@@ -68,12 +68,13 @@ export const useAdminAuth = () => {
         return;
       }
       
+      console.log("Admin authenticated successfully:", adminUser);
+      console.log("Admin ID:", adminUser.id);
+      
       // Store admin info in session storage
       sessionStorage.setItem("admin_role", adminUser.role);
       sessionStorage.setItem("admin_username", adminUser.username);
       sessionStorage.setItem("admin_id", adminUser.id);
-      
-      console.log("Admin logged in successfully with ID:", adminUser.id);
       
       setAuthState({
         isAuthenticated: true,

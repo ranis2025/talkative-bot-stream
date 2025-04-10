@@ -17,6 +17,8 @@ const TokenAdmin = () => {
     handleAdminLogout 
   } = useAdminAuth();
   
+  console.log("Current admin ID in TokenAdmin page:", adminId);
+  
   const {
     refreshAllData,
     content: adminContent

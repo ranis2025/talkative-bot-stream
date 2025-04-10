@@ -66,3 +66,16 @@ export const deleteToken = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+/**
+ * Fetch tokens belonging to a specific admin
+ */
+export const getAdminTokens = async (adminId: string): Promise<TokenRecord[]> => {
+  try {
+    console.log('Fetching tokens for admin:', adminId);
+    return await invokeTokenAdminFunction<TokenRecord[]>('token_get_admin', { admin_id: adminId });
+  } catch (error) {
+    console.error('Error getting admin tokens:', error);
+    throw error;
+  }
+};
