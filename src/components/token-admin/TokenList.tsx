@@ -42,6 +42,7 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: T
   const [newToken, setNewToken] = useState({ name: "", description: "" });
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [addingToken, setAddingToken] = useState(false);
   const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,9 +96,10 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: T
     }
 
     try {
+      setAddingToken(true);
       const tokenValue = generateToken(newToken.name);
       
-      // Pass the adminId if available
+      console.log("Adding new token with adminId:", adminId);
       await addToken(tokenValue, newToken.name, newToken.description, adminId);
       
       toast({
@@ -114,6 +116,8 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: T
         description: "Не удалось добавить токен",
         variant: "destructive"
       });
+    } finally {
+      setAddingToken(false);
     }
   };
 
@@ -284,9 +288,22 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: T
             placeholder="Описание (опционально)"
           />
         </div>
-        <Button onClick={addNewToken} className="mt-3">
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить Magic токен
+        <Button 
+          onClick={addNewToken} 
+          className="mt-3"
+          disabled={addingToken || !newToken.name}
+        >
+          {addingToken ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Добавление...
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Добавить Magic токен
+            </>
+          )}
         </Button>
       </div>
     </>
