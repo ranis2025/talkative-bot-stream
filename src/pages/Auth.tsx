@@ -12,6 +12,16 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// Define TypeScript types for admin roles
+interface AdminUser {
+  id: string;
+  username: string;
+  password?: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const Auth = () => {
   const [tokenLoading, setTokenLoading] = useState(false);
   const navigate = useNavigate();
@@ -26,6 +36,10 @@ const Auth = () => {
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminError, setAdminError] = useState("");
+  
+  const [rootUsername, setRootUsername] = useState("");
+  const [rootPassword, setRootPassword] = useState("");
+  const [rootError, setRootError] = useState("");
   
   // Check for token in URL
   useEffect(() => {
@@ -209,6 +223,56 @@ const Auth = () => {
     }
   };
 
+  const handleRootLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!rootUsername || !rootPassword) {
+      setRootError("Пожалуйста, заполните все поля");
+      return;
+    }
+    
+    setTokenLoading(true);
+    
+    try {
+      // Check super admin credentials against the admin_roles table
+      const { data: superAdmin, error: superAdminError } = await supabase
+        .from("admin_roles")
+        .select("*")
+        .eq("username", rootUsername)
+        .eq("password", rootPassword)
+        .eq("role", "super_admin")
+        .maybeSingle();
+      
+      if (superAdminError) throw superAdminError;
+      
+      if (!superAdmin) {
+        setRootError("Неверное имя пользователя или пароль");
+        setTokenLoading(false);
+        return;
+      }
+      
+      // Store admin info in session storage
+      sessionStorage.setItem("admin_role", superAdmin.role);
+      sessionStorage.setItem("admin_username", superAdmin.username);
+      
+      toast({
+        title: "Успешный вход",
+        description: "Вы вошли как Super Admin",
+      });
+      navigate("/super-admin");
+      
+    } catch (error: any) {
+      console.error("Root login error:", error);
+      toast({
+        title: "Ошибка входа",
+        description: error.message || "Произошла ошибка при входе",
+        variant: "destructive",
+      });
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
   if (tokenLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
@@ -224,9 +288,10 @@ const Auth = () => {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4">
       <Card className="w-full max-w-md shadow-lg border">
         <Tabs defaultValue="user" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="user">Пользователь</TabsTrigger>
             <TabsTrigger value="admin">Администратор</TabsTrigger>
+            <TabsTrigger value="root">Root</TabsTrigger>
           </TabsList>
           <TabsContent value="user">
             <CardContent className="pt-6">
@@ -298,6 +363,43 @@ const Auth = () => {
                     <LogIn className="h-4 w-4 mr-2" />
                   )}
                   Войти как Администратор
+                </Button>
+              </form>
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="root">
+            <CardContent className="pt-6">
+              <form onSubmit={handleRootLoginSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rootUsername">Имя пользователя</Label>
+                  <Input 
+                    id="rootUsername"
+                    type="text" 
+                    placeholder="Root имя пользователя"
+                    value={rootUsername}
+                    onChange={(e) => setRootUsername(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rootPassword">Пароль</Label>
+                  <Input 
+                    id="rootPassword"
+                    type="password" 
+                    placeholder="Root пароль"
+                    value={rootPassword}
+                    onChange={(e) => setRootPassword(e.target.value)}
+                  />
+                </div>
+                {rootError && (
+                  <div className="text-destructive text-sm">{rootError}</div>
+                )}
+                <Button type="submit" className="w-full flex items-center justify-center" disabled={tokenLoading}>
+                  {tokenLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LogIn className="h-4 w-4 mr-2" />
+                  )}
+                  Войти как Super Admin
                 </Button>
               </form>
             </CardContent>

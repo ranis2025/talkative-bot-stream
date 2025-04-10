@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,8 @@ interface AdminUser {
   username: string;
   role: string;
   created_at: string;
+  updated_at?: string;
+  password?: string;
 }
 
 const SuperAdmin = () => {
@@ -61,7 +62,7 @@ const SuperAdmin = () => {
       
       if (error) throw error;
       
-      setAdmins(data || []);
+      setAdmins(data as AdminUser[] || []);
     } catch (error: any) {
       console.error("Error fetching admins:", error);
       toast({

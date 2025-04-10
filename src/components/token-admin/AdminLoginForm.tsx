@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormLabel } from "@/components/ui/form";
 import { ArrowLeft, UserCog } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface AdminLoginFormProps {
   onLogin: (username: string, password: string) => void;
