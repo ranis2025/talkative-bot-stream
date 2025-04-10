@@ -97,9 +97,7 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: T
     try {
       const tokenValue = generateToken(newToken.name);
       
-      // Log the adminId to help diagnose the issue
-      console.log("Current adminId when adding token:", adminId);
-      
+      // Pass the adminId if available
       await addToken(tokenValue, newToken.name, newToken.description, adminId);
       
       toast({
@@ -286,15 +284,10 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: T
             placeholder="Описание (опционально)"
           />
         </div>
-        <Button onClick={addNewToken} className="mt-3" disabled={!adminId}>
+        <Button onClick={addNewToken} className="mt-3">
           <Plus className="h-4 w-4 mr-2" />
           Добавить Magic токен
         </Button>
-        {!adminId && (
-          <p className="text-sm text-amber-500 mt-2">
-            Не удалось определить ID администратора. Создание токенов недоступно.
-          </p>
-        )}
       </div>
     </>
   );

@@ -3,5 +3,10 @@
 export * from './types';
 export * from './tokenOperations';
 export * from './botAssignmentOperations';
-export * from './api';
 
+// Re-export the API functions except those that would cause conflicts
+export { 
+  invokeTokenAdminFunction,
+  executeCustomQuery,
+  transferToken
+} from './api';
