@@ -102,7 +102,7 @@ const TokenAdminContent = ({
 
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Назначение ботов токенам</CardTitle>
+            <CardTitle>Назначение ботов пользователям</CardTitle>
             <CardDescription>Управление связями между Magic токенами и ботами</CardDescription>
           </CardHeader>
           <CardContent>
