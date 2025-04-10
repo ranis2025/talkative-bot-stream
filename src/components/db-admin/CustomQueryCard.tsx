@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,16 +38,24 @@ const CustomQueryCard = ({ defaultQuery = "SELECT * FROM admin_roles" }: CustomQ
         // Extract column names from the first result
         setQueryColumns(Object.keys(results[0]));
         setQueryResults(results);
+        
+        toast({
+          title: "Query executed successfully",
+          description: `Retrieved ${results.length} records`,
+        });
       } else {
         setQueryColumns([]);
         setQueryResults([]);
         toast({
           title: "Query executed",
-          description: "No results returned or query was not a SELECT statement",
+          description: "No results returned",
         });
       }
     } catch (error: any) {
       console.error("Error executing query:", error);
+      setQueryColumns([]);
+      setQueryResults([]);
+      
       toast({
         title: "Error executing query",
         description: error.message || "An unknown error occurred",
