@@ -92,7 +92,7 @@ const TokenAdminContent = ({
     content: <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Magic токены</CardTitle>
+            <CardTitle>Пользователи</CardTitle>
             <CardDescription>Управление Magic токенами для доступа к API</CardDescription>
           </CardHeader>
           <CardContent>
