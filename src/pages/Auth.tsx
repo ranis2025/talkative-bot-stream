@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, LogIn } from "lucide-react";
@@ -7,8 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Auth = () => {
   const [tokenLoading, setTokenLoading] = useState(false);
@@ -20,6 +22,10 @@ const Auth = () => {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  
+  const [adminUsername, setAdminUsername] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState("");
   
   // Check for token in URL
   useEffect(() => {
@@ -145,6 +151,64 @@ const Auth = () => {
     }
   };
 
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!adminUsername || !adminPassword) {
+      setAdminError("Пожалуйста, заполните все поля");
+      return;
+    }
+    
+    setTokenLoading(true);
+    
+    try {
+      // Check admin credentials against the admin_roles table
+      const { data: adminUser, error: adminError } = await supabase
+        .from("admin_roles")
+        .select("*")
+        .eq("username", adminUsername)
+        .eq("password", adminPassword)
+        .maybeSingle();
+      
+      if (adminError) throw adminError;
+      
+      if (!adminUser) {
+        setAdminError("Неверное имя пользователя или пароль");
+        setTokenLoading(false);
+        return;
+      }
+      
+      // Store admin info in session storage
+      sessionStorage.setItem("admin_role", adminUser.role);
+      sessionStorage.setItem("admin_username", adminUser.username);
+      
+      // Redirect based on role
+      if (adminUser.role === 'super_admin') {
+        toast({
+          title: "Успешный вход",
+          description: "Вы вошли как Super Admin",
+        });
+        navigate("/super-admin");
+      } else {
+        toast({
+          title: "Успешный вход",
+          description: "Вы вошли как Admin",
+        });
+        navigate("/token-admin");
+      }
+      
+    } catch (error: any) {
+      console.error("Admin login error:", error);
+      toast({
+        title: "Ошибка входа",
+        description: error.message || "Произошла ошибка при входе",
+        variant: "destructive",
+      });
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
   if (tokenLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
@@ -159,41 +223,86 @@ const Auth = () => {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4">
       <Card className="w-full max-w-md shadow-lg border">
-        <CardContent className="pt-6">
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="login">Логин</Label>
-              <Input 
-                id="login"
-                type="text" 
-                placeholder="Введите ваш логин"
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
-              <Input 
-                id="password"
-                type="password" 
-                placeholder="Введите ваш пароль"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            {loginError && (
-              <div className="text-destructive text-sm">{loginError}</div>
-            )}
-            <Button type="submit" className="w-full flex items-center justify-center" disabled={tokenLoading}>
-              {tokenLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <LogIn className="h-4 w-4 mr-2" />
-              )}
-              Войти
-            </Button>
-          </form>
-        </CardContent>
+        <Tabs defaultValue="user" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="user">Пользователь</TabsTrigger>
+            <TabsTrigger value="admin">Администратор</TabsTrigger>
+          </TabsList>
+          <TabsContent value="user">
+            <CardContent className="pt-6">
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login">Логин</Label>
+                  <Input 
+                    id="login"
+                    type="text" 
+                    placeholder="Введите ваш логин"
+                    value={login}
+                    onChange={(e) => setLogin(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Пароль</Label>
+                  <Input 
+                    id="password"
+                    type="password" 
+                    placeholder="Введите ваш пароль"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                {loginError && (
+                  <div className="text-destructive text-sm">{loginError}</div>
+                )}
+                <Button type="submit" className="w-full flex items-center justify-center" disabled={tokenLoading}>
+                  {tokenLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LogIn className="h-4 w-4 mr-2" />
+                  )}
+                  Войти
+                </Button>
+              </form>
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="admin">
+            <CardContent className="pt-6">
+              <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="adminUsername">Имя пользователя</Label>
+                  <Input 
+                    id="adminUsername"
+                    type="text" 
+                    placeholder="Имя администратора"
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adminPassword">Пароль</Label>
+                  <Input 
+                    id="adminPassword"
+                    type="password" 
+                    placeholder="Пароль администратора"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                  />
+                </div>
+                {adminError && (
+                  <div className="text-destructive text-sm">{adminError}</div>
+                )}
+                <Button type="submit" className="w-full flex items-center justify-center" disabled={tokenLoading}>
+                  {tokenLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LogIn className="h-4 w-4 mr-2" />
+                  )}
+                  Войти как Администратор
+                </Button>
+              </form>
+            </CardContent>
+          </TabsContent>
+        </Tabs>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
             Войдите, чтобы получить доступ к чату

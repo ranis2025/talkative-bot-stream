@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import GroupChats from "./pages/GroupChats";
 import TokenAdmin from "./pages/TokenAdmin";
 import DbAdmin from "./pages/DbAdmin";
+import SuperAdmin from "./pages/SuperAdmin";
 
 const queryClient = new QueryClient();
 
@@ -57,11 +58,11 @@ const App = () => (
               />
               <Route 
                 path="/token-admin" 
-                element={
-                  <AuthGuard>
-                    <TokenAdmin />
-                  </AuthGuard>
-                } 
+                element={<TokenAdmin />} 
+              />
+              <Route 
+                path="/super-admin" 
+                element={<SuperAdmin />} 
               />
               <Route 
                 path="/db-admin" 

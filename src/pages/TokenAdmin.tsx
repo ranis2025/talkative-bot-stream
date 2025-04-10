@@ -16,6 +16,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import TokenList from "@/components/token-admin/TokenList";
 import BotAssignmentList from "@/components/token-admin/BotAssignmentList";
 import AdminLoginForm from "@/components/token-admin/AdminLoginForm";
+import { supabase } from "@/integrations/supabase/client";
 
 const TokenAdmin = () => {
   const [tokens, setTokens] = useState<TokenRecord[]>([]);
@@ -30,41 +31,80 @@ const TokenAdmin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState("");
   const [refreshData, setRefreshData] = useState(0);
+  const [adminRole, setAdminRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (token && !searchParams.get("token")) {
       navigate(`/token-admin?token=${token}`, { replace: true });
     }
+    
+    // Check admin session
+    const storedRole = sessionStorage.getItem("admin_role");
+    const username = sessionStorage.getItem("admin_username");
+    
+    if (storedRole && username) {
+      setIsAuthenticated(true);
+      setAdminRole(storedRole);
+    }
   }, [token, searchParams, navigate]);
 
-  const handleAdminLogin = (username: string, password: string) => {
-    if (username === "admin" && password === "admin") {
+  const handleAdminLogin = async (username: string, password: string) => {
+    try {
+      // Check admin credentials against the admin_roles table
+      const { data: adminUser, error: adminError } = await supabase
+        .from("admin_roles")
+        .select("*")
+        .eq("username", username)
+        .eq("password", password)
+        .maybeSingle();
+      
+      if (adminError) throw adminError;
+      
+      if (!adminUser) {
+        setAuthError("Неверное имя пользователя или пароль");
+        return;
+      }
+      
+      // Store admin info in session storage
+      sessionStorage.setItem("admin_role", adminUser.role);
+      sessionStorage.setItem("admin_username", adminUser.username);
+      
       setIsAuthenticated(true);
+      setAdminRole(adminUser.role);
       setAuthError("");
-      localStorage.setItem("token_admin_auth", "true");
-    } else {
-      setAuthError("Неверное имя пользователя или пароль");
+      
+      // Redirect Super Admin to its own page
+      if (adminUser.role === 'super_admin') {
+        navigate("/super-admin");
+      }
+      
+    } catch (error: any) {
+      console.error("Login error:", error);
+      setAuthError("Ошибка при проверке учетных данных");
     }
   };
-
-  useEffect(() => {
-    const isAdminAuth = localStorage.getItem("token_admin_auth") === "true";
-    if (isAdminAuth) {
-      setIsAuthenticated(true);
-    }
-  }, []);
 
   const handleAdminLogout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem("token_admin_auth");
+    setAdminRole(null);
+    sessionStorage.removeItem("admin_role");
+    sessionStorage.removeItem("admin_username");
+    toast({
+      title: "Выход выполнен",
+      description: "Вы успешно вышли из панели администратора"
+    });
+  };
+
+  const handleSuperAdminRedirect = () => {
+    navigate("/auth");
   };
 
   useEffect(() => {
-    if (token && isAuthenticated) {
+    if (isAuthenticated) {
       fetchTokens();
       fetchAssignedBots();
     }
-  }, [token, isAuthenticated, refreshData]);
+  }, [isAuthenticated, refreshData]);
 
   const fetchTokens = async () => {
     try {
@@ -125,7 +165,8 @@ const TokenAdmin = () => {
       <AdminLoginForm 
         onLogin={handleAdminLogin} 
         onBackToChat={handleBackToChat} 
-        authError={authError} 
+        authError={authError}
+        onSuperAdminRedirect={handleSuperAdminRedirect}
       />
     );
   }

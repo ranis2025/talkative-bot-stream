@@ -36,6 +36,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_roles: {
+        Row: {
+          created_at: string
+          id: string
+          password: string
+          role: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password: string
+          role: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password?: string
+          role?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       app_users: {
         Row: {
           created_at: string | null

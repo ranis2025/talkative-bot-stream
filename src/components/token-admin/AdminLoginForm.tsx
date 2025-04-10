@@ -4,15 +4,17 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormLabel } from "@/components/ui/form";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, UserCog } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminLoginFormProps {
   onLogin: (username: string, password: string) => void;
   onBackToChat: () => void;
   authError: string;
+  onSuperAdminRedirect?: () => void;
 }
 
-const AdminLoginForm = ({ onLogin, onBackToChat, authError }: AdminLoginFormProps) => {
+const AdminLoginForm = ({ onLogin, onBackToChat, authError, onSuperAdminRedirect }: AdminLoginFormProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -63,13 +65,26 @@ const AdminLoginForm = ({ onLogin, onBackToChat, authError }: AdminLoginFormProp
             >
               Войти
             </Button>
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={onBackToChat}
-            >
-              Вернуться к чату
-            </Button>
+            <div className="flex justify-between">
+              <Button 
+                variant="outline" 
+                className="w-[48%]" 
+                onClick={onBackToChat}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Вернуться к чату
+              </Button>
+              {onSuperAdminRedirect && (
+                <Button 
+                  variant="secondary" 
+                  className="w-[48%]" 
+                  onClick={onSuperAdminRedirect}
+                >
+                  <UserCog className="h-4 w-4 mr-2" />
+                  Super Admin
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
