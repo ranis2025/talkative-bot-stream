@@ -18,13 +18,14 @@ export const getTokens = async (): Promise<TokenRecord[]> => {
 /**
  * Add a new token to the database
  */
-export const addToken = async (token: string, name: string, description?: string): Promise<string> => {
+export const addToken = async (token: string, name: string, description?: string, adminId?: string | null): Promise<string> => {
   try {
-    console.log('Adding token via edge function:', { token, name, description });
+    console.log('Adding token via edge function:', { token, name, description, adminId });
     const data = await invokeTokenAdminFunction<{ id: string }>('add_token', { 
       token, 
       name, 
-      description 
+      description,
+      admin_id: adminId
     });
     
     return data.id;

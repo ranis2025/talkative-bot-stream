@@ -35,9 +35,10 @@ interface TokenListProps {
   setTokens: React.Dispatch<React.SetStateAction<TokenRecord[]>>;
   loadingTokens: boolean;
   fetchTokens: () => Promise<void>;
+  adminId: string | null;
 }
 
-const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListProps) => {
+const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: TokenListProps) => {
   const [newToken, setNewToken] = useState({ name: "", description: "" });
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
@@ -96,7 +97,7 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
     try {
       const tokenValue = generateToken(newToken.name);
       
-      await addToken(tokenValue, newToken.name, newToken.description);
+      await addToken(tokenValue, newToken.name, newToken.description, adminId);
       
       toast({
         title: "Успешно",
@@ -282,10 +283,15 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens }: TokenListP
             placeholder="Описание (опционально)"
           />
         </div>
-        <Button onClick={addNewToken} className="mt-3">
+        <Button onClick={addNewToken} className="mt-3" disabled={!adminId}>
           <Plus className="h-4 w-4 mr-2" />
           Добавить Magic токен
         </Button>
+        {!adminId && (
+          <p className="text-sm text-amber-500 mt-2">
+            Не удалось определить ID администратора. Создание токенов недоступно.
+          </p>
+        )}
       </div>
     </>
   );

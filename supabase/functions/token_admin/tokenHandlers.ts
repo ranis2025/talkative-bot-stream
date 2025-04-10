@@ -39,12 +39,24 @@ export async function getTokenValue(params: { token_id: string }) {
 }
 
 // Add a new token to access_tokens table
-export async function addToken(params: { token: string, name: string, description?: string }) {
+export async function addToken(params: { token: string, name: string, description?: string, admin_id?: string }) {
   const supabase = getSupabaseClient();
-  const { token: tokenValue, name, description } = params;
+  const { token: tokenValue, name, description, admin_id } = params;
+  
+  const insertData: any = { 
+    token: tokenValue, 
+    name, 
+    description 
+  };
+  
+  // Only add admin_id if it's provided and not null/undefined
+  if (admin_id) {
+    insertData.admin_id = admin_id;
+  }
+  
   const { data: newToken, error: addError } = await supabase
     .from('access_tokens')
-    .insert([{ token: tokenValue, name, description }])
+    .insert([insertData])
     .select()
     .single();
   

@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       access_tokens: {
         Row: {
+          admin_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -19,6 +20,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -27,6 +29,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -34,7 +37,15 @@ export type Database = {
           token?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "access_tokens_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_roles: {
         Row: {

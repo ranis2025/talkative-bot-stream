@@ -7,6 +7,7 @@ export interface TokenRecord {
   description?: string;
   created_at: string;
   updated_at: string;
+  admin_id?: string | null;
 }
 
 export interface AssignedBot {

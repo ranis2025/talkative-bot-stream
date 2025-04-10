@@ -32,6 +32,7 @@ const TokenAdmin = () => {
   const [authError, setAuthError] = useState("");
   const [refreshData, setRefreshData] = useState(0);
   const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [adminId, setAdminId] = useState<string | null>(null);
 
   useEffect(() => {
     if (token && !searchParams.get("token")) {
@@ -41,10 +42,14 @@ const TokenAdmin = () => {
     // Check admin session
     const storedRole = sessionStorage.getItem("admin_role");
     const username = sessionStorage.getItem("admin_username");
+    const storedAdminId = sessionStorage.getItem("admin_id");
     
     if (storedRole && username) {
       setIsAuthenticated(true);
       setAdminRole(storedRole);
+      if (storedAdminId) {
+        setAdminId(storedAdminId);
+      }
     }
   }, [token, searchParams, navigate]);
 
@@ -68,9 +73,11 @@ const TokenAdmin = () => {
       // Store admin info in session storage
       sessionStorage.setItem("admin_role", adminUser.role);
       sessionStorage.setItem("admin_username", adminUser.username);
+      sessionStorage.setItem("admin_id", adminUser.id);
       
       setIsAuthenticated(true);
       setAdminRole(adminUser.role);
+      setAdminId(adminUser.id);
       setAuthError("");
       
       // Redirect Super Admin to its own page
@@ -87,8 +94,10 @@ const TokenAdmin = () => {
   const handleAdminLogout = () => {
     setIsAuthenticated(false);
     setAdminRole(null);
+    setAdminId(null);
     sessionStorage.removeItem("admin_role");
     sessionStorage.removeItem("admin_username");
+    sessionStorage.removeItem("admin_id");
     toast({
       title: "Выход выполнен",
       description: "Вы успешно вышли из панели администратора"
@@ -128,6 +137,7 @@ const TokenAdmin = () => {
           description: 'Test description',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          admin_id: null
         }
       ]);
     } finally {
@@ -202,7 +212,8 @@ const TokenAdmin = () => {
                 tokens={tokens} 
                 setTokens={setTokens} 
                 loadingTokens={loadingTokens} 
-                fetchTokens={fetchTokens} 
+                fetchTokens={fetchTokens}
+                adminId={adminId}
               />
             </CardContent>
           </Card>
