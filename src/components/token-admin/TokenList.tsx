@@ -97,6 +97,9 @@ const TokenList = ({ tokens, setTokens, loadingTokens, fetchTokens, adminId }: T
     try {
       const tokenValue = generateToken(newToken.name);
       
+      // Log the adminId to help diagnose the issue
+      console.log("Current adminId when adding token:", adminId);
+      
       await addToken(tokenValue, newToken.name, newToken.description, adminId);
       
       toast({

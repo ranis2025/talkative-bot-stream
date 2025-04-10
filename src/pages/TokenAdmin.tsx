@@ -48,7 +48,10 @@ const TokenAdmin = () => {
       setIsAuthenticated(true);
       setAdminRole(storedRole);
       if (storedAdminId) {
+        console.log("Retrieved admin ID from session storage:", storedAdminId);
         setAdminId(storedAdminId);
+      } else {
+        console.warn("No admin ID found in session storage");
       }
     }
   }, [token, searchParams, navigate]);
@@ -74,6 +77,8 @@ const TokenAdmin = () => {
       sessionStorage.setItem("admin_role", adminUser.role);
       sessionStorage.setItem("admin_username", adminUser.username);
       sessionStorage.setItem("admin_id", adminUser.id);
+      
+      console.log("Admin logged in successfully with ID:", adminUser.id);
       
       setIsAuthenticated(true);
       setAdminRole(adminUser.role);
