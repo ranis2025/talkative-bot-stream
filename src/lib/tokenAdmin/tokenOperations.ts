@@ -21,11 +21,13 @@ export const getTokens = async (): Promise<TokenRecord[]> => {
 export const addToken = async (token: string, name: string, description?: string, adminId?: string | null): Promise<string> => {
   try {
     console.log('Adding token via edge function:', { token, name, description, adminId });
+    
+    // Make sure adminId is not undefined before passing it to the edge function
     const data = await invokeTokenAdminFunction<{ id: string }>('add_token', { 
       token, 
       name, 
       description,
-      admin_id: adminId
+      admin_id: adminId || null // Ensure we pass null if adminId is undefined
     });
     
     return data.id;
