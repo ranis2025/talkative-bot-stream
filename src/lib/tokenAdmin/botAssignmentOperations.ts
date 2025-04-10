@@ -68,7 +68,8 @@ export const assignBotToToken = async (
 export const removeAssignment = async (id: string): Promise<void> => {
   try {
     console.log('Removing assignment via edge function:', { id });
-    await invokeTokenAdminFunction('remove_assignment', { id });
+    // Call the assignment_remove action from assignmentHandlers.ts
+    await invokeTokenAdminFunction('assignment_remove', { id });
   } catch (error) {
     console.error('Error removing assignment:', error);
     throw error;

@@ -23,7 +23,12 @@ serve(async (req) => {
     // Route to the appropriate handler based on the action
     if (action.startsWith("token_") || action.startsWith("get_") || action.startsWith("add_") || 
         action.startsWith("update_") || action.startsWith("delete_") || action.startsWith("transfer_")) {
-      result = await handleTokenOperation(action, params);
+      // Skip "get_assigned_bots" to ensure it doesn't get routed here
+      if (action === "get_assigned_bots") {
+        result = await handleBotAssignmentOperation(action, params);
+      } else {
+        result = await handleTokenOperation(action, params);
+      }
     } else if (action.startsWith("assignment_")) {
       result = await handleAssignmentOperation(action, params);
     } else if (action === "assign_bot_to_token" || action === "get_assigned_bots") {
