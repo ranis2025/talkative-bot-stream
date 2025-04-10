@@ -252,7 +252,7 @@ const Auth = () => {
                   {tokenLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogIn className="h-4 w-4 mr-2" />}
                   Войти
                 </Button>
-                <Button type="submit" disabled={tokenLoading} className="w-[48%]">
+                <Button type="submit" disabled={tokenLoading} className="w-[48%] bg-fuchsia-600 hover:bg-fuchsia-500">
                   {tokenLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogIn className="h-4 w-4 mr-2" />}
                   Регистрация
                 </Button>
