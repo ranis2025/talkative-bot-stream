@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, LogIn } from "lucide-react";
@@ -12,7 +11,6 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Define TypeScript types for admin roles
 interface AdminUser {
   id: string;
   username: string;
@@ -41,7 +39,6 @@ const Auth = () => {
   const [rootPassword, setRootPassword] = useState("");
   const [rootError, setRootError] = useState("");
   
-  // Check for token in URL
   useEffect(() => {
     const token = searchParams.get("token");
     if (token) {
@@ -49,11 +46,19 @@ const Auth = () => {
     }
   }, [searchParams, navigate, toast, setToken]);
 
-  // Handle token-based authentication
+  const clearAllSessionData = () => {
+    localStorage.clear();
+    sessionStorage.removeItem("admin_role");
+    sessionStorage.removeItem("admin_username");
+    sessionStorage.removeItem("admin_id");
+    console.log("All session data cleared during authentication");
+  };
+
   const handleTokenAuth = async (token: string) => {
     setTokenLoading(true);
     try {
-      // Check if token exists in the database
+      clearAllSessionData();
+      
       const { data: tokenExists, error: tokenError } = await supabase
         .from("access_tokens")
         .select("id")
@@ -70,7 +75,6 @@ const Auth = () => {
         return;
       }
       
-      // Create or get user settings for this token
       const { data: existingSettings, error: settingsError } = await supabase
         .from("user_settings")
         .select("*")
@@ -78,7 +82,6 @@ const Auth = () => {
         .maybeSingle();
       
       if (!existingSettings) {
-        // If no settings found for this token, create new settings
         const userId = uuidv4();
         const { error: createError } = await supabase
           .from("user_settings")
@@ -93,10 +96,8 @@ const Auth = () => {
         if (createError) throw createError;
       }
       
-      // Set token in context
       setToken(token);
       
-      // Navigate to chat page with token
       toast({
         title: "Успешный вход по токену",
         description: "Вы успешно вошли в систему",
@@ -124,12 +125,11 @@ const Auth = () => {
     setTokenLoading(true);
     
     try {
-      // Generate token from login and password
-      // Use first 8 chars of password or full password if shorter
+      clearAllSessionData();
+      
       const passwordPart = password.length > 8 ? password.substring(0, 8) : password;
       const generatedToken = `${login.toUpperCase()}:${passwordPart}`;
       
-      // Check if token already exists
       const { data: existingToken, error: tokenCheckError } = await supabase
         .from("access_tokens")
         .select("id")
@@ -137,7 +137,6 @@ const Auth = () => {
         .maybeSingle();
       
       if (!existingToken) {
-        // Create new token in database
         const { error: createTokenError } = await supabase
           .from("access_tokens")
           .insert({ 
@@ -151,7 +150,6 @@ const Auth = () => {
         if (createTokenError) throw createTokenError;
       }
       
-      // Authenticate with the generated token
       handleTokenAuth(generatedToken);
       
     } catch (error: any) {
@@ -176,7 +174,8 @@ const Auth = () => {
     setTokenLoading(true);
     
     try {
-      // Check admin credentials against the admin_roles table
+      clearAllSessionData();
+      
       const { data: adminUser, error: adminError } = await supabase
         .from("admin_roles")
         .select("*")
@@ -192,11 +191,10 @@ const Auth = () => {
         return;
       }
       
-      // Store admin info in session storage
       sessionStorage.setItem("admin_role", adminUser.role);
       sessionStorage.setItem("admin_username", adminUser.username);
+      sessionStorage.setItem("admin_id", adminUser.id);
       
-      // Redirect based on role
       if (adminUser.role === 'super_admin') {
         toast({
           title: "Успешный вход",
@@ -234,7 +232,8 @@ const Auth = () => {
     setTokenLoading(true);
     
     try {
-      // Check super admin credentials against the admin_roles table
+      clearAllSessionData();
+      
       const { data: superAdmin, error: superAdminError } = await supabase
         .from("admin_roles")
         .select("*")
@@ -251,9 +250,9 @@ const Auth = () => {
         return;
       }
       
-      // Store admin info in session storage
       sessionStorage.setItem("admin_role", superAdmin.role);
       sessionStorage.setItem("admin_username", superAdmin.username);
+      sessionStorage.setItem("admin_id", superAdmin.id);
       
       toast({
         title: "Успешный вход",

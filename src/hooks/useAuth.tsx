@@ -130,8 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Clear everything from storage when logging out
     setToken(null);
-    localStorage.removeItem("auth_token");
+    localStorage.clear();
+    sessionStorage.clear();
+    
     toast({
       title: "Выход выполнен",
       description: "Вы успешно вышли из системы",
