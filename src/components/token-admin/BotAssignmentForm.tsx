@@ -89,7 +89,7 @@ const BotAssignmentForm = ({ tokens, onSuccess, onClose }: BotAssignmentFormProp
           name="token_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Magic токен авторизации</FormLabel>
+              <FormLabel>Пользователь</FormLabel>
               <select 
                 className="flex w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 {...field}
@@ -103,7 +103,7 @@ const BotAssignmentForm = ({ tokens, onSuccess, onClose }: BotAssignmentFormProp
                   }
                 }}
               >
-                <option value="">Выберите токен</option>
+                <option value="">Выберите пользователя</option>
                 {tokens.map(token => (
                   <option key={token.id} value={token.id}>
                     {token.name} ({token.token})
