@@ -154,7 +154,7 @@ const TokenList = ({
           <TableHeader>
             <TableRow>
               <TableHead className="w-1/4">Название</TableHead>
-              <TableHead className="w-1/3">Токен</TableHead>
+              <TableHead className="w-1/3">Логин:Пароль</TableHead>
               <TableHead className="w-1/4">Описание</TableHead>
               <TableHead className="text-right w-1/6">Действия</TableHead>
             </TableRow>
@@ -162,7 +162,7 @@ const TokenList = ({
           <TableBody>
             {tokens.length === 0 ? <TableRow>
                 <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                  Нет доступных Magic токенов
+                  Нет доступных пользователей
                 </TableCell>
               </TableRow> : tokens.map((tokenRecord, index) => <TableRow key={tokenRecord.id}>
                   <TableCell>
