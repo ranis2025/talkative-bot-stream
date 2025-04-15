@@ -23,18 +23,41 @@ export function useChat() {
     try {
       console.log("Fetching bots for token:", token);
       
-      // First, get user settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from("user_settings")
-        .select("*")
+      // First, get the token ID from access_tokens
+      const { data: tokenData, error: tokenError } = await supabase
+        .from("access_tokens")
+        .select("id")
         .eq("token", token)
         .maybeSingle();
       
-      if (settingsError && settingsError.code !== "PGRST116") {
-        console.error("Error fetching user settings:", settingsError);
+      if (tokenError && tokenError.code !== "PGRST116") {
+        console.error("Error fetching token:", tokenError);
+        return;
       }
 
-      // Get bots directly assigned to the token in chat_bots table
+      let assignedBots: ChatBot[] = [];
+      
+      // Get bots from token_bot_assignments if we have a token ID
+      if (tokenData?.id) {
+        const { data: assignmentsData, error: assignmentsError } = await supabase
+          .from("token_bot_assignments")
+          .select("*")
+          .eq("token_id", tokenData.id);
+        
+        if (!assignmentsError && assignmentsData) {
+          assignedBots = assignmentsData.map(assignment => ({
+            id: uuidv4(),
+            bot_id: assignment.bot_id,
+            name: assignment.bot_name || "Bot",
+            bot_token: assignment.bot_token || null,
+            token: token,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+        }
+      }
+
+      // Also get bots from chat_bots as fallback
       const { data: directBotsData, error: directBotsError } = await supabase
         .from("chat_bots")
         .select("*")
@@ -44,57 +67,22 @@ export function useChat() {
         console.error("Error fetching direct bots:", directBotsError);
       }
       
-      let directBots = directBotsData || [];
-      
-      // Now, get bots assigned through token_bot_assignments
-      // First, get the token ID from access_tokens
-      const { data: tokenData, error: tokenError } = await supabase
-        .from("access_tokens")
-        .select("id")
-        .eq("token", token)
-        .maybeSingle();
-      
-      let assignedBots: ChatBot[] = [];
-      
-      if (tokenData?.id && !tokenError) {
-        // Get bots assigned to this token ID
-        const { data: assignmentsData, error: assignmentsError } = await supabase
-          .from("token_bot_assignments")
-          .select("*")
-          .eq("token_id", tokenData.id);
-        
-        if (!assignmentsError && assignmentsData) {
-          // Convert token_bot_assignments format to chat_bots format
-          assignedBots = assignmentsData.map(assignment => ({
-            id: uuidv4(), // Generate a unique ID for this entry
-            bot_id: assignment.bot_id,
-            name: assignment.bot_name || "Bot",
-            bot_token: assignment.bot_token || null,
-            token: token,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }));
-        } else if (assignmentsError) {
-          console.error("Error fetching assigned bots:", assignmentsError);
-        }
-      } else if (tokenError) {
-        console.error("Error fetching token ID:", tokenError);
-      }
+      const directBots = directBotsData || [];
       
       // Merge and deduplicate bots by bot_id
       const allBots: ChatBot[] = [];
       const botIds = new Set<string>();
       
-      // First add direct bots
-      directBots.forEach(bot => {
+      // First add assigned bots from token_bot_assignments
+      assignedBots.forEach(bot => {
         if (!botIds.has(bot.bot_id)) {
           allBots.push(bot);
           botIds.add(bot.bot_id);
         }
       });
       
-      // Then add assigned bots if they don't exist yet
-      assignedBots.forEach(bot => {
+      // Then add direct bots if they don't exist yet
+      directBots.forEach(bot => {
         if (!botIds.has(bot.bot_id)) {
           allBots.push(bot);
           botIds.add(bot.bot_id);
@@ -109,6 +97,13 @@ export function useChat() {
           setCurrentBot(allBots[0].bot_id);
         }
       }
+
+      // Set default bot if configured in user settings
+      const { data: settingsData } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
 
       if (settingsData) {
         const settings = settingsData as unknown as UserSettings;

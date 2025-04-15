@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -130,9 +129,21 @@ export const useAuthPage = () => {
 
         if (createTokenError) throw createTokenError;
         
-        await handleTokenAuth(generatedToken);
+        await setupUserSettings(generatedToken);
+        setToken(generatedToken);
+        toast({
+          title: "Успешный вход",
+          description: "Вы успешно вошли в систему"
+        });
+        navigate(`/chat?token=${generatedToken}`);
       } else {
-        await handleTokenAuth(existingToken.token);
+        await setupUserSettings(existingToken.token);
+        setToken(existingToken.token);
+        toast({
+          title: "Успешный вход",
+          description: "Вы успешно вошли в систему"
+        });
+        navigate(`/chat?token=${existingToken.token}`);
       }
     } catch (error: any) {
       console.error("Login error:", error);
