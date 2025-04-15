@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, LogIn } from "lucide-react";
@@ -90,6 +91,7 @@ const Auth = () => {
 
   const setupUserSettings = async (token: string) => {
     try {
+      // Check if user settings exist
       const { data: existingSettings, error: settingsError } = await supabase
         .from("user_settings")
         .select("*")
@@ -126,9 +128,11 @@ const Auth = () => {
     setTokenLoading(true);
     try {
       clearAllSessionData();
+      // Generate token based on username and password
       const passwordPart = password.length > 8 ? password.substring(0, 8) : password;
       const generatedToken = `${login.toUpperCase()}:${passwordPart}`;
       
+      // Check if token already exists
       const { data: existingToken, error: tokenCheckError } = await supabase
         .from("access_tokens")
         .select("id, token")
@@ -136,6 +140,7 @@ const Auth = () => {
         .maybeSingle();
 
       if (!existingToken) {
+        // Create new token
         const { data: newToken, error: createTokenError } = await supabase
           .from("access_tokens")
           .insert({
@@ -150,8 +155,10 @@ const Auth = () => {
 
         if (createTokenError) throw createTokenError;
         
+        // After creating token, proceed with authentication
         await handleTokenAuth(generatedToken);
       } else {
+        // Use existing token
         await handleTokenAuth(existingToken.token);
       }
     } catch (error: any) {

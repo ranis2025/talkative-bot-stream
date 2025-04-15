@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (token.startsWith("demo-")) {
       // Demo tokens are always valid
-      checkOrCreateUserSettings(token);
+      await checkOrCreateUserSettings(token);
       setToken(token);
       localStorage.setItem("auth_token", token);
       setIsLoading(false);
