@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 interface AdminUser {
   id: string;
   username: string;
@@ -18,16 +19,13 @@ interface AdminUser {
   created_at: string;
   updated_at: string;
 }
+
 const Auth = () => {
   const [tokenLoading, setTokenLoading] = useState(false);
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const {
-    setToken
-  } = useAuth();
+  const { setToken } = useAuth();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -37,25 +35,30 @@ const Auth = () => {
   const [rootUsername, setRootUsername] = useState("");
   const [rootPassword, setRootPassword] = useState("");
   const [rootError, setRootError] = useState("");
+
   useEffect(() => {
     const token = searchParams.get("token");
     if (token) {
       handleTokenAuth(token);
     }
   }, [searchParams, navigate, toast, setToken]);
+
   const clearAllSessionData = () => {
     localStorage.clear();
     sessionStorage.clear();
     console.log("All session data cleared during authentication");
   };
+
   const handleTokenAuth = async (token: string) => {
     setTokenLoading(true);
     try {
       clearAllSessionData();
-      const {
-        data: tokenExists,
-        error: tokenError
-      } = await supabase.from("access_tokens").select("id").eq("token", token).maybeSingle();
+      const { data: tokenExists, error: tokenError } = await supabase
+        .from("access_tokens")
+        .select("id")
+        .eq("token", token)
+        .maybeSingle();
+
       if (!tokenExists && !token.startsWith("demo-")) {
         toast({
           title: "Неверный токен",
@@ -65,23 +68,9 @@ const Auth = () => {
         setTokenLoading(false);
         return;
       }
-      const {
-        data: existingSettings,
-        error: settingsError
-      } = await supabase.from("user_settings").select("*").eq("token", token).maybeSingle();
-      if (!existingSettings) {
-        const userId = uuidv4();
-        const {
-          error: createError
-        } = await supabase.from("user_settings").insert({
-          token: token,
-          theme: 'dark',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          user_id: userId
-        });
-        if (createError) throw createError;
-      }
+
+      await setupUserSettings(token);
+
       setToken(token);
       toast({
         title: "Успешный вход по токену",
@@ -98,34 +87,73 @@ const Auth = () => {
       setTokenLoading(false);
     }
   };
+
+  const setupUserSettings = async (token: string) => {
+    try {
+      const { data: existingSettings, error: settingsError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
+
+      if (!existingSettings) {
+        const userId = uuidv4();
+        const { error: createError } = await supabase
+          .from("user_settings")
+          .insert({
+            token: token,
+            theme: 'dark',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            user_id: userId
+          });
+        
+        if (createError) throw createError;
+      }
+    } catch (error) {
+      console.error("Error setting up user settings:", error);
+      throw error;
+    }
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!login || !password) {
       setLoginError("Пожалуйста, заполните все поля");
       return;
     }
+
     setTokenLoading(true);
     try {
       clearAllSessionData();
       const passwordPart = password.length > 8 ? password.substring(0, 8) : password;
       const generatedToken = `${login.toUpperCase()}:${passwordPart}`;
-      const {
-        data: existingToken,
-        error: tokenCheckError
-      } = await supabase.from("access_tokens").select("id").eq("token", generatedToken).maybeSingle();
+      
+      const { data: existingToken, error: tokenCheckError } = await supabase
+        .from("access_tokens")
+        .select("id, token")
+        .eq("token", generatedToken)
+        .maybeSingle();
+
       if (!existingToken) {
-        const {
-          error: createTokenError
-        } = await supabase.from("access_tokens").insert({
-          token: generatedToken,
-          name: login,
-          description: `Token for ${login}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+        const { data: newToken, error: createTokenError } = await supabase
+          .from("access_tokens")
+          .insert({
+            token: generatedToken,
+            name: login,
+            description: `Token for ${login}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select('id, token')
+          .single();
+
         if (createTokenError) throw createTokenError;
+        
+        await handleTokenAuth(generatedToken);
+      } else {
+        await handleTokenAuth(existingToken.token);
       }
-      handleTokenAuth(generatedToken);
     } catch (error: any) {
       console.error("Login error:", error);
       toast({
@@ -136,6 +164,7 @@ const Auth = () => {
       setTokenLoading(false);
     }
   };
+
   const handleAdminLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminUsername || !adminPassword) {
@@ -182,6 +211,7 @@ const Auth = () => {
       setTokenLoading(false);
     }
   };
+
   const handleRootLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rootUsername || !rootPassword) {
@@ -220,15 +250,20 @@ const Auth = () => {
       setTokenLoading(false);
     }
   };
+
   if (tokenLoading) {
-    return <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
         <div className="flex items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-lg">Выполняется вход...</span>
         </div>
-      </div>;
+      </div>
+    );
   }
-  return <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4">
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4">
       <Card className="w-full max-w-md shadow-lg border">
         <Tabs defaultValue="user" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -304,6 +339,8 @@ const Auth = () => {
           </p>
         </CardFooter>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default Auth;

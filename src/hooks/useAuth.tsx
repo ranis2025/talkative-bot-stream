@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (tokenExists) {
         // Token is valid
-        checkOrCreateUserSettings(token);
+        await checkOrCreateUserSettings(token);
         setToken(token);
         localStorage.setItem("auth_token", token);
         console.log("Token validated and set:", token);
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error validating token:", error);
       // On error, we'll allow the token for now and let the API calls fail if needed
-      checkOrCreateUserSettings(token);
+      await checkOrCreateUserSettings(token);
       setToken(token);
       localStorage.setItem("auth_token", token);
     } finally {
