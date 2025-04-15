@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,7 +107,7 @@ export const useAuthPage = () => {
     try {
       clearAllSessionData();
       const passwordPart = password.length > 8 ? password.substring(0, 8) : password;
-      const generatedToken = `${login.toUpperCase()}:${passwordPart}`;
+      const generatedToken = `${login}:${passwordPart}`; // Changed from login.toUpperCase()
       
       const { data: existingToken, error: tokenCheckError } = await supabase
         .from("access_tokens")
