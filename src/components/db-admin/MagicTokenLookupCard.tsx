@@ -26,16 +26,6 @@ const MagicTokenLookupCard = () => {
 
     setIsLoading(true);
     try {
-      // Fetch bots from chat_bots table
-      const { data: chatBots, error: chatBotsError } = await supabase
-        .from('chat_bots')
-        .select('*')
-        .eq('token', magicToken);
-
-      if (chatBotsError) {
-        throw chatBotsError;
-      }
-
       // Get token ID from access_tokens table
       const { data: tokenData, error: tokenError } = await supabase
         .from('access_tokens')
@@ -47,8 +37,10 @@ const MagicTokenLookupCard = () => {
         throw tokenError;
       }
 
-      // If token exists, also fetch from token_bot_assignments
-      let assignedBots: any[] = [];
+      // Initialize results array
+      let bots: any[] = [];
+
+      // If token exists in access_tokens, fetch assigned bots
       if (tokenData?.id) {
         const { data: assignments, error: assignmentsError } = await supabase
           .from('token_bot_assignments')
@@ -59,19 +51,45 @@ const MagicTokenLookupCard = () => {
           throw assignmentsError;
         }
 
-        assignedBots = assignments || [];
+        if (assignments) {
+          bots = assignments.map(assignment => ({
+            bot_id: assignment.bot_id,
+            bot_name: assignment.bot_name,
+            bot_token: assignment.bot_token,
+            source: 'assignments'
+          }));
+        }
       }
 
-      // Combine results with a standardized source of "chat_bots"
-      const combinedResults = [
-        ...(chatBots || []).map((bot: any) => ({ ...bot, source: 'chat_bots' })),
-        ...(assignedBots || []).map((bot: any) => ({ ...bot, source: 'assignments' }))
-      ];
+      // Fetch bots from chat_bots table that aren't already in the results
+      const { data: chatBots, error: chatBotsError } = await supabase
+        .from('chat_bots')
+        .select('*')
+        .eq('token', magicToken);
 
-      setBotResults(combinedResults);
+      if (chatBotsError) {
+        throw chatBotsError;
+      }
+
+      if (chatBots) {
+        // Add only unique bots that aren't already in the results
+        chatBots.forEach(chatBot => {
+          const existingBot = bots.find(b => b.bot_id === chatBot.bot_id);
+          if (!existingBot) {
+            bots.push({
+              bot_id: chatBot.bot_id,
+              bot_name: chatBot.name,
+              bot_token: chatBot.bot_token,
+              source: 'chat_bots'
+            });
+          }
+        });
+      }
+
+      setBotResults(bots);
       toast({
         title: "Search completed",
-        description: `Found ${combinedResults.length} bots for token ${magicToken}`,
+        description: `Found ${bots.length} unique bots for token ${magicToken}`,
       });
 
     } catch (error: any) {
@@ -91,7 +109,7 @@ const MagicTokenLookupCard = () => {
       <CardHeader>
         <CardTitle>Search Bots by Magic Token</CardTitle>
         <CardDescription>
-          Enter a magic token to find all associated bots in both tables
+          Enter a magic token to find all associated bots
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -113,19 +131,19 @@ const MagicTokenLookupCard = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Source</TableHead>
                     <TableHead>Bot ID</TableHead>
                     <TableHead>Bot Name</TableHead>
                     <TableHead>Bot Token</TableHead>
+                    <TableHead>Source</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {botResults.map((bot, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{bot.source}</TableCell>
+                    <TableRow key={`${bot.bot_id}-${index}`}>
                       <TableCell>{bot.bot_id}</TableCell>
-                      <TableCell>{bot.bot_name || bot.name}</TableCell>
+                      <TableCell>{bot.bot_name}</TableCell>
                       <TableCell className="truncate max-w-[200px]">{bot.bot_token}</TableCell>
+                      <TableCell>{bot.source}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
