@@ -67,7 +67,7 @@ export function Header({
             <span>Новый групповой чат</span>
           </Button>}
 
-        <Button variant="ghost" size="icon" onClick={handleAdminClick} title="Панель администратора" className="d-none">
+        <Button variant="ghost" size="icon" onClick={handleAdminClick} title="Панель администратора" className="">
           <Settings className="h-5 w-5" />
           <span className="sr-only">Настройки</span>
         </Button>
