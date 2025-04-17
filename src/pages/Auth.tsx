@@ -6,8 +6,12 @@ import UserLoginForm from "@/components/auth/UserLoginForm";
 import AdminLoginForm from "@/components/auth/AdminLoginForm";
 import RootLoginForm from "@/components/auth/RootLoginForm";
 import { useAuthPage } from "@/hooks/useAuthPage";
+import { useLocation } from "react-router-dom";
 
 const Auth = () => {
+  const location = useLocation();
+  const showRootTab = location.pathname.includes('/root');
+  
   const {
     tokenLoading,
     loginError,
@@ -33,10 +37,10 @@ const Auth = () => {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4">
       <Card className="w-full max-w-md shadow-lg border">
         <Tabs defaultValue="user" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={`grid w-full ${showRootTab ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="user">Пользователь</TabsTrigger>
             <TabsTrigger value="admin">Администратор</TabsTrigger>
-            <TabsTrigger value="root">Root</TabsTrigger>
+            {showRootTab && <TabsTrigger value="root">Root</TabsTrigger>}
           </TabsList>
           <TabsContent value="user">
             <CardContent className="pt-6">
@@ -56,15 +60,17 @@ const Auth = () => {
               />
             </CardContent>
           </TabsContent>
-          <TabsContent value="root">
-            <CardContent className="pt-6">
-              <RootLoginForm 
-                onSubmit={handleRootLogin}
-                isLoading={tokenLoading}
-                error={rootError}
-              />
-            </CardContent>
-          </TabsContent>
+          {showRootTab && (
+            <TabsContent value="root">
+              <CardContent className="pt-6">
+                <RootLoginForm 
+                  onSubmit={handleRootLogin}
+                  isLoading={tokenLoading}
+                  error={rootError}
+                />
+              </CardContent>
+            </TabsContent>
+          )}
         </Tabs>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
