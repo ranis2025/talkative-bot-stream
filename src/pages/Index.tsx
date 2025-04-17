@@ -109,12 +109,12 @@ const Index = () => {
           <div className="h-full flex flex-col overflow-hidden">
             <div className="p-3 border-b flex items-center justify-between">
               <h2 className="font-medium">Личные чаты</h2>
-              <Button variant="outline" size="sm" asChild className="hidden md:flex">
+              {/*<Button variant="outline" size="sm" asChild className="hidden md:flex">
                 <Link to="/group-chats" className="">
                   <Users className="h-4 w-4 mr-2" />
                   Групповые чаты
                 </Link>
-              </Button>
+              </Button>*/}
             </div>
             <div className="flex-1 overflow-y-auto">
               <ChatList chats={filteredChats} currentChatId={currentChatId} onSelectChat={handleSelectChat} onDeleteChat={deleteChat} onRenameChat={renameChat} userBots={userBots} currentBot={currentBot} onSelectBot={setCurrentBotId} chatView="individual" />
@@ -125,10 +125,10 @@ const Index = () => {
                 Новый чат
               </Button>
               
-              <Button onClick={handleNewGroupChat} variant="outline" size="sm" className="md:hidden">
+              {/*<Button onClick={handleNewGroupChat} variant="outline" size="sm" className="md:hidden">
                 <Users className="h-4 w-4" />
                 <span className="sr-only">Групповые чаты</span>
-              </Button>
+              </Button>*/}
             </div>
           </div>
         </div>
@@ -145,10 +145,10 @@ const Index = () => {
                   Выберите или создайте чат, чтобы начать общение с ботом.
                 </p>
                 <div className="flex justify-center pt-4">
-                  <Button onClick={() => navigate("/group-chats")} className="flex items-center" variant="outline">
+                  {/*<Button onClick={() => navigate("/group-chats")} className="flex items-center" variant="outline">
                     <Users className="h-4 w-4 mr-2" />
                     Перейти к групповым чатам
-                  </Button>
+                  </Button>*/}
                 </div>
               </div>
             </div>}
