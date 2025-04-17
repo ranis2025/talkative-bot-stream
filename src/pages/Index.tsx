@@ -110,7 +110,7 @@ const Index = () => {
             <div className="p-3 border-b flex items-center justify-between">
               <h2 className="font-medium">Личные чаты</h2>
               <Button variant="outline" size="sm" asChild className="hidden md:flex">
-                <Link to="/group-chats" className="d-none">
+                <Link to="/group-chats" className="hide">
                   <Users className="h-4 w-4 mr-2" />
                   Групповые чаты
                 </Link>
