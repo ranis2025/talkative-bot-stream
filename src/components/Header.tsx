@@ -62,7 +62,7 @@ export function Header({
             </span>}
         </Button>
         
-        {!isMobile && onNewGroupChat && chatView === 'individual' && <Button variant="outline" size="sm" onClick={onNewGroupChat} className="mr-2 d-none">
+        {!isMobile && onNewGroupChat && chatView === 'individual' && <Button variant="outline" size="sm" onClick={onNewGroupChat} className="mr-2">
             <Users className="h-4 w-4 mr-2" />
             <span>Новый групповой чат</span>
           </Button>}
