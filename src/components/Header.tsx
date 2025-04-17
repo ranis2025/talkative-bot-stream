@@ -61,21 +61,22 @@ export function Header({
               {chatView === 'group' ? 'Новый групповой чат' : 'Новый чат'}
             </span>}
         </Button>
-        
+
+        {/*
         {!isMobile && onNewGroupChat && chatView === 'individual' && <Button variant="outline" size="sm" onClick={onNewGroupChat} className="mr-2">
             <Users className="h-4 w-4 mr-2" />
             <span>Новый групповой чат</span>
-          </Button>}
+          </Button>}*/}
 
-        <Button variant="ghost" size="icon" onClick={handleAdminClick} title="Панель администратора" className="">
+        {/*<Button variant="ghost" size="icon" onClick={handleAdminClick} title="Панель администратора" className="">
           <Settings className="h-5 w-5" />
           <span className="sr-only">Настройки</span>
-        </Button>
+        </Button>*/}
 
-        <Button variant="ghost" size="icon" onClick={handleTokenAdminClick} title="Управление токенами" className="">
+        {/*<Button variant="ghost" size="icon" onClick={handleTokenAdminClick} title="Управление токенами" className="">
           <Key className="h-5 w-5" />
           <span className="sr-only">Токены</span>
-        </Button>
+        </Button>*/}
 
         <ThemeToggle />
         
