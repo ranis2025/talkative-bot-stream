@@ -72,7 +72,7 @@ export function Header({
           <span className="sr-only">Настройки</span>
         </Button>
 
-        <Button variant="ghost" size="icon" onClick={handleTokenAdminClick} title="Управление токенами">
+        <Button variant="ghost" size="icon" onClick={handleTokenAdminClick} title="Управление токенами" className="d-none">
           <Key className="h-5 w-5" />
           <span className="sr-only">Токены</span>
         </Button>
