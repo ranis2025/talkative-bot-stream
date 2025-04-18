@@ -91,7 +91,7 @@ const TokenList = ({
       await addToken(tokenValue, newToken.name, newToken.description, adminId);
       toast({
         title: "Успешно",
-        description: "Новый Magic токен добавлен"
+        description: "Новый пользователь добавлен"
       });
       setNewToken({
         name: "",
@@ -218,7 +218,7 @@ const TokenList = ({
       <div className="mt-6 border-t pt-4">
         <h3 className="text-lg font-medium mb-3">Добавить нового пользователя</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input name="name" value={newToken.name} onChange={handleInputChange} placeholder="Название приложения" />
+          <Input name="name" value={newToken.name} onChange={handleInputChange} placeholder="Имя пользователя" />
           <Input name="description" value={newToken.description} onChange={handleInputChange} placeholder="Описание (опционально)" />
         </div>
         <Button onClick={addNewToken} className="mt-3" disabled={addingToken || !newToken.name}>
