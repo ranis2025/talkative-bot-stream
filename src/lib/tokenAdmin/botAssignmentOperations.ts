@@ -1,14 +1,13 @@
-
 import { AssignedBot } from "./types";
 import { invokeTokenAdminFunction } from "./api";
 
 /**
  * Fetch all bot assignments from the database
  */
-export const getAssignedBots = async (): Promise<AssignedBot[]> => {
+export const getAssignedBots = async (adminId?: string): Promise<AssignedBot[]> => {
   try {
-    console.log('Fetching assigned bots from edge function');
-    return await invokeTokenAdminFunction<AssignedBot[]>('get_assigned_bots');
+    console.log('Fetching assigned bots from edge function for admin:', adminId);
+    return await invokeTokenAdminFunction<AssignedBot[]>('get_assigned_bots', { admin_id: adminId });
   } catch (error) {
     console.error('Error getting assigned bots:', error);
     throw error;

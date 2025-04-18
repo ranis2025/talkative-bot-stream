@@ -63,11 +63,11 @@ export async function assignBotToToken(params: {
   }
 }
 
-// Function to get all assigned bots with token information
-export async function getAssignedBots() {
+// Function to get all assigned bots with token information, filtered by admin_id
+export async function getAssignedBots(adminId?: string) {
   const supabase = getSupabaseClient();
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('token_bot_assignments')
       .select(`
         *,
@@ -79,6 +79,13 @@ export async function getAssignedBots() {
         )
       `)
       .order('created_at', { ascending: false });
+    
+    // If adminId is provided, filter assignments by admin_id
+    if (adminId) {
+      query = query.eq('access_tokens.admin_id', adminId);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error('Error fetching token-bot assignments:', error);
@@ -101,7 +108,7 @@ export function handleBotAssignmentOperation(action: string, params: any) {
   
   switch (action) {
     case 'get_assigned_bots':
-      return getAssignedBots();
+      return getAssignedBots(params?.admin_id);
     case 'assign_bot_to_token':
       return assignBotToToken(params);
     default:

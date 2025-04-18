@@ -4,10 +4,12 @@ import TokenList from "@/components/token-admin/TokenList";
 import BotAssignmentList from "@/components/token-admin/BotAssignmentList";
 import { TokenRecord, AssignedBot, getTokens, getAssignedBots, getAdminTokens } from "@/lib/tokenAdmin";
 import { useToast } from "@/hooks/use-toast";
+
 interface TokenAdminContentProps {
   adminRole: string | null;
   adminId: string | null;
 }
+
 const TokenAdminContent = ({
   adminRole,
   adminId
@@ -20,24 +22,23 @@ const TokenAdminContent = ({
   const {
     toast
   } = useToast();
+
   useEffect(() => {
     if (adminRole) {
       fetchTokens();
       fetchAssignedBots();
     }
   }, [adminRole, refreshData, adminId]);
+
   const fetchTokens = async () => {
     try {
       setLoadingTokens(true);
       let data;
       if (adminRole === 'super_admin') {
-        // Super admin gets all tokens
         data = await getTokens();
       } else if (adminId) {
-        // Regular admin gets only their tokens
         data = await getAdminTokens(adminId);
       } else {
-        // Fallback to empty array if no adminId
         data = [];
       }
       setTokens(data);
@@ -61,10 +62,11 @@ const TokenAdminContent = ({
       setLoadingTokens(false);
     }
   };
+
   const fetchAssignedBots = async () => {
     try {
       setLoadingAssignments(true);
-      const data = await getAssignedBots();
+      const data = await getAssignedBots(adminId || undefined);
       setAssignedBots(data);
     } catch (error) {
       console.error("Error fetching token-bot assignments:", error);
@@ -77,9 +79,11 @@ const TokenAdminContent = ({
       setLoadingAssignments(false);
     }
   };
+
   const refreshAllData = () => {
     setRefreshData(prev => prev + 1);
   };
+
   return {
     tokens,
     setTokens,
@@ -112,4 +116,5 @@ const TokenAdminContent = ({
       </div>
   };
 };
+
 export default TokenAdminContent;

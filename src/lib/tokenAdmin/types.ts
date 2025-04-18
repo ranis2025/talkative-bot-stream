@@ -19,3 +19,4 @@ export interface AssignedBot {
   created_at: string;
   access_tokens?: TokenRecord | null;
 }
+
