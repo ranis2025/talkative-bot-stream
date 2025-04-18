@@ -1,4 +1,3 @@
-
 import { getSupabaseClient } from "../_shared/db.ts";
 
 // Function to handle assigning a bot to a token
@@ -64,13 +63,21 @@ export async function assignBotToToken(params: {
   }
 }
 
-// Function to get all assigned bots
+// Function to get all assigned bots with token information
 export async function getAssignedBots() {
   const supabase = getSupabaseClient();
   try {
     const { data, error } = await supabase
       .from('token_bot_assignments')
-      .select('*')
+      .select(`
+        *,
+        access_tokens (
+          id,
+          token,
+          name,
+          admin_id
+        )
+      `)
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -78,7 +85,10 @@ export async function getAssignedBots() {
       throw error;
     }
     
-    return data;
+    // Filter out assignments where the token no longer exists
+    const validAssignments = data.filter(assignment => assignment.access_tokens !== null);
+    
+    return validAssignments;
   } catch (error) {
     console.error('Error in getAssignedBots:', error);
     throw error;

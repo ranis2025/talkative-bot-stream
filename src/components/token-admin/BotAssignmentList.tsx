@@ -138,14 +138,14 @@ const BotAssignmentList = ({
                 </TableRow>
               ) : (
                 assignedBots.map((assignment) => {
-                  const token = tokens.find(t => t.id === assignment.token_id);
+                  const tokenInfo = assignment.access_tokens;
                   
                   return (
                     <TableRow key={assignment.id}>
                       <TableCell>
-                        <div className="font-medium">{token?.name || 'Неизвестный токен'}</div>
+                        <div className="font-medium">{tokenInfo?.name || 'Неизвестный токен'}</div>
                         <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                          {token?.token}
+                          {tokenInfo?.token}
                         </div>
                       </TableCell>
                       <TableCell>

@@ -17,4 +17,5 @@ export interface AssignedBot {
   bot_name: string;
   bot_token?: string;
   created_at: string;
+  access_tokens?: TokenRecord | null;
 }
