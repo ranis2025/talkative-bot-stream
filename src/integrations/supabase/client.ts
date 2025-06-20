@@ -2,10 +2,12 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://isxqxbysfsdyhmjcxfsm.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzeHF4YnlzZnNkeWhtamN4ZnNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2NTUzNjUsImV4cCI6MjA1ODIzMTM2NX0.OSmh005slZWbm1BwEPsDDYKzkjwZgPs4q4VoRLXs0H0";
+const baseId = 'isxqxbysfsdyhmjcxfsm';
+const proxyBaseUrl = `https://kz.proxy.atiks.org/supabase/${baseId}`;
+
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtxb2R0c3dnZnp2eHJvdHR6dnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNTM5OTMsImV4cCI6MjA1OTYyOTk5M30.NSoaX-SNaTB5_rhGm_VC-RF4T7RnXFHkpgZ7O4qHX5A';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(proxyBaseUrl, supabaseKey);
