@@ -51,25 +51,30 @@ export function Chat({
         requestAnimationFrame(() => {
           setTimeout(() => {
             if (messagesEndRef.current) {
-              console.log("Scrolling to bottom with behavior:", behavior);
-              messagesEndRef.current.scrollIntoView({
-                behavior,
-                block: "end",
-                inline: "nearest"
-              });
+              console.log("Chat scrolling to bottom with behavior:", behavior);
+              
+              // Найти родительский скроллящийся контейнер
+              const scrollContainer = messagesEndRef.current.closest('[class*="overflow-y-auto"]');
+              
+              if (scrollContainer) {
+                console.log("Chat using scrollTop method");
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+              } else {
+                console.log("Chat using scrollIntoView method");
+                messagesEndRef.current.scrollIntoView({
+                  behavior,
+                  block: "start",
+                  inline: "nearest"
+                });
+              }
               
               // Fallback проверка через 100ms
               setTimeout(() => {
-                if (messagesEndRef.current) {
-                  const rect = messagesEndRef.current.getBoundingClientRect();
-                  const isVisible = rect.bottom <= window.innerHeight;
-                  if (!isVisible) {
-                    console.log("Fallback scroll triggered");
-                    messagesEndRef.current.scrollIntoView({
-                      behavior: 'auto',
-                      block: "end",
-                      inline: "nearest"
-                    });
+                if (messagesEndRef.current && scrollContainer) {
+                  const isAtBottom = scrollContainer.scrollTop >= (scrollContainer.scrollHeight - scrollContainer.clientHeight - 10);
+                  if (!isAtBottom) {
+                    console.log("Chat fallback scroll triggered");
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
                   }
                 }
               }, 100);
@@ -91,11 +96,16 @@ export function Chat({
     
     setTimeout(() => {
       if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({
-          behavior: 'auto',
-          block: "end",
-          inline: "nearest"
-        });
+        const scrollContainer = messagesEndRef.current.closest('[class*="overflow-y-auto"]');
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        } else {
+          messagesEndRef.current.scrollIntoView({
+            behavior: 'auto',
+            block: "start",
+            inline: "nearest"
+          });
+        }
       }
     }, 0);
   }, [chat?.id]);
