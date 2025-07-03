@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     }
 
     // Send message to Pro-Talk API
-    const apiUrl = `${API_BASE_URL}/replica_webhook`;
+    const apiUrl = `${API_BASE_URL}/replica_webhook?promt_id=${bot_id}&api_token=${bot_token}`;
     const data = {
       'message': {
         'message_id': messageId,
@@ -68,10 +68,8 @@ Deno.serve(async (req) => {
         'text': message,
       }
     };
-    const payload = {'promt_id': bot_id, 'api_token': bot_token};
     
     console.log(`Sending to Pro-Talk API: ${apiUrl}`);
-    console.log(`Payload:`, payload);
     console.log(`Data:`, data);
 
     const response = await fetch(apiUrl, {
@@ -79,7 +77,7 @@ Deno.serve(async (req) => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data) + '?' + new URLSearchParams(payload).toString(),
+      body: JSON.stringify(data),
     });
 
     console.log(`Pro-Talk API response status: ${response.status}`);
