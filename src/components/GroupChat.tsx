@@ -47,35 +47,69 @@ export function GroupChat({
   const [isDiscussionActive, setIsDiscussionActive] = useState(false);
   const [mentionBotId, setMentionBotId] = useState<string | null>(null);
   
-  // Улучшенная прокрутка с синхронным выполнением  
-  useLayoutEffect(() => {
+  // Принудительная прокрутка с проверками и правильным таймингом
+  useEffect(() => {
     if (!messagesEndRef.current || !chat) return;
 
+    console.log("GroupChat auto-scroll triggered:", {
+      chatId: chat.id,
+      messagesCount: chat.messages?.length,
+      updatedAt: chat.updatedAt
+    });
+
     const scrollToBottom = (behavior: 'auto' | 'smooth' = 'smooth') => {
+      // Двойной requestAnimationFrame для гарантии завершения рендеринга
       requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({
-          behavior,
-          block: "end",
-          inline: "nearest"
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (messagesEndRef.current) {
+              console.log("GroupChat scrolling to bottom with behavior:", behavior);
+              messagesEndRef.current.scrollIntoView({
+                behavior,
+                block: "end",
+                inline: "nearest"
+              });
+              
+              // Fallback проверка через 100ms
+              setTimeout(() => {
+                if (messagesEndRef.current) {
+                  const rect = messagesEndRef.current.getBoundingClientRect();
+                  const isVisible = rect.bottom <= window.innerHeight;
+                  if (!isVisible) {
+                    console.log("GroupChat fallback scroll triggered");
+                    messagesEndRef.current.scrollIntoView({
+                      behavior: 'auto',
+                      block: "end",
+                      inline: "nearest"
+                    });
+                  }
+                }
+              }, 100);
+            }
+          }, 10);
         });
       });
     };
 
-    // Принудительная прокрутка при любых изменениях
+    // Прокрутка при любых изменениях
     scrollToBottom('smooth');
-  }, [chat?.id, chat?.messages?.length]);
+  }, [chat?.id, chat?.updatedAt, chat?.messages?.length]);
 
-  // Отдельный эффект для мгновенной прокрутки при смене чата
-  useLayoutEffect(() => {
+  // Мгновенная прокрутка при смене чата
+  useEffect(() => {
     if (!messagesEndRef.current || !chat?.id) return;
     
-    requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: 'auto',
-        block: "end",
-        inline: "nearest"
-      });
-    });
+    console.log("GroupChat changed, immediate scroll to:", chat.id);
+    
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: 'auto',
+          block: "end",
+          inline: "nearest"
+        });
+      }
+    }, 0);
   }, [chat?.id]);
 
   // Monitor input for @ mentions
