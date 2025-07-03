@@ -47,17 +47,9 @@ export function GroupChat({
   const [isDiscussionActive, setIsDiscussionActive] = useState(false);
   const [mentionBotId, setMentionBotId] = useState<string | null>(null);
   
-  // Улучшенная логика прокрутки для групповых чатов
+  // Прокрутка вниз при любом изменении сообщений или смене чата
   useEffect(() => {
     if (!messagesEndRef.current || !chat) return;
-
-    const scrollContainer = messagesEndRef.current.closest('.overflow-y-auto');
-    if (!scrollContainer) return;
-
-    const isNearBottom = () => {
-      const threshold = 100;
-      return scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < threshold;
-    };
 
     const scrollToBottom = (behavior: 'auto' | 'smooth' = 'smooth') => {
       messagesEndRef.current?.scrollIntoView({
@@ -67,19 +59,18 @@ export function GroupChat({
       });
     };
 
-    // При смене чата - всегда прокручиваем вниз мгновенно
-    const chatIdChanged = chat.id !== undefined;
-    if (chatIdChanged) {
+    // При смене чата - мгновенная прокрутка
+    if (chat.id) {
       const timeoutId = setTimeout(() => scrollToBottom('auto'), 50);
       return () => clearTimeout(timeoutId);
     }
 
-    // При добавлении сообщений - прокручиваем только если пользователь внизу и не идет обсуждение
-    if (chat.messages.length > 0 && isNearBottom() && !isLoading && !isDiscussionActive) {
+    // При добавлении сообщений - плавная прокрутка
+    if (chat.messages.length > 0) {
       const timeoutId = setTimeout(() => scrollToBottom('smooth'), 100);
       return () => clearTimeout(timeoutId);
     }
-  }, [chat?.messages, chat?.id, isLoading, isDiscussionActive]);
+  }, [chat?.messages, chat?.id]);
 
   // Monitor input for @ mentions
   const handleInputChange = (value: string) => {

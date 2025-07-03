@@ -35,17 +35,9 @@ export function Chat({
   
   const appName = getAppName();
 
-  // Улучшенная логика прокрутки
+  // Прокрутка вниз при любом изменении сообщений или смене чата
   useEffect(() => {
     if (!messagesEndRef.current || !chat) return;
-
-    const scrollContainer = messagesEndRef.current.closest('.overflow-y-auto');
-    if (!scrollContainer) return;
-
-    const isNearBottom = () => {
-      const threshold = 100;
-      return scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < threshold;
-    };
 
     const scrollToBottom = (behavior: 'auto' | 'smooth' = 'smooth') => {
       messagesEndRef.current?.scrollIntoView({
@@ -55,19 +47,18 @@ export function Chat({
       });
     };
 
-    // При смене чата - всегда прокручиваем вниз мгновенно
-    const chatIdChanged = chat.id !== undefined;
-    if (chatIdChanged) {
+    // При смене чата - мгновенная прокрутка
+    if (chat.id) {
       const timeoutId = setTimeout(() => scrollToBottom('auto'), 50);
       return () => clearTimeout(timeoutId);
     }
 
-    // При добавлении сообщений - прокручиваем только если пользователь внизу
-    if (chat.messages.length > 0 && isNearBottom() && !isLoading) {
+    // При добавлении сообщений - плавная прокрутка
+    if (chat.messages.length > 0) {
       const timeoutId = setTimeout(() => scrollToBottom('smooth'), 100);
       return () => clearTimeout(timeoutId);
     }
-  }, [chat?.messages, chat?.id, isLoading]);
+  }, [chat?.messages, chat?.id]);
 
   // Если нет активного чата
   if (!chat) {
