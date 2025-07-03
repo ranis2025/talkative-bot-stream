@@ -69,11 +69,15 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
       
       if (createResult.error) throw createResult.error;
       
-      console.log("Admin created successfully with ID:", createResult.data?.id);
+      const adminId = createResult.data && typeof createResult.data === 'object' && 'id' in createResult.data 
+        ? (createResult.data as any).id 
+        : 'unknown';
+      
+      console.log("Admin created successfully with ID:", adminId);
       
       toast({
         title: "Администратор создан",
-        description: `Администратор ${username} успешно создан с ID: ${createResult.data?.id}`
+        description: `Администратор ${username} успешно создан с ID: ${adminId}`
       });
       
       // Reset form

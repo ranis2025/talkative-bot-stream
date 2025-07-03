@@ -44,13 +44,13 @@ const MagicTokenLookupCard = () => {
       let bots: any[] = [];
 
       // If token exists in access_tokens, fetch assigned bots
-      if (tokenResult.data && 'id' in tokenResult.data) {
+      if (tokenResult.data && 'id' in tokenResult.data && tokenResult.data.id) {
         const assignmentsResult = await queryWithRetry(async () => {
           const { supabase } = await import("@/integrations/supabase/client");
           return await supabase
             .from('token_bot_assignments')
             .select('*')
-            .eq('token_id', tokenResult.data.id);
+            .eq('token_id', (tokenResult.data as any).id);
         });
 
         if (assignmentsResult.error) {

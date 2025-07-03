@@ -57,8 +57,8 @@ export const useAdminAuth = () => {
       const { data: adminUser, error: adminError } = await supabase
         .from("admin_roles")
         .select("*")
-        .eq("username", username)
-        .eq("password", password)
+        .eq("username", username as any)
+        .eq("password", password as any)
         .maybeSingle();
       
       if (adminError) throw adminError;
@@ -68,24 +68,29 @@ export const useAdminAuth = () => {
         return;
       }
       
-      console.log("Admin authenticated successfully:", adminUser);
-      console.log("Admin ID:", adminUser.id);
-      
-      // Store admin info in session storage
-      sessionStorage.setItem("admin_role", adminUser.role);
-      sessionStorage.setItem("admin_username", adminUser.username);
-      sessionStorage.setItem("admin_id", adminUser.id);
-      
-      setAuthState({
-        isAuthenticated: true,
-        adminRole: adminUser.role,
-        adminId: adminUser.id,
-        authError: ""
-      });
-      
-      // Redirect Super Admin to its own page
-      if (adminUser.role === 'super_admin') {
-        navigate("/super-admin");
+      // Type guard to ensure adminUser has the expected properties
+      if (adminUser && typeof adminUser === 'object' && 'id' in adminUser && 'role' in adminUser && 'username' in adminUser) {
+        const admin = adminUser as any;
+        
+        console.log("Admin authenticated successfully:", admin);
+        console.log("Admin ID:", admin.id);
+        
+        // Store admin info in session storage
+        sessionStorage.setItem("admin_role", admin.role);
+        sessionStorage.setItem("admin_username", admin.username);
+        sessionStorage.setItem("admin_id", admin.id);
+        
+        setAuthState({
+          isAuthenticated: true,
+          adminRole: admin.role,
+          adminId: admin.id,
+          authError: ""
+        });
+        
+        // Redirect Super Admin to its own page
+        if (admin.role === 'super_admin') {
+          navigate("/super-admin");
+        }
       }
       
     } catch (error: any) {

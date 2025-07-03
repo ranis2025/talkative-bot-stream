@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: tokenExists, error: tokenError } = await supabase
         .from("access_tokens")
         .select("id")
-        .eq("token", token)
+        .eq("token", token as any)
         .maybeSingle();
       
       if (tokenExists) {
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("access_tokens")
         .select("id")
-        .eq("token", token)
+        .eq("token", token as any)
         .maybeSingle();
       
       return !!data;
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: existingSettings, error: checkError } = await supabase
         .from("user_settings")
         .select("*")
-        .eq("token", token)
+        .eq("token", token as any)
         .maybeSingle();
       
       if (!existingSettings && checkError?.code === "PGRST116") {
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             user_id: userId
-          });
+          } as any);
         
         if (createError) {
           console.error("Error creating user settings:", createError);
