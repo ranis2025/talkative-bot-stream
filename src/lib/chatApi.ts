@@ -83,16 +83,31 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     };
 
     console.log(`Sending payload to edge function:`, payload);
+    console.log(`Supabase client initialized`);
+    console.log(`Attempting to call chat edge function...`);
+    
     const { data, error } = await supabase.functions.invoke('chat', {
       body: payload
     });
 
+    console.log(`Edge function response:`, { data, error });
+
     if (error) {
       console.error("Error calling chat function:", error);
+      console.error("Error details:", {
+        message: error.message,
+        name: error.name,
+        cause: error.cause,
+        stack: error.stack
+      });
       
-      if (error.message?.includes("Failed to fetch") || 
+      // More specific error handling
+      if (error.message?.includes("Failed to send a request to the Edge Function") ||
+          error.message?.includes("Failed to fetch") || 
           error.message?.includes("Network error") ||
-          error.message?.includes("timeout")) {
+          error.message?.includes("timeout") ||
+          error.message?.includes("NetworkError")) {
+        console.error("Network connectivity issue detected");
         toast({
           title: "Ошибка сети",
           description: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
@@ -111,12 +126,14 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
         return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
       }
       
+      // For debugging - don't show this error to user, log it and return a generic message
+      console.error("Unhandled edge function error:", error);
       toast({
         title: "Ошибка",
-        description: error.message || "Неизвестная ошибка",
+        description: "Временная проблема с сервером. Пожалуйста, попробуйте позже.",
         variant: "destructive",
       });
-      throw new Error(`Edge function error: ${error.message}`);
+      return "Временная проблема с сервером. Пожалуйста, попробуйте позже.";
     }
 
     console.log("Edge function response:", data);
