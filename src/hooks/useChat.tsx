@@ -29,7 +29,7 @@ export function useChat() {
         return await supabase
           .from("access_tokens")
           .select("id")
-          .eq("token", token)
+          .eq("token", token as any)
           .maybeSingle();
       });
       
@@ -41,24 +41,26 @@ export function useChat() {
       let assignedBots: ChatBot[] = [];
       
       // Get bots from token_bot_assignments if we have a token ID
-      if (tokenResult.data?.id) {
+      if (tokenResult.data && 'id' in tokenResult.data && tokenResult.data.id) {
         const assignmentsResult = await queryWithRetry(async () => {
           return await supabase
             .from("token_bot_assignments")
             .select("*")
-            .eq("token_id", tokenResult.data.id);
+            .eq("token_id", (tokenResult.data as any).id);
         });
         
         if (!assignmentsResult.error && assignmentsResult.data) {
-          assignedBots = assignmentsResult.data.map(assignment => ({
-            id: uuidv4(),
-            bot_id: assignment.bot_id,
-            name: assignment.bot_name || "Bot",
-            bot_token: assignment.bot_token || null,
-            token: token,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }));
+          assignedBots = assignmentsResult.data
+            .filter((assignment: any) => assignment && typeof assignment === 'object' && 'bot_id' in assignment)
+            .map((assignment: any) => ({
+              id: uuidv4(),
+              bot_id: assignment.bot_id,
+              name: assignment.bot_name || "Bot",
+              bot_token: assignment.bot_token || null,
+              token: token,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
         }
       }
 
@@ -67,7 +69,7 @@ export function useChat() {
         return await supabase
           .from("chat_bots")
           .select("*")
-          .eq("token", token);
+          .eq("token", token as any);
       });
       
       if (directBotsResult.error) {
@@ -89,9 +91,9 @@ export function useChat() {
       });
       
       // Then add direct bots if they don't exist yet
-      directBots.forEach(bot => {
-        if (!botIds.has(bot.bot_id)) {
-          allBots.push(bot);
+      directBots.forEach((bot: any) => {
+        if (bot && typeof bot === 'object' && 'bot_id' in bot && !botIds.has(bot.bot_id)) {
+          allBots.push(bot as ChatBot);
           botIds.add(bot.bot_id);
         }
       });
@@ -110,7 +112,7 @@ export function useChat() {
         return await supabase
           .from("user_settings")
           .select("*")
-          .eq("token", token)
+          .eq("token", token as any)
           .maybeSingle();
       });
 
@@ -133,14 +135,14 @@ export function useChat() {
         .from("protalk_chats")
         .select("*");
       
-      query = query.eq('token', token);
+      query = query.eq('token', token as any);
       
       if (chatView === 'group') {
-        query = query.eq('is_group_chat', true);
+        query = query.eq('is_group_chat', true as any);
       } else if (bot_id) {
-        query = query.eq('bot_id', bot_id).eq('is_group_chat', false);
+        query = query.eq('bot_id', bot_id as any).eq('is_group_chat', false as any);
       } else {
-        query = query.eq('is_group_chat', false);
+        query = query.eq('is_group_chat', false as any);
       }
       
       const result = await queryWithRetry(async () => {
@@ -229,7 +231,7 @@ export function useChat() {
           is_group_chat: isGroupChat,
           token: token,
           messages: [] as unknown as Json,
-        });
+        } as any);
       });
 
       if (result.error) {
