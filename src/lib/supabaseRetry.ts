@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "./supabaseClient";
 
 /**
  * Retry wrapper for Supabase functions with exponential backoff
@@ -6,8 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 export async function invokeWithRetry<T>(
   functionName: string,
   payload: any,
-  maxRetries: number = 3,
-  baseDelay: number = 1000
+  maxRetries: number = 5,
+  baseDelay: number = 2000
 ): Promise<T> {
   let lastError: Error;
   
@@ -17,7 +17,9 @@ export async function invokeWithRetry<T>(
       
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: payload,
-        timeout: 120000 // 2 minutes
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
       if (error) {
@@ -26,8 +28,8 @@ export async function invokeWithRetry<T>(
           console.warn(`Retryable error on attempt ${attempt + 1}:`, error.message);
           lastError = new Error(error.message);
           
-          // Exponential backoff with jitter
-          const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+          // Exponential backoff with jitter - увеличенные задержки
+          const delay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 2000, 30000);
           console.log(`Waiting ${delay}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
@@ -44,8 +46,8 @@ export async function invokeWithRetry<T>(
       if (isRetryableError(lastError) && attempt < maxRetries) {
         console.warn(`Retryable error on attempt ${attempt + 1}:`, lastError.message);
         
-        // Exponential backoff with jitter
-        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+        // Exponential backoff with jitter - увеличенные задержки
+        const delay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 2000, 30000);
         console.log(`Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;

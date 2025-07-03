@@ -1,6 +1,5 @@
 import { ApiRequest, IMessage } from "@/types/chat";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast"; 
+import { supabase } from "./supabaseClient";
 import { toast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import { invokeWithRetry } from "./supabaseRetry";
