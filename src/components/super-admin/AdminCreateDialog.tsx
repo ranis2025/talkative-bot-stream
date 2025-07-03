@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { queryWithRetry } from "@/lib/supabaseRetry";
 
 interface AdminCreateDialogProps {
   onAdminCreated: () => void;
@@ -36,38 +36,44 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
       setIsCreating(true);
       
       // Check if username already exists
-      const { data: existingUser } = await supabase
-        .from("admin_roles")
-        .select("id")
-        .eq("username", username)
-        .maybeSingle();
+      const existingUserResult = await queryWithRetry(async () => {
+        const { supabase } = await import("@/integrations/supabase/client");
+        return await supabase
+          .from("admin_roles")
+          .select("id")
+          .eq("username", username)
+          .maybeSingle();
+      });
       
-      if (existingUser) {
+      if (existingUserResult.data) {
         setFormError("Администратор с таким именем уже существует");
         setIsCreating(false);
         return;
       }
       
       // Create new admin
-      const { data: newAdmin, error } = await supabase
-        .from("admin_roles")
-        .insert({
-          username,
-          password,
-          role: "admin",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      const createResult = await queryWithRetry(async () => {
+        const { supabase } = await import("@/integrations/supabase/client");
+        return await supabase
+          .from("admin_roles")
+          .insert({
+            username,
+            password,
+            role: "admin",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+      });
       
-      if (error) throw error;
+      if (createResult.error) throw createResult.error;
       
-      console.log("Admin created successfully with ID:", newAdmin.id);
+      console.log("Admin created successfully with ID:", createResult.data.id);
       
       toast({
         title: "Администратор создан",
-        description: `Администратор ${username} успешно создан с ID: ${newAdmin.id}`
+        description: `Администратор ${username} успешно создан с ID: ${createResult.data.id}`
       });
       
       // Reset form

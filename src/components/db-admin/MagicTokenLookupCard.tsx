@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { queryWithRetry } from "@/lib/supabaseRetry";
 
 const MagicTokenLookupCard = () => {
   const [magicToken, setMagicToken] = useState("");
@@ -27,32 +27,38 @@ const MagicTokenLookupCard = () => {
     setIsLoading(true);
     try {
       // Get token ID from access_tokens table
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('access_tokens')
-        .select('id')
-        .eq('token', magicToken)
-        .maybeSingle();
+      const tokenResult = await queryWithRetry(async () => {
+        const { supabase } = await import("@/integrations/supabase/client");
+        return await supabase
+          .from('access_tokens')
+          .select('id')
+          .eq('token', magicToken)
+          .maybeSingle();
+      });
 
-      if (tokenError) {
-        throw tokenError;
+      if (tokenResult.error) {
+        throw tokenResult.error;
       }
 
       // Initialize results array
       let bots: any[] = [];
 
       // If token exists in access_tokens, fetch assigned bots
-      if (tokenData?.id) {
-        const { data: assignments, error: assignmentsError } = await supabase
-          .from('token_bot_assignments')
-          .select('*')
-          .eq('token_id', tokenData.id);
+      if (tokenResult.data?.id) {
+        const assignmentsResult = await queryWithRetry(async () => {
+          const { supabase } = await import("@/integrations/supabase/client");
+          return await supabase
+            .from('token_bot_assignments')
+            .select('*')
+            .eq('token_id', tokenResult.data.id);
+        });
 
-        if (assignmentsError) {
-          throw assignmentsError;
+        if (assignmentsResult.error) {
+          throw assignmentsResult.error;
         }
 
-        if (assignments) {
-          bots = assignments.map(assignment => ({
+        if (assignmentsResult.data) {
+          bots = assignmentsResult.data.map(assignment => ({
             bot_id: assignment.bot_id,
             bot_name: assignment.bot_name,
             bot_token: assignment.bot_token,
@@ -62,18 +68,21 @@ const MagicTokenLookupCard = () => {
       }
 
       // Fetch bots from chat_bots table that aren't already in the results
-      const { data: chatBots, error: chatBotsError } = await supabase
-        .from('chat_bots')
-        .select('*')
-        .eq('token', magicToken);
+      const chatBotsResult = await queryWithRetry(async () => {
+        const { supabase } = await import("@/integrations/supabase/client");
+        return await supabase
+          .from('chat_bots')
+          .select('*')
+          .eq('token', magicToken);
+      });
 
-      if (chatBotsError) {
-        throw chatBotsError;
+      if (chatBotsResult.error) {
+        throw chatBotsResult.error;
       }
 
-      if (chatBots) {
+      if (chatBotsResult.data) {
         // Add only unique bots that aren't already in the results
-        chatBots.forEach(chatBot => {
+        chatBotsResult.data.forEach(chatBot => {
           const existingBot = bots.find(b => b.bot_id === chatBot.bot_id);
           if (!existingBot) {
             bots.push({
