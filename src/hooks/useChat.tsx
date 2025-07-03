@@ -5,7 +5,6 @@ import { IChat, IMessage, ApiResponse, Json, ChatBot, UserSettings, IFile } from
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { sendMessage, sendGroupMessage, uploadFiles } from "@/lib/chatApi";
-import { queryWithRetry } from "@/lib/supabaseRetry";
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
@@ -24,59 +23,51 @@ export function useChat() {
     try {
       console.log("Fetching bots for token:", token);
       
-      // First, get the token ID from access_tokens with retry
-      const tokenResult = await queryWithRetry(async () => {
-        return await supabase
-          .from("access_tokens")
-          .select("id")
-          .eq("token", token as any)
-          .maybeSingle();
-      });
+      // First, get the token ID from access_tokens
+      const { data: tokenData, error: tokenError } = await supabase
+        .from("access_tokens")
+        .select("id")
+        .eq("token", token)
+        .maybeSingle();
       
-      if (tokenResult.error && tokenResult.error.code !== "PGRST116") {
-        console.error("Error fetching token:", tokenResult.error);
+      if (tokenError && tokenError.code !== "PGRST116") {
+        console.error("Error fetching token:", tokenError);
         return;
       }
 
       let assignedBots: ChatBot[] = [];
       
       // Get bots from token_bot_assignments if we have a token ID
-      if (tokenResult.data && 'id' in tokenResult.data && tokenResult.data.id) {
-        const assignmentsResult = await queryWithRetry(async () => {
-          return await supabase
-            .from("token_bot_assignments")
-            .select("*")
-            .eq("token_id", (tokenResult.data as any).id);
-        });
+      if (tokenData?.id) {
+        const { data: assignmentsData, error: assignmentsError } = await supabase
+          .from("token_bot_assignments")
+          .select("*")
+          .eq("token_id", tokenData.id);
         
-        if (!assignmentsResult.error && assignmentsResult.data) {
-          assignedBots = assignmentsResult.data
-            .filter((assignment: any) => assignment && typeof assignment === 'object' && 'bot_id' in assignment)
-            .map((assignment: any) => ({
-              id: uuidv4(),
-              bot_id: assignment.bot_id,
-              name: assignment.bot_name || "Bot",
-              bot_token: assignment.bot_token || null,
-              token: token,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }));
+        if (!assignmentsError && assignmentsData) {
+          assignedBots = assignmentsData.map(assignment => ({
+            id: uuidv4(),
+            bot_id: assignment.bot_id,
+            name: assignment.bot_name || "Bot",
+            bot_token: assignment.bot_token || null,
+            token: token,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
         }
       }
 
       // Also get bots from chat_bots as fallback
-      const directBotsResult = await queryWithRetry(async () => {
-        return await supabase
-          .from("chat_bots")
-          .select("*")
-          .eq("token", token as any);
-      });
+      const { data: directBotsData, error: directBotsError } = await supabase
+        .from("chat_bots")
+        .select("*")
+        .eq("token", token);
       
-      if (directBotsResult.error) {
-        console.error("Error fetching direct bots:", directBotsResult.error);
+      if (directBotsError) {
+        console.error("Error fetching direct bots:", directBotsError);
       }
       
-      const directBots = directBotsResult.data || [];
+      const directBots = directBotsData || [];
       
       // Merge and deduplicate bots by bot_id
       const allBots: ChatBot[] = [];
@@ -91,9 +82,9 @@ export function useChat() {
       });
       
       // Then add direct bots if they don't exist yet
-      directBots.forEach((bot: any) => {
-        if (bot && typeof bot === 'object' && 'bot_id' in bot && !botIds.has(bot.bot_id)) {
-          allBots.push(bot as ChatBot);
+      directBots.forEach(bot => {
+        if (!botIds.has(bot.bot_id)) {
+          allBots.push(bot);
           botIds.add(bot.bot_id);
         }
       });
@@ -108,16 +99,14 @@ export function useChat() {
       }
 
       // Set default bot if configured in user settings
-      const settingsResult = await queryWithRetry(async () => {
-        return await supabase
-          .from("user_settings")
-          .select("*")
-          .eq("token", token as any)
-          .maybeSingle();
-      });
+      const { data: settingsData } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
 
-      if (settingsResult.data) {
-        const settings = settingsResult.data as unknown as UserSettings;
+      if (settingsData) {
+        const settings = settingsData as unknown as UserSettings;
         if (settings.default_bot_id && !currentBot) {
           setCurrentBot(settings.default_bot_id);
         }
@@ -135,27 +124,25 @@ export function useChat() {
         .from("protalk_chats")
         .select("*");
       
-      query = query.eq('token', token as any);
+      query = query.eq('token', token);
       
       if (chatView === 'group') {
-        query = query.eq('is_group_chat', true as any);
+        query = query.eq('is_group_chat', true);
       } else if (bot_id) {
-        query = query.eq('bot_id', bot_id as any).eq('is_group_chat', false as any);
+        query = query.eq('bot_id', bot_id).eq('is_group_chat', false);
       } else {
-        query = query.eq('is_group_chat', false as any);
+        query = query.eq('is_group_chat', false);
       }
       
-      const result = await queryWithRetry(async () => {
-        return await query.order("updated_at", { ascending: false });
-      });
+      const { data, error } = await query.order("updated_at", { ascending: false });
       
-      if (result.error) {
-        throw result.error;
+      if (error) {
+        throw error;
       }
 
-      if (result.data) {
-        console.log("Fetched chats:", result.data);
-        const formattedChats: IChat[] = result.data.map((chat: any) => ({
+      if (data) {
+        console.log("Fetched chats:", data);
+        const formattedChats: IChat[] = data.map((chat: any) => ({
           id: chat.id,
           title: chat.title,
           messages: chat.messages as IMessage[],
@@ -222,36 +209,32 @@ export function useChat() {
         messages: [] as unknown as Json,
       });
 
-      const result = await queryWithRetry(async () => {
-        return await supabase.from("protalk_chats").insert({
-          id: newChatId,
-          title: isGroupChat ? "Новый групповой чат" : "Новый чат",
-          bot_id: isGroupChat ? null : currentBot,
-          bots_ids: isGroupChat ? [] : null,
-          is_group_chat: isGroupChat,
-          token: token,
-          messages: [] as unknown as Json,
-        } as any);
+      const { error } = await supabase.from("protalk_chats").insert({
+        id: newChatId,
+        title: isGroupChat ? "Новый групповой чат" : "Новый чат",
+        bot_id: isGroupChat ? null : currentBot,
+        bots_ids: isGroupChat ? [] : null,
+        is_group_chat: isGroupChat,
+        token: token,
+        messages: [] as unknown as Json,
       });
 
-      if (result.error) {
-        console.error("Error creating chat in Supabase:", result.error);
-        throw result.error;
+      if (error) {
+        console.error("Error creating chat in Supabase:", error);
+        throw error;
       }
 
       // Fetch the chat we just created to confirm it was saved correctly
-      const createdChatResult = await queryWithRetry(async () => {
-        return await supabase
-          .from("protalk_chats")
-          .select("*")
-          .eq("id", newChatId)
-          .single();
-      });
+      const { data: createdChat, error: fetchError } = await supabase
+        .from("protalk_chats")
+        .select("*")
+        .eq("id", newChatId)
+        .single();
         
-      if (createdChatResult.error) {
-        console.error("Error fetching newly created chat:", createdChatResult.error);
+      if (fetchError) {
+        console.error("Error fetching newly created chat:", fetchError);
       } else {
-        console.log("Created chat retrieved from database:", createdChatResult.data);
+        console.log("Created chat retrieved from database:", createdChat);
       }
 
       setChats((prevChats) => [newChat, ...prevChats]);
@@ -328,18 +311,16 @@ export function useChat() {
 
         const updatedMessages = [...currentChat.messages, userMessage];
 
-        const updateResult = await queryWithRetry(async () => {
-          return await supabase
-            .from("protalk_chats")
-            .update({ 
-              messages: updatedMessages as unknown as Json,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", currentChatId);
-        });
+        const { error: updateError } = await supabase
+          .from("protalk_chats")
+          .update({ 
+            messages: updatedMessages as unknown as Json,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", currentChatId);
 
-        if (updateResult.error) {
-          throw updateResult.error;
+        if (updateError) {
+          throw updateError;
         }
 
         setChats((prevChats) =>
@@ -383,34 +364,30 @@ export function useChat() {
 
             const messagesWithBotResponses = [...updatedMessages, ...botMessages];
             
-            const botUpdateResult = await queryWithRetry(async () => {
-              return await supabase
-                .from("protalk_chats")
-                .update({ 
-                  messages: messagesWithBotResponses as unknown as Json,
-                  updated_at: new Date().toISOString()
-                })
-                .eq("id", currentChatId);
-            });
+            const { error: botUpdateError } = await supabase
+              .from("protalk_chats")
+              .update({ 
+                messages: messagesWithBotResponses as unknown as Json,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", currentChatId);
 
-            if (botUpdateResult.error) {
-              console.error("Error updating chat with bot responses:", botUpdateResult.error);
-              throw botUpdateResult.error;
+            if (botUpdateError) {
+              console.error("Error updating chat with bot responses:", botUpdateError);
+              throw botUpdateError;
             }
 
             if (currentChat.messages.length === 0) {
               const shortTitle =
                 message.length > 30 ? message.substring(0, 30) + "..." : message;
 
-              const titleResult = await queryWithRetry(async () => {
-                return await supabase
-                  .from("protalk_chats")
-                  .update({ title: shortTitle })
-                  .eq("id", currentChatId);
-              });
+              const { error: titleError } = await supabase
+                .from("protalk_chats")
+                .update({ title: shortTitle })
+                .eq("id", currentChatId);
 
-              if (titleResult.error) {
-                throw titleResult.error;
+              if (titleError) {
+                throw titleError;
               }
 
               setChats((prevChats) =>
@@ -450,33 +427,29 @@ export function useChat() {
 
             const messagesWithBotResponse = [...updatedMessages, botMessage];
             
-            const botUpdateResult = await queryWithRetry(async () => {
-              return await supabase
-                .from("protalk_chats")
-                .update({ 
-                  messages: messagesWithBotResponse as unknown as Json,
-                  updated_at: new Date().toISOString()
-                })
-                .eq("id", currentChatId);
-            });
+            const { error: botUpdateError } = await supabase
+              .from("protalk_chats")
+              .update({ 
+                messages: messagesWithBotResponse as unknown as Json,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", currentChatId);
 
-            if (botUpdateResult.error) {
-              throw botUpdateResult.error;
+            if (botUpdateError) {
+              throw botUpdateError;
             }
 
             if (currentChat.messages.length === 0) {
               const shortTitle =
                 message.length > 30 ? message.substring(0, 30) + "..." : message;
 
-              const titleResult = await queryWithRetry(async () => {
-                return await supabase
-                  .from("protalk_chats")
-                  .update({ title: shortTitle })
-                  .eq("id", currentChatId);
-              });
+              const { error: titleError } = await supabase
+                .from("protalk_chats")
+                .update({ title: shortTitle })
+                .eq("id", currentChatId);
 
-              if (titleResult.error) {
-                throw titleResult.error;
+              if (titleError) {
+                throw titleError;
               }
 
               setChats((prevChats) =>
@@ -517,15 +490,13 @@ export function useChat() {
           
           const messagesWithError = [...updatedMessages, errorMessage];
           
-          await queryWithRetry(async () => {
-            return await supabase
-              .from("protalk_chats")
-              .update({ 
-                messages: messagesWithError as unknown as Json,
-                updated_at: new Date().toISOString()
-              })
-              .eq("id", currentChatId);
-          });
+          await supabase
+            .from("protalk_chats")
+            .update({ 
+              messages: messagesWithError as unknown as Json,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", currentChatId);
             
           setChats((prevChats) =>
             prevChats.map((chat) =>
@@ -539,14 +510,11 @@ export function useChat() {
             )
           );
           
-          // Не показываем toast для retry ошибок
-          if (!apiError.message?.includes('timeout') && !apiError.message?.includes('network')) {
-            toast({
-              title: "Ошибка при отправке сообщения",
-              description: apiError.message || "Не удалось получить ответ от бота.",
-              variant: "destructive",
-            });
-          }
+          toast({
+            title: "Ошибка при отправке сообщения",
+            description: apiError.message || "Не удалось получить ответ от бота.",
+            variant: "destructive",
+          });
         }
       } catch (error) {
         console.error("Error in message flow:", error);
@@ -565,15 +533,13 @@ export function useChat() {
   const deleteChat = useCallback(
     async (chatId: string) => {
       try {
-        const result = await queryWithRetry(async () => {
-          return await supabase
-            .from("protalk_chats")
-            .delete()
-            .eq("id", chatId);
-        });
+        const { error } = await supabase
+          .from("protalk_chats")
+          .delete()
+          .eq("id", chatId);
 
-        if (result.error) {
-          throw result.error;
+        if (error) {
+          throw error;
         }
 
         const updatedChats = chats.filter((chat) => chat.id !== chatId);
@@ -597,15 +563,13 @@ export function useChat() {
   const renameChat = useCallback(
     async (chatId: string, newTitle: string) => {
       try {
-        const result = await queryWithRetry(async () => {
-          return await supabase
-            .from("protalk_chats")
-            .update({ title: newTitle })
-            .eq("id", chatId);
-        });
+        const { error } = await supabase
+          .from("protalk_chats")
+          .update({ title: newTitle })
+          .eq("id", chatId);
 
-        if (result.error) {
-          throw result.error;
+        if (error) {
+          throw error;
         }
 
         setChats((prevChats) =>
@@ -645,19 +609,17 @@ export function useChat() {
         const updatedBots = [...currentBots, botId];
         console.log("Adding bot to group chat:", botId, "Updated bots:", updatedBots);
         
-        const result = await queryWithRetry(async () => {
-          return await supabase
-            .from("protalk_chats")
-            .update({ 
-              bots_ids: updatedBots,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", currentChatId);
-        });
+        const { error } = await supabase
+          .from("protalk_chats")
+          .update({ 
+            bots_ids: updatedBots,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", currentChatId);
 
-        if (result.error) {
-          console.error("Error updating chat with new bot:", result.error);
-          throw result.error;
+        if (error) {
+          console.error("Error updating chat with new bot:", error);
+          throw error;
         }
 
         setChats((prevChats) =>
@@ -703,19 +665,17 @@ export function useChat() {
         const updatedBots = currentBots.filter(id => id !== botId);
         console.log("Removing bot from group chat:", botId, "Updated bots:", updatedBots);
         
-        const result = await queryWithRetry(async () => {
-          return await supabase
-            .from("protalk_chats")
-            .update({ 
-              bots_ids: updatedBots,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", currentChatId);
-        });
+        const { error } = await supabase
+          .from("protalk_chats")
+          .update({ 
+            bots_ids: updatedBots,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", currentChatId);
 
-        if (result.error) {
-          console.error("Error updating chat after removing bot:", result.error);
-          throw result.error;
+        if (error) {
+          console.error("Error updating chat after removing bot:", error);
+          throw error;
         }
 
         setChats((prevChats) =>

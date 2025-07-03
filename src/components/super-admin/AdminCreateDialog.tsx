@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { queryWithRetry } from "@/lib/supabaseRetry";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminCreateDialogProps {
   onAdminCreated: () => void;
@@ -36,48 +36,38 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
       setIsCreating(true);
       
       // Check if username already exists
-      const existingUserResult = await queryWithRetry(async () => {
-        const { supabase } = await import("@/integrations/supabase/client");
-        return await supabase
-          .from("admin_roles")
-          .select("id")
-          .eq("username", username as any)
-          .maybeSingle();
-      });
+      const { data: existingUser } = await supabase
+        .from("admin_roles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
       
-      if (existingUserResult.data) {
+      if (existingUser) {
         setFormError("Администратор с таким именем уже существует");
         setIsCreating(false);
         return;
       }
       
       // Create new admin
-      const createResult = await queryWithRetry(async () => {
-        const { supabase } = await import("@/integrations/supabase/client");
-        return await supabase
-          .from("admin_roles")
-          .insert({
-            username,
-            password,
-            role: "admin",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          } as any)
-          .select()
-          .single();
-      });
+      const { data: newAdmin, error } = await supabase
+        .from("admin_roles")
+        .insert({
+          username,
+          password,
+          role: "admin",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
       
-      if (createResult.error) throw createResult.error;
+      if (error) throw error;
       
-      const adminId = createResult.data && typeof createResult.data === 'object' && 'id' in createResult.data 
-        ? (createResult.data as any).id 
-        : 'unknown';
-      
-      console.log("Admin created successfully with ID:", adminId);
+      console.log("Admin created successfully with ID:", newAdmin.id);
       
       toast({
         title: "Администратор создан",
-        description: `Администратор ${username} успешно создан с ID: ${adminId}`
+        description: `Администратор ${username} успешно создан с ID: ${newAdmin.id}`
       });
       
       // Reset form

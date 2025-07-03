@@ -35,7 +35,7 @@ export const useAuthPage = () => {
       const { data: existingSettings, error: settingsError } = await supabase
         .from("user_settings")
         .select("*")
-        .eq("token", token as any)
+        .eq("token", token)
         .maybeSingle();
 
       if (!existingSettings) {
@@ -48,7 +48,7 @@ export const useAuthPage = () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             user_id: userId
-          } as any);
+          });
         
         if (createError) throw createError;
       }
@@ -65,7 +65,7 @@ export const useAuthPage = () => {
       const { data: tokenExists, error: tokenError } = await supabase
         .from("access_tokens")
         .select("id")
-        .eq("token", token as any)
+        .eq("token", token)
         .maybeSingle();
 
       if (!tokenExists && !token.startsWith("demo-")) {
@@ -112,7 +112,7 @@ export const useAuthPage = () => {
       const { data: existingToken, error: tokenCheckError } = await supabase
         .from("access_tokens")
         .select("id, token")
-        .eq("token", generatedToken as any)
+        .eq("token", generatedToken)
         .maybeSingle();
 
       if (!existingToken) {
@@ -124,7 +124,7 @@ export const useAuthPage = () => {
             description: `Token for ${login}`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          } as any)
+          })
           .select('id, token')
           .single();
 
@@ -138,17 +138,13 @@ export const useAuthPage = () => {
         });
         navigate(`/chat?token=${generatedToken}`);
       } else {
-        const tokenValue = existingToken && typeof existingToken === 'object' && 'token' in existingToken 
-          ? (existingToken as any).token 
-          : generatedToken;
-        
-        await setupUserSettings(tokenValue);
-        setToken(tokenValue);
+        await setupUserSettings(existingToken.token);
+        setToken(existingToken.token);
         toast({
           title: "Успешный вход",
           description: "Вы успешно вошли в систему"
         });
-        navigate(`/chat?token=${tokenValue}`);
+        navigate(`/chat?token=${existingToken.token}`);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -173,8 +169,8 @@ export const useAuthPage = () => {
       const { data: adminUser, error: adminError } = await supabase
         .from("admin_roles")
         .select("*")
-        .eq("username", username as any)
-        .eq("password", password as any)
+        .eq("username", username)
+        .eq("password", password)
         .maybeSingle();
 
       if (adminError) throw adminError;
@@ -184,27 +180,22 @@ export const useAuthPage = () => {
         return;
       }
 
-      // Type guard for adminUser
-      if (adminUser && typeof adminUser === 'object' && 'role' in adminUser && 'username' in adminUser && 'id' in adminUser) {
-        const admin = adminUser as any;
-        
-        sessionStorage.setItem("admin_role", admin.role);
-        sessionStorage.setItem("admin_username", admin.username);
-        sessionStorage.setItem("admin_id", admin.id);
+      sessionStorage.setItem("admin_role", adminUser.role);
+      sessionStorage.setItem("admin_username", adminUser.username);
+      sessionStorage.setItem("admin_id", adminUser.id);
 
-        if (admin.role === 'super_admin') {
-          toast({
-            title: "Успешный вход",
-            description: "Вы вошли как Super Admin"
-          });
-          navigate("/super-admin");
-        } else {
-          toast({
-            title: "Успешный вход",
-            description: "Вы вошли как Admin"
-          });
-          navigate("/token-admin");
-        }
+      if (adminUser.role === 'super_admin') {
+        toast({
+          title: "Успешный вход",
+          description: "Вы вошли как Super Admin"
+        });
+        navigate("/super-admin");
+      } else {
+        toast({
+          title: "Успешный вход",
+          description: "Вы вошли как Admin"
+        });
+        navigate("/token-admin");
       }
     } catch (error: any) {
       console.error("Admin login error:", error);
@@ -229,9 +220,9 @@ export const useAuthPage = () => {
       const { data: superAdmin, error: superAdminError } = await supabase
         .from("admin_roles")
         .select("*")
-        .eq("username", username as any)
-        .eq("password", password as any)
-        .eq("role", "super_admin" as any)
+        .eq("username", username)
+        .eq("password", password)
+        .eq("role", "super_admin")
         .maybeSingle();
 
       if (superAdminError) throw superAdminError;
@@ -241,20 +232,15 @@ export const useAuthPage = () => {
         return;
       }
 
-      // Type guard for superAdmin
-      if (superAdmin && typeof superAdmin === 'object' && 'role' in superAdmin && 'username' in superAdmin && 'id' in superAdmin) {
-        const admin = superAdmin as any;
-        
-        sessionStorage.setItem("admin_role", admin.role);
-        sessionStorage.setItem("admin_username", admin.username);
-        sessionStorage.setItem("admin_id", admin.id);
-        
-        toast({
-          title: "Успешный вход",
-          description: "Вы вошли как Super Admin"
-        });
-        navigate("/super-admin");
-      }
+      sessionStorage.setItem("admin_role", superAdmin.role);
+      sessionStorage.setItem("admin_username", superAdmin.username);
+      sessionStorage.setItem("admin_id", superAdmin.id);
+      
+      toast({
+        title: "Успешный вход",
+        description: "Вы вошли как Super Admin"
+      });
+      navigate("/super-admin");
     } catch (error: any) {
       console.error("Root login error:", error);
       toast({

@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { queryWithRetry } from "@/lib/supabaseRetry";
 import AdminCreateDialog from "./AdminCreateDialog";
 
 interface AdminUser {
@@ -34,17 +35,14 @@ const AdminList = ({ refreshTrigger, onRefresh }: AdminListProps) => {
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const result = await queryWithRetry(async () => {
-        const { supabase } = await import("@/integrations/supabase/client");
-        return await supabase
-          .from("admin_roles")
-          .select("*")
-          .eq("role", "admin" as any);
-      });
+      const { data, error } = await supabase
+        .from("admin_roles")
+        .select("*")
+        .eq("role", "admin");
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
-      setAdmins((result.data as any[]) || []);
+      setAdmins(data as AdminUser[] || []);
     } catch (error: any) {
       console.error("Error fetching admins:", error);
       toast({
@@ -59,15 +57,12 @@ const AdminList = ({ refreshTrigger, onRefresh }: AdminListProps) => {
 
   const handleDeleteAdmin = async (id: string, username: string) => {
     try {
-      const result = await queryWithRetry(async () => {
-        const { supabase } = await import("@/integrations/supabase/client");
-        return await supabase
-          .from("admin_roles")
-          .delete()
-          .eq("id", id as any);
-      });
+      const { error } = await supabase
+        .from("admin_roles")
+        .delete()
+        .eq("id", id);
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
       toast({
         title: "Администратор удален",
