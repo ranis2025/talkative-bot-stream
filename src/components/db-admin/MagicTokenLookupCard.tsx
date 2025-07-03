@@ -30,7 +30,7 @@ const MagicTokenLookupCard = () => {
       const { data: tokenData, error: tokenError } = await supabase
         .from('access_tokens')
         .select('id')
-        .eq('token', magicToken as any)
+        .eq('token', magicToken)
         .maybeSingle();
 
       if (tokenError) {
@@ -41,7 +41,7 @@ const MagicTokenLookupCard = () => {
       let bots: any[] = [];
 
       // If token exists in access_tokens, fetch assigned bots
-      if (tokenData && 'id' in tokenData && tokenData.id) {
+      if (tokenData?.id) {
         const { data: assignments, error: assignmentsError } = await supabase
           .from('token_bot_assignments')
           .select('*')
@@ -53,9 +53,9 @@ const MagicTokenLookupCard = () => {
 
         if (assignments) {
           bots = assignments.map(assignment => ({
-            bot_id: assignment && 'bot_id' in assignment ? assignment.bot_id : '',
-            bot_name: assignment && 'bot_name' in assignment ? assignment.bot_name : '',
-            bot_token: assignment && 'bot_token' in assignment ? assignment.bot_token : '',
+            bot_id: assignment.bot_id,
+            bot_name: assignment.bot_name,
+            bot_token: assignment.bot_token,
             source: 'assignments'
           }));
         }
@@ -65,7 +65,7 @@ const MagicTokenLookupCard = () => {
       const { data: chatBots, error: chatBotsError } = await supabase
         .from('chat_bots')
         .select('*')
-        .eq('token', magicToken as any);
+        .eq('token', magicToken);
 
       if (chatBotsError) {
         throw chatBotsError;
@@ -74,16 +74,14 @@ const MagicTokenLookupCard = () => {
       if (chatBots) {
         // Add only unique bots that aren't already in the results
         chatBots.forEach(chatBot => {
-          if (chatBot && 'bot_id' in chatBot) {
-            const existingBot = bots.find(b => b.bot_id === chatBot.bot_id);
-            if (!existingBot) {
-              bots.push({
-                bot_id: chatBot.bot_id || '',
-                bot_name: chatBot && 'name' in chatBot ? chatBot.name : '',
-                bot_token: chatBot && 'bot_token' in chatBot ? chatBot.bot_token : '',
-                source: 'chat_bots'
-              });
-            }
+          const existingBot = bots.find(b => b.bot_id === chatBot.bot_id);
+          if (!existingBot) {
+            bots.push({
+              bot_id: chatBot.bot_id,
+              bot_name: chatBot.name,
+              bot_token: chatBot.bot_token,
+              source: 'chat_bots'
+            });
           }
         });
       }

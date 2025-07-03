@@ -57,8 +57,8 @@ export const useAdminAuth = () => {
       const { data: adminUser, error: adminError } = await supabase
         .from("admin_roles")
         .select("*")
-        .eq("username", username as any)
-        .eq("password", password as any)
+        .eq("username", username)
+        .eq("password", password)
         .maybeSingle();
       
       if (adminError) throw adminError;
@@ -68,26 +68,24 @@ export const useAdminAuth = () => {
         return;
       }
       
-      if (adminUser && 'id' in adminUser && 'role' in adminUser && 'username' in adminUser) {
-        console.log("Admin authenticated successfully:", adminUser);
-        console.log("Admin ID:", adminUser.id);
-        
-        // Store admin info in session storage
-        sessionStorage.setItem("admin_role", String(adminUser.role));
-        sessionStorage.setItem("admin_username", String(adminUser.username));
-        sessionStorage.setItem("admin_id", String(adminUser.id));
-        
-        setAuthState({
-          isAuthenticated: true,
-          adminRole: String(adminUser.role),
-          adminId: String(adminUser.id),
-          authError: ""
-        });
-        
-        // Redirect Super Admin to its own page
-        if (adminUser.role === 'super_admin') {
-          navigate("/super-admin");
-        }
+      console.log("Admin authenticated successfully:", adminUser);
+      console.log("Admin ID:", adminUser.id);
+      
+      // Store admin info in session storage
+      sessionStorage.setItem("admin_role", adminUser.role);
+      sessionStorage.setItem("admin_username", adminUser.username);
+      sessionStorage.setItem("admin_id", adminUser.id);
+      
+      setAuthState({
+        isAuthenticated: true,
+        adminRole: adminUser.role,
+        adminId: adminUser.id,
+        authError: ""
+      });
+      
+      // Redirect Super Admin to its own page
+      if (adminUser.role === 'super_admin') {
+        navigate("/super-admin");
       }
       
     } catch (error: any) {

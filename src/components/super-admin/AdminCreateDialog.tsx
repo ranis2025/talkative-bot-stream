@@ -39,7 +39,7 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
       const { data: existingUser } = await supabase
         .from("admin_roles")
         .select("id")
-        .eq("username", username as any)
+        .eq("username", username)
         .maybeSingle();
       
       if (existingUser) {
@@ -57,26 +57,24 @@ const AdminCreateDialog = ({ onAdminCreated }: AdminCreateDialogProps) => {
           role: "admin",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        } as any)
+        })
         .select()
         .single();
       
       if (error) throw error;
       
-      if (newAdmin && 'id' in newAdmin) {
-        console.log("Admin created successfully with ID:", newAdmin.id);
-        
-        toast({
-          title: "Администратор создан",
-          description: `Администратор ${username} успешно создан с ID: ${newAdmin.id}`
-        });
-        
-        // Reset form
-        resetForm();
-        
-        // Refresh admin list
-        onAdminCreated();
-      }
+      console.log("Admin created successfully with ID:", newAdmin.id);
+      
+      toast({
+        title: "Администратор создан",
+        description: `Администратор ${username} успешно создан с ID: ${newAdmin.id}`
+      });
+      
+      // Reset form
+      resetForm();
+      
+      // Refresh admin list
+      onAdminCreated();
       
     } catch (error: any) {
       console.error("Error creating admin:", error);
