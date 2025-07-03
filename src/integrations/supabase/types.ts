@@ -145,6 +145,42 @@ export type Database = {
           },
         ]
       }
+      message_status: {
+        Row: {
+          bot_id: string
+          chat_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message_id: string
+          retry_count: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bot_id: string
+          chat_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id: string
+          retry_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bot_id?: string
+          chat_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string
+          retry_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       protalk_chats: {
         Row: {
           bot_id: string | null

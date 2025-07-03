@@ -248,69 +248,89 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
 
 async function sendToExternalAPI(botId: string, chatId: string, message: string, botToken: string): Promise<string> {
   try {
-    // Per the OpenAPI spec, bot_id should be an integer
     const numericBotId = parseInt(botId);
     if (isNaN(numericBotId)) {
       throw new Error("Invalid bot_id: must be convertible to an integer");
     }
     
-    const apiUrl = `${API_BASE_URL}/ask/${botToken}`;
-    console.log(`Sending request to Pro-Talk API: ${apiUrl}`);
+    // Step 1: Send message async
+    const sendUrl = `${API_BASE_URL}/send_message_async`;
+    console.log(`Sending async message to Pro-Talk API: ${sendUrl}`);
     
-    const payload = {
-      bot_id: numericBotId,  // Send as integer per API spec
-      chat_id: chatId,
+    const sendPayload = {
+      bot_id: numericBotId,
+      bot_token: botToken,
+      bot_chat_id: chatId,
       message: message
     };
     
-    console.log(`Request payload to Pro-Talk API: ${JSON.stringify(payload)}`);
+    console.log(`Send payload: ${JSON.stringify(sendPayload)}`);
     
-    const response = await fetch(apiUrl, {
+    const sendResponse = await fetch(sendUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(sendPayload),
     });
 
-    console.log(`Pro-Talk API response status: ${response.status}`);
+    if (!sendResponse.ok) {
+      const errorText = await sendResponse.text();
+      console.error(`Pro-Talk send API error: ${sendResponse.status} - ${errorText}`);
+      throw new Error(`Failed to send message: ${sendResponse.status} - ${errorText}`);
+    }
+
+    console.log("Message sent successfully, starting polling for reply");
+
+    // Step 2: Poll for reply
+    const replyUrl = `${API_BASE_URL}/get_last_reply`;
+    const replyPayload = {
+      bot_id: numericBotId,
+      bot_token: botToken,
+      bot_chat_id: chatId
+    };
     
-    // Check if response is actually available
-    if (!response) {
-      throw new Error("No response received from Pro-Talk API");
-    }
+    let reply = '';
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes max wait time
+    
+    while (reply === '' && attempts < maxAttempts) {
+      console.log(`Polling attempt ${attempts + 1}/${maxAttempts}`);
+      
+      // Wait 5 seconds between attempts
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      try {
+        const replyResponse = await fetch(replyUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(replyPayload),
+        });
 
-    // Safely handle the response even if it's not JSON
-    let responseText;
-    try {
-      responseText = await response.text();
-      console.log(`Pro-Talk API response body (first 200 chars): ${responseText.substring(0, 200)}`);
-    } catch (textError) {
-      console.error("Error getting response text:", textError);
-      throw new Error("Failed to get response text from API");
+        if (replyResponse.ok) {
+          const replyData = await replyResponse.json();
+          if (replyData.message && replyData.message !== '') {
+            reply = replyData.message;
+            console.log("Received reply from Pro-Talk API");
+            break;
+          }
+        } else {
+          console.warn(`Reply polling attempt ${attempts + 1} failed with status: ${replyResponse.status}`);
+        }
+      } catch (pollError) {
+        console.warn(`Reply polling attempt ${attempts + 1} failed:`, pollError);
+      }
+      
+      attempts++;
     }
     
-    if (!response.ok) {
-      console.error(`Pro-Talk API error: ${response.status} - ${responseText.substring(0, 200)}`);
-      throw new Error(`API returned status ${response.status}: ${responseText.substring(0, 200)}`);
+    if (reply === '') {
+      throw new Error("Timeout waiting for reply from Pro-Talk API");
     }
 
-    // Try to parse the response as JSON
-    let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(responseText);
-      console.log("Successfully parsed Pro-Talk API response");
-    } catch (parseError) {
-      console.error("Error parsing Pro-Talk API response:", parseError, "Response was:", responseText.substring(0, 200));
-      throw new Error(`Failed to parse API response as JSON. Raw response: ${responseText.substring(0, 200)}`);
-    }
-
-    if (!parsedResponse.done) {
-      console.error("API response missing 'done' field:", parsedResponse);
-      throw new Error("API response missing 'done' field");
-    }
-
-    return parsedResponse.done;
+    return reply;
   } catch (error) {
     console.error("Error in sendToExternalAPI function:", error);
     throw error;
