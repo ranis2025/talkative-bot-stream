@@ -47,33 +47,39 @@ export function GroupChat({
   const [isDiscussionActive, setIsDiscussionActive] = useState(false);
   const [mentionBotId, setMentionBotId] = useState<string | null>(null);
   
-  // Auto-scroll to bottom when new messages arrive and when switching chats
+  // Улучшенная логика прокрутки для групповых чатов
   useEffect(() => {
-    const scrollToBottom = () => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "end",
-          inline: "nearest"
-        });
-      }
-    };
-    
-    // Небольшая задержка для корректной прокрутки после рендера
-    const timeoutId = setTimeout(scrollToBottom, 100);
-    
-    return () => clearTimeout(timeoutId);
-  }, [chat?.messages, chat?.id]);
+    if (!messagesEndRef.current || !chat) return;
 
-  // Прокрутка при загрузке чата
-  useEffect(() => {
-    if (chat && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: "auto",
-        block: "end"
+    const scrollContainer = messagesEndRef.current.closest('.overflow-y-auto');
+    if (!scrollContainer) return;
+
+    const isNearBottom = () => {
+      const threshold = 100;
+      return scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < threshold;
+    };
+
+    const scrollToBottom = (behavior: 'auto' | 'smooth' = 'smooth') => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior,
+        block: "end",
+        inline: "nearest"
       });
+    };
+
+    // При смене чата - всегда прокручиваем вниз мгновенно
+    const chatIdChanged = chat.id !== undefined;
+    if (chatIdChanged) {
+      const timeoutId = setTimeout(() => scrollToBottom('auto'), 50);
+      return () => clearTimeout(timeoutId);
     }
-  }, [chat?.id]);
+
+    // При добавлении сообщений - прокручиваем только если пользователь внизу и не идет обсуждение
+    if (chat.messages.length > 0 && isNearBottom() && !isLoading && !isDiscussionActive) {
+      const timeoutId = setTimeout(() => scrollToBottom('smooth'), 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [chat?.messages, chat?.id, isLoading, isDiscussionActive]);
 
   // Monitor input for @ mentions
   const handleInputChange = (value: string) => {

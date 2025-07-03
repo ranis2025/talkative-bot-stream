@@ -35,33 +35,39 @@ export function Chat({
   
   const appName = getAppName();
 
-  // Прокрутка вниз при добавлении нового сообщения и при смене чата
+  // Улучшенная логика прокрутки
   useEffect(() => {
-    const scrollToBottom = () => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "end",
-          inline: "nearest"
-        });
-      }
-    };
-    
-    // Небольшая задержка для корректной прокрутки после рендера
-    const timeoutId = setTimeout(scrollToBottom, 100);
-    
-    return () => clearTimeout(timeoutId);
-  }, [chat?.messages, chat?.id]);
+    if (!messagesEndRef.current || !chat) return;
 
-  // Прокрутка при загрузке чата
-  useEffect(() => {
-    if (chat && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: "auto",
-        block: "end"
+    const scrollContainer = messagesEndRef.current.closest('.overflow-y-auto');
+    if (!scrollContainer) return;
+
+    const isNearBottom = () => {
+      const threshold = 100;
+      return scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < threshold;
+    };
+
+    const scrollToBottom = (behavior: 'auto' | 'smooth' = 'smooth') => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior,
+        block: "end",
+        inline: "nearest"
       });
+    };
+
+    // При смене чата - всегда прокручиваем вниз мгновенно
+    const chatIdChanged = chat.id !== undefined;
+    if (chatIdChanged) {
+      const timeoutId = setTimeout(() => scrollToBottom('auto'), 50);
+      return () => clearTimeout(timeoutId);
     }
-  }, [chat?.id]);
+
+    // При добавлении сообщений - прокручиваем только если пользователь внизу
+    if (chat.messages.length > 0 && isNearBottom() && !isLoading) {
+      const timeoutId = setTimeout(() => scrollToBottom('smooth'), 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [chat?.messages, chat?.id, isLoading]);
 
   // Если нет активного чата
   if (!chat) {
