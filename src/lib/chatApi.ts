@@ -1,8 +1,9 @@
+
 import { ApiRequest, IMessage } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast"; 
 import { toast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
+import { invokeEdgeFunction, queryWithRetry } from "./supabaseRetry";
 
 export async function uploadFiles(files: File[]): Promise<{ name: string; size: number; type: string; url: string; }[]> {
   try {
@@ -13,13 +14,16 @@ export async function uploadFiles(files: File[]): Promise<{ name: string; size: 
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `chat-files/${fileName}`;
       
-      const { data, error } = await supabase.storage
-        .from('chat-files')
-        .upload(filePath, file);
-        
-      if (error) {
-        console.error("Error uploading file:", error);
-        throw error;
+      // Используем retry для загрузки файлов
+      const result = await queryWithRetry(async () => {
+        return await supabase.storage
+          .from('chat-files')
+          .upload(filePath, file);
+      });
+      
+      if (result.error) {
+        console.error("Error uploading file:", result.error);
+        throw result.error;
       }
       
       const { data: { publicUrl } } = supabase.storage
@@ -83,43 +87,9 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     };
 
     console.log(`Sending payload to edge function:`, payload);
-    const { data, error } = await supabase.functions.invoke('chat', {
-      body: payload
-    });
-
-    if (error) {
-      console.error("Error calling chat function:", error);
-      
-      if (error.message?.includes("Failed to fetch") || 
-          error.message?.includes("Network error") ||
-          error.message?.includes("timeout")) {
-        toast({
-          title: "Ошибка сети",
-          description: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
-          variant: "destructive",
-        });
-        return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
-      }
-      
-      if (error.message?.includes("Edge Function returned a non-2xx status code")) {
-        console.error("Edge Function returned an error status. Check the logs in the Supabase dashboard for more details.");
-        toast({
-          title: "Ошибка сервера",
-          description: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.",
-          variant: "destructive",
-        });
-        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
-      }
-      
-      toast({
-        title: "Ошибка",
-        description: error.message || "Неизвестная ошибка",
-        variant: "destructive",
-      });
-      throw new Error(`Edge function error: ${error.message}`);
-    }
-
-    console.log("Edge function response:", data);
+    
+    // Используем новую retry логику для Edge функций
+    const data = await invokeEdgeFunction('chat', payload);
 
     if (!data || typeof data !== 'object') {
       console.error("Invalid response format:", data);
@@ -150,7 +120,7 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       }
       
       if (errorMessage.includes("OpenAI API")) {
-        return "Ошибка при обработке запроса AI моделью. Пожалуйста, попробуйте позже.";
+        return "Ошибка при обработке запроса AI моделью. Пожалуйта, попробуйте позже.";
       }
       
       if (errorMessage.includes("Pro-Talk API")) {
@@ -177,20 +147,13 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     if (error instanceof Error) {
       const errorMessage = error.message;
       
-      toast({
-        title: "Ошибка",
-        description: errorMessage || "Произошла ошибка при обраб��тке запроса",
-        variant: "destructive",
-      });
-      
-      if (errorMessage.includes("Edge Function returned a non-2xx status code")) {
-        console.error("Edge Function returned a non-2xx status code. This could be due to a server-side issue.");
-        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
-      }
-      
-      if (error instanceof SyntaxError && errorMessage.includes("JSON")) {
-        console.error("JSON parse error - Got non-JSON response from server");
-        return "Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.";
+      // Не показываем toast для retry ошибок - они уже обрабатываются в retry логике
+      if (!errorMessage.includes('timeout') && !errorMessage.includes('network')) {
+        toast({
+          title: "Ошибка",
+          description: errorMessage || "Произошла ошибка при обработке запроса",
+          variant: "destructive",
+        });
       }
       
       if (errorMessage.includes("Bot ID is required")) {
@@ -223,18 +186,21 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     
     console.log(`Sending group message to bots: ${botIds.join(', ')}, chat: ${chatId}, specific bot: ${specificBotId || 'none'}`);
     
-    const { data: chatData, error: chatError } = await supabase
-      .from("protalk_chats")
-      .select("*")
-      .eq("id", chatId)
-      .single();
+    // Используем retry для получения истории чата
+    const chatResult = await queryWithRetry(async () => {
+      return await supabase
+        .from("protalk_chats")
+        .select("*")
+        .eq("id", chatId)
+        .single();
+    });
     
-    if (chatError) {
-      console.error("Error fetching chat history:", chatError);
-      throw new Error(`Error fetching chat history: ${chatError.message}`);
+    if (chatResult.error) {
+      console.error("Error fetching chat history:", chatResult.error);
+      throw new Error(`Error fetching chat history: ${chatResult.error.message}`);
     }
     
-    const chatHistory = chatData.messages || [];
+    const chatHistory = chatResult.data.messages || [];
     const recentHistory = Array.isArray(chatHistory) ? chatHistory.slice(-20) : [];
     
     let conversationHistoryText = "";
@@ -267,18 +233,21 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
       messageContent += fileUrls;
     }
     
-    const { data: botsData, error: botsError } = await supabase
-      .from("chat_bots")
-      .select("*")
-      .in("bot_id", botIds);
+    // Используем retry для получения данных ботов
+    const botsResult = await queryWithRetry(async () => {
+      return await supabase
+        .from("chat_bots")
+        .select("*")
+        .in("bot_id", botIds);
+    });
     
-    if (botsError) {
-      console.error("Error fetching bots data:", botsError);
-      throw new Error(`Error fetching bots data: ${botsError.message}`);
+    if (botsResult.error) {
+      console.error("Error fetching bots data:", botsResult.error);
+      throw new Error(`Error fetching bots data: ${botsResult.error.message}`);
     }
     
     const botsMap = new Map();
-    botsData.forEach(bot => {
+    botsResult.data.forEach(bot => {
       botsMap.set(bot.bot_id, bot.name);
     });
     
@@ -299,19 +268,9 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
         };
   
         console.log(`Sending payload to bot ${botId}:`, payload);
-        const { data, error } = await supabase.functions.invoke('chat', {
-          body: payload
-        });
-  
-        if (error) {
-          console.error(`Error calling chat function for bot ${botId}:`, error);
-          responses.push({
-            botId,
-            response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`,
-            botName: botsMap.get(botId) || "Бот"
-          });
-          continue;
-        }
+        
+        // Используем retry для каждого бота
+        const data = await invokeEdgeFunction('chat', payload);
   
         if (!data || typeof data !== 'object') {
           console.error(`Invalid response format for bot ${botId}:`, data);
@@ -367,11 +326,14 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
   } catch (error) {
     console.error("Error sending group message:", error);
     
-    toast({
-      title: "Ошибка",
-      description: error.message || "Произошла ошибка при отправке сообщения",
-      variant: "destructive",
-    });
+    // Не показываем toast для retry ошибок
+    if (!error.message?.includes('timeout') && !error.message?.includes('network')) {
+      toast({
+        title: "Ошибка",
+        description: error.message || "Произошла ошибка при отправке сообщения",
+        variant: "destructive",
+      });
+    }
     
     throw error;
   }
