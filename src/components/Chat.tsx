@@ -35,14 +35,33 @@ export function Chat({
   
   const appName = getAppName();
 
-  // Прокрутка вниз при добавлении нового сообщения
+  // Прокрутка вниз при добавлении нового сообщения и при смене чата
   useEffect(() => {
-    if (messagesEndRef.current) {
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+          inline: "nearest"
+        });
+      }
+    };
+    
+    // Небольшая задержка для корректной прокрутки после рендера
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [chat?.messages, chat?.id]);
+
+  // Прокрутка при загрузке чата
+  useEffect(() => {
+    if (chat && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
-        behavior: "smooth"
+        behavior: "auto",
+        block: "end"
       });
     }
-  }, [chat?.messages]);
+  }, [chat?.id]);
 
   // Если нет активного чата
   if (!chat) {

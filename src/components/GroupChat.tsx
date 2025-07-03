@@ -47,14 +47,33 @@ export function GroupChat({
   const [isDiscussionActive, setIsDiscussionActive] = useState(false);
   const [mentionBotId, setMentionBotId] = useState<string | null>(null);
   
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive and when switching chats
   useEffect(() => {
-    if (messagesEndRef.current) {
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+          inline: "nearest"
+        });
+      }
+    };
+    
+    // Небольшая задержка для корректной прокрутки после рендера
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [chat?.messages, chat?.id]);
+
+  // Прокрутка при загрузке чата
+  useEffect(() => {
+    if (chat && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
-        behavior: "smooth"
+        behavior: "auto",
+        block: "end"
       });
     }
-  }, [chat?.messages]);
+  }, [chat?.id]);
 
   // Monitor input for @ mentions
   const handleInputChange = (value: string) => {
