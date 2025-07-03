@@ -32,7 +32,7 @@ const MagicTokenLookupCard = () => {
         return await supabase
           .from('access_tokens')
           .select('id')
-          .eq('token', magicToken)
+          .eq('token', magicToken as any)
           .maybeSingle();
       });
 
@@ -44,7 +44,7 @@ const MagicTokenLookupCard = () => {
       let bots: any[] = [];
 
       // If token exists in access_tokens, fetch assigned bots
-      if (tokenResult.data?.id) {
+      if (tokenResult.data && 'id' in tokenResult.data) {
         const assignmentsResult = await queryWithRetry(async () => {
           const { supabase } = await import("@/integrations/supabase/client");
           return await supabase
@@ -57,8 +57,8 @@ const MagicTokenLookupCard = () => {
           throw assignmentsResult.error;
         }
 
-        if (assignmentsResult.data) {
-          bots = assignmentsResult.data.map(assignment => ({
+        if (assignmentsResult.data && Array.isArray(assignmentsResult.data)) {
+          bots = assignmentsResult.data.map((assignment: any) => ({
             bot_id: assignment.bot_id,
             bot_name: assignment.bot_name,
             bot_token: assignment.bot_token,
@@ -73,16 +73,16 @@ const MagicTokenLookupCard = () => {
         return await supabase
           .from('chat_bots')
           .select('*')
-          .eq('token', magicToken);
+          .eq('token', magicToken as any);
       });
 
       if (chatBotsResult.error) {
         throw chatBotsResult.error;
       }
 
-      if (chatBotsResult.data) {
+      if (chatBotsResult.data && Array.isArray(chatBotsResult.data)) {
         // Add only unique bots that aren't already in the results
-        chatBotsResult.data.forEach(chatBot => {
+        chatBotsResult.data.forEach((chatBot: any) => {
           const existingBot = bots.find(b => b.bot_id === chatBot.bot_id);
           if (!existingBot) {
             bots.push({
