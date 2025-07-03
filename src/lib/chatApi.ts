@@ -1,8 +1,8 @@
 import { ApiRequest, IMessage } from "@/types/chat";
-import { supabase } from "./supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast"; 
 import { toast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
-import { invokeWithRetry } from "./supabaseRetry";
 
 export async function uploadFiles(files: File[]): Promise<{ name: string; size: number; type: string; url: string; }[]> {
   try {
@@ -83,7 +83,41 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     };
 
     console.log(`Sending payload to edge function:`, payload);
-    const data = await invokeWithRetry('chat', payload);
+    const { data, error } = await supabase.functions.invoke('chat', {
+      body: payload
+    });
+
+    if (error) {
+      console.error("Error calling chat function:", error);
+      
+      if (error.message?.includes("Failed to fetch") || 
+          error.message?.includes("Network error") ||
+          error.message?.includes("timeout")) {
+        toast({
+          title: "Ошибка сети",
+          description: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
+          variant: "destructive",
+        });
+        return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
+      }
+      
+      if (error.message?.includes("Edge Function returned a non-2xx status code")) {
+        console.error("Edge Function returned an error status. Check the logs in the Supabase dashboard for more details.");
+        toast({
+          title: "Ошибка сервера",
+          description: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.",
+          variant: "destructive",
+        });
+        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
+      }
+      
+      toast({
+        title: "Ошибка",
+        description: error.message || "Неизвестная ошибка",
+        variant: "destructive",
+      });
+      throw new Error(`Edge function error: ${error.message}`);
+    }
 
     console.log("Edge function response:", data);
 
@@ -97,8 +131,8 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       throw new Error("Received invalid response format from server");
     }
 
-    if (!(data as any).ok) {
-      const errorMessage = (data as any).done || "Unknown error";
+    if (!data.ok) {
+      const errorMessage = data.done || "Unknown error";
       console.error("API returned error:", errorMessage);
       
       toast({
@@ -126,8 +160,8 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       throw new Error(errorMessage);
     }
 
-    if (typeof (data as any).done !== 'string') {
-      console.error("Invalid 'done' field format:", (data as any).done);
+    if (typeof data.done !== 'string') {
+      console.error("Invalid 'done' field format:", data.done);
       toast({
         title: "Ошибка формата данных",
         description: "Ответ сервера в неправильном формате",
@@ -136,29 +170,16 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       throw new Error("Ответ сервера в неправильном формате");
     }
 
-    return (data as any).done;
+    return data.done;
   } catch (error) {
     console.error("Error sending message:", error);
     
     if (error instanceof Error) {
       const errorMessage = error.message;
       
-      // For "Failed to send a request to the Edge Function" errors, provide better user feedback
-      if (errorMessage.includes("Failed to send a request to the Edge Function") ||
-          errorMessage.includes("Failed to send a request") ||
-          errorMessage.includes("Network request failed")) {
-        console.error("Network/Edge Function request failed:", errorMessage);
-        toast({
-          title: "Ошибка сети",
-          description: "Не удалось отправить запрос к серверу. Проверьте подключение к интернету и попробуйте снова.",
-          variant: "destructive",
-        });
-        return "Не удалось отправить запрос к серверу. Проверьте подключение к интернету и попробуйте снова.";
-      }
-      
       toast({
         title: "Ошибка",
-        description: errorMessage || "Произошла ошибка при обработке запроса",
+        description: errorMessage || "Произошла ошибка при обраб��тке запроса",
         variant: "destructive",
       });
       
@@ -278,7 +299,19 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
         };
   
         console.log(`Sending payload to bot ${botId}:`, payload);
-        const data = await invokeWithRetry('chat', payload);
+        const { data, error } = await supabase.functions.invoke('chat', {
+          body: payload
+        });
+  
+        if (error) {
+          console.error(`Error calling chat function for bot ${botId}:`, error);
+          responses.push({
+            botId,
+            response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`,
+            botName: botsMap.get(botId) || "Бот"
+          });
+          continue;
+        }
   
         if (!data || typeof data !== 'object') {
           console.error(`Invalid response format for bot ${botId}:`, data);
@@ -290,8 +323,8 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
           continue;
         }
   
-        if (!(data as any).ok) {
-          const errorMessage = (data as any).done || "Unknown error";
+        if (!data.ok) {
+          const errorMessage = data.done || "Unknown error";
           console.error(`API returned error for bot ${botId}:`, errorMessage);
           responses.push({
             botId,
@@ -301,8 +334,8 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
           continue;
         }
   
-        if (typeof (data as any).done !== 'string') {
-          console.error(`Invalid 'done' field format for bot ${botId}:`, (data as any).done);
+        if (typeof data.done !== 'string') {
+          console.error(`Invalid 'done' field format for bot ${botId}:`, data.done);
           responses.push({
             botId,
             response: `Ответ бота ${botId} в неправильном формате`,
@@ -313,7 +346,7 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
   
         responses.push({
           botId,
-          response: (data as any).done,
+          response: data.done,
           botName: botsMap.get(botId) || "Бот"
         });
         
