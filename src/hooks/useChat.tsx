@@ -27,7 +27,7 @@ export function useChat() {
       const { data: tokenData, error: tokenError } = await supabase
         .from("access_tokens")
         .select("id")
-        .eq("token", token)
+        .eq("token", token as any)
         .maybeSingle();
       
       if (tokenError && tokenError.code !== "PGRST116") {
@@ -38,7 +38,7 @@ export function useChat() {
       let assignedBots: ChatBot[] = [];
       
       // Get bots from token_bot_assignments if we have a token ID
-      if (tokenData?.id) {
+      if (tokenData && 'id' in tokenData && tokenData.id) {
         const { data: assignmentsData, error: assignmentsError } = await supabase
           .from("token_bot_assignments")
           .select("*")
@@ -47,9 +47,9 @@ export function useChat() {
         if (!assignmentsError && assignmentsData) {
           assignedBots = assignmentsData.map(assignment => ({
             id: uuidv4(),
-            bot_id: assignment.bot_id,
-            name: assignment.bot_name || "Bot",
-            bot_token: assignment.bot_token || null,
+            bot_id: String(assignment && 'bot_id' in assignment ? assignment.bot_id : ''),
+            name: String(assignment && 'bot_name' in assignment ? assignment.bot_name || "Bot" : "Bot"),
+            bot_token: String(assignment && 'bot_token' in assignment ? assignment.bot_token || '' : ''),
             token: token,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -61,7 +61,7 @@ export function useChat() {
       const { data: directBotsData, error: directBotsError } = await supabase
         .from("chat_bots")
         .select("*")
-        .eq("token", token);
+        .eq("token", token as any);
       
       if (directBotsError) {
         console.error("Error fetching direct bots:", directBotsError);
@@ -83,9 +83,9 @@ export function useChat() {
       
       // Then add direct bots if they don't exist yet
       directBots.forEach(bot => {
-        if (!botIds.has(bot.bot_id)) {
-          allBots.push(bot);
-          botIds.add(bot.bot_id);
+        if (bot && 'bot_id' in bot && !botIds.has(String(bot.bot_id))) {
+          allBots.push(bot as any);
+          botIds.add(String(bot.bot_id));
         }
       });
       
@@ -102,7 +102,7 @@ export function useChat() {
       const { data: settingsData } = await supabase
         .from("user_settings")
         .select("*")
-        .eq("token", token)
+        .eq("token", token as any)
         .maybeSingle();
 
       if (settingsData) {
@@ -124,14 +124,14 @@ export function useChat() {
         .from("protalk_chats")
         .select("*");
       
-      query = query.eq('token', token);
+      query = query.eq('token', token as any);
       
       if (chatView === 'group') {
-        query = query.eq('is_group_chat', true);
+        query = query.eq('is_group_chat', true as any);
       } else if (bot_id) {
-        query = query.eq('bot_id', bot_id).eq('is_group_chat', false);
+        query = query.eq('bot_id', bot_id as any).eq('is_group_chat', false as any);
       } else {
-        query = query.eq('is_group_chat', false);
+        query = query.eq('is_group_chat', false as any);
       }
       
       const { data, error } = await query.order("updated_at", { ascending: false });
@@ -217,7 +217,7 @@ export function useChat() {
         is_group_chat: isGroupChat,
         token: token,
         messages: [] as unknown as Json,
-      });
+      } as any);
 
       if (error) {
         console.error("Error creating chat in Supabase:", error);
@@ -228,7 +228,7 @@ export function useChat() {
       const { data: createdChat, error: fetchError } = await supabase
         .from("protalk_chats")
         .select("*")
-        .eq("id", newChatId)
+        .eq("id", newChatId as any)
         .single();
         
       if (fetchError) {
@@ -316,8 +316,8 @@ export function useChat() {
           .update({ 
             messages: updatedMessages as unknown as Json,
             updated_at: new Date().toISOString()
-          })
-          .eq("id", currentChatId);
+          } as any)
+          .eq("id", currentChatId as any);
 
         if (updateError) {
           throw updateError;
@@ -369,8 +369,8 @@ export function useChat() {
               .update({ 
                 messages: messagesWithBotResponses as unknown as Json,
                 updated_at: new Date().toISOString()
-              })
-              .eq("id", currentChatId);
+              } as any)
+              .eq("id", currentChatId as any);
 
             if (botUpdateError) {
               console.error("Error updating chat with bot responses:", botUpdateError);
@@ -383,8 +383,8 @@ export function useChat() {
 
               const { error: titleError } = await supabase
                 .from("protalk_chats")
-                .update({ title: shortTitle })
-                .eq("id", currentChatId);
+                .update({ title: shortTitle } as any)
+                .eq("id", currentChatId as any);
 
               if (titleError) {
                 throw titleError;
@@ -432,8 +432,8 @@ export function useChat() {
               .update({ 
                 messages: messagesWithBotResponse as unknown as Json,
                 updated_at: new Date().toISOString()
-              })
-              .eq("id", currentChatId);
+              } as any)
+              .eq("id", currentChatId as any);
 
             if (botUpdateError) {
               throw botUpdateError;
@@ -445,8 +445,8 @@ export function useChat() {
 
               const { error: titleError } = await supabase
                 .from("protalk_chats")
-                .update({ title: shortTitle })
-                .eq("id", currentChatId);
+                .update({ title: shortTitle } as any)
+                .eq("id", currentChatId as any);
 
               if (titleError) {
                 throw titleError;
@@ -495,8 +495,8 @@ export function useChat() {
             .update({ 
               messages: messagesWithError as unknown as Json,
               updated_at: new Date().toISOString()
-            })
-            .eq("id", currentChatId);
+            } as any)
+            .eq("id", currentChatId as any);
             
           setChats((prevChats) =>
             prevChats.map((chat) =>
@@ -536,7 +536,7 @@ export function useChat() {
         const { error } = await supabase
           .from("protalk_chats")
           .delete()
-          .eq("id", chatId);
+          .eq("id", chatId as any);
 
         if (error) {
           throw error;
@@ -565,8 +565,8 @@ export function useChat() {
       try {
         const { error } = await supabase
           .from("protalk_chats")
-          .update({ title: newTitle })
-          .eq("id", chatId);
+          .update({ title: newTitle } as any)
+          .eq("id", chatId as any);
 
         if (error) {
           throw error;
@@ -614,8 +614,8 @@ export function useChat() {
           .update({ 
             bots_ids: updatedBots,
             updated_at: new Date().toISOString()
-          })
-          .eq("id", currentChatId);
+          } as any)
+          .eq("id", currentChatId as any);
 
         if (error) {
           console.error("Error updating chat with new bot:", error);
@@ -670,8 +670,8 @@ export function useChat() {
           .update({ 
             bots_ids: updatedBots,
             updated_at: new Date().toISOString()
-          })
-          .eq("id", currentChatId);
+          } as any)
+          .eq("id", currentChatId as any);
 
         if (error) {
           console.error("Error updating chat after removing bot:", error);

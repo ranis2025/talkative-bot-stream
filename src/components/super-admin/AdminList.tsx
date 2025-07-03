@@ -38,11 +38,11 @@ const AdminList = ({ refreshTrigger, onRefresh }: AdminListProps) => {
       const { data, error } = await supabase
         .from("admin_roles")
         .select("*")
-        .eq("role", "admin");
+        .eq("role", "admin" as any);
       
       if (error) throw error;
       
-      setAdmins(data as AdminUser[] || []);
+      setAdmins((data as any) || []);
     } catch (error: any) {
       console.error("Error fetching admins:", error);
       toast({
@@ -60,7 +60,7 @@ const AdminList = ({ refreshTrigger, onRefresh }: AdminListProps) => {
       const { error } = await supabase
         .from("admin_roles")
         .delete()
-        .eq("id", id);
+        .eq("id", id as any);
       
       if (error) throw error;
       
