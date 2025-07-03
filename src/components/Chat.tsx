@@ -1,5 +1,5 @@
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useLayoutEffect } from "react";
 import { Message } from "./Message";
 import MessageInput from "./MessageInput";
 import { IChat, IFile } from "@/types/chat";
@@ -35,30 +35,36 @@ export function Chat({
   
   const appName = getAppName();
 
-  // Прокрутка вниз при любом изменении сообщений или смене чата
-  useEffect(() => {
+  // Улучшенная прокрутка с синхронным выполнением
+  useLayoutEffect(() => {
     if (!messagesEndRef.current || !chat) return;
 
     const scrollToBottom = (behavior: 'auto' | 'smooth' = 'smooth') => {
-      messagesEndRef.current?.scrollIntoView({
-        behavior,
-        block: "end",
-        inline: "nearest"
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior,
+          block: "end",
+          inline: "nearest"
+        });
       });
     };
 
-    // При смене чата - мгновенная прокрутка
-    if (chat.id) {
-      const timeoutId = setTimeout(() => scrollToBottom('auto'), 50);
-      return () => clearTimeout(timeoutId);
-    }
+    // Принудительная прокрутка при любых изменениях
+    scrollToBottom('smooth');
+  }, [chat?.id, chat?.messages?.length]);
 
-    // При добавлении сообщений - плавная прокрутка
-    if (chat.messages.length > 0) {
-      const timeoutId = setTimeout(() => scrollToBottom('smooth'), 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [chat?.messages, chat?.id]);
+  // Отдельный эффект для мгновенной прокрутки при смене чата
+  useLayoutEffect(() => {
+    if (!messagesEndRef.current || !chat?.id) return;
+    
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: 'auto',
+        block: "end", 
+        inline: "nearest"
+      });
+    });
+  }, [chat?.id]);
 
   // Если нет активного чата
   if (!chat) {
