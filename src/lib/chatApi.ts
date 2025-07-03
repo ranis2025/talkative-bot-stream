@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast"; 
 import { toast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
+import { invokeWithRetry } from "./supabaseRetry";
 
 export async function uploadFiles(files: File[]): Promise<{ name: string; size: number; type: string; url: string; }[]> {
   try {
@@ -83,41 +84,7 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     };
 
     console.log(`Sending payload to edge function:`, payload);
-    const { data, error } = await supabase.functions.invoke('chat', {
-      body: payload
-    });
-
-    if (error) {
-      console.error("Error calling chat function:", error);
-      
-      if (error.message?.includes("Failed to fetch") || 
-          error.message?.includes("Network error") ||
-          error.message?.includes("timeout")) {
-        toast({
-          title: "Ошибка сети",
-          description: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
-          variant: "destructive",
-        });
-        return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
-      }
-      
-      if (error.message?.includes("Edge Function returned a non-2xx status code")) {
-        console.error("Edge Function returned an error status. Check the logs in the Supabase dashboard for more details.");
-        toast({
-          title: "Ошибка сервера",
-          description: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.",
-          variant: "destructive",
-        });
-        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
-      }
-      
-      toast({
-        title: "Ошибка",
-        description: error.message || "Неизвестная ошибка",
-        variant: "destructive",
-      });
-      throw new Error(`Edge function error: ${error.message}`);
-    }
+    const data = await invokeWithRetry('chat', payload);
 
     console.log("Edge function response:", data);
 
@@ -299,19 +266,7 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
         };
   
         console.log(`Sending payload to bot ${botId}:`, payload);
-        const { data, error } = await supabase.functions.invoke('chat', {
-          body: payload
-        });
-  
-        if (error) {
-          console.error(`Error calling chat function for bot ${botId}:`, error);
-          responses.push({
-            botId,
-            response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`,
-            botName: botsMap.get(botId) || "Бот"
-          });
-          continue;
-        }
+        const data = await invokeWithRetry('chat', payload);
   
         if (!data || typeof data !== 'object') {
           console.error(`Invalid response format for bot ${botId}:`, data);
