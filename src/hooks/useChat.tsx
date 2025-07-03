@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { IChat, IMessage, ApiResponse, Json, ChatBot, UserSettings, IFile } from "@/types/chat";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { sendMessage, sendGroupMessage, uploadFiles } from "@/lib/chatApi";
+import { sendMessage, sendGroupMessage } from "@/lib/chatApi";
+import { sendMessageAsync, startPolling, uploadFiles } from "@/lib/asyncChatApi";
+import { PendingMessage, MessageStatusMap } from "@/types/messageStatus";
 
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
@@ -16,6 +18,7 @@ export function useChat() {
   const [currentBot, setCurrentBot] = useState<string | null>(null);
   const [userBots, setUserBots] = useState<ChatBot[]>([]);
   const [chatView, setChatView] = useState<'individual' | 'group'>('individual');
+  const [pendingMessages, setPendingMessages] = useState<MessageStatusMap>({});
 
   const fetchUserBots = useCallback(async () => {
     if (!token) return;
@@ -266,7 +269,8 @@ export function useChat() {
     async (message: string, files?: IFile[], specificBotId?: string | null) => {
       if (!currentChatId) return;
 
-      setLoading(true);
+      // Don't use global loading anymore - handle per message
+      const messageLocalId = uuidv4();
 
       try {
         const currentChat = chats.find((chat) => chat.id === currentChatId);
@@ -296,7 +300,6 @@ export function useChat() {
               description: "Не удалось загрузить файлы. Попробуйте снова.",
               variant: "destructive",
             });
-            setLoading(false);
             return;
           }
         }
@@ -335,8 +338,87 @@ export function useChat() {
           )
         );
 
-        try {
-          if (currentChat.is_group_chat && currentChat.bots_ids && currentChat.bots_ids.length > 0) {
+        // Use async messaging for non-group chats
+        if (!currentChat.is_group_chat && currentChat.bot_id) {
+          try {
+            const messageId = await sendMessageAsync(currentChatId, message, uploadedFiles, currentChat.bot_id);
+            
+            // Create placeholder bot message
+            const botPlaceholder: IMessage = {
+              id: uuidv4(),
+              content: "Обрабатывается...",
+              role: "bot",
+              timestamp: Date.now(),
+              pending: true,
+              messageId: messageId
+            };
+
+            const messagesWithPlaceholder = [...updatedMessages, botPlaceholder];
+            
+            setChats((prevChats) =>
+              prevChats.map((chat) =>
+                chat.id === currentChatId
+                  ? { ...chat, messages: messagesWithPlaceholder, updatedAt: Date.now() }
+                  : chat
+              )
+            );
+
+            // Start polling for response
+            const cleanup = startPolling(messageId, currentChat.bot_id, currentChatId, (status, reply, error) => {
+              if (status === 'completed' && reply) {
+                setChats((prevChats) =>
+                  prevChats.map((chat) =>
+                    chat.id === currentChatId
+                      ? {
+                          ...chat,
+                          messages: chat.messages.map(msg => 
+                            msg.messageId === messageId 
+                              ? { ...msg, content: reply, pending: false }
+                              : msg
+                          ),
+                          updatedAt: Date.now()
+                        }
+                      : chat
+                  )
+                );
+              } else if (status === 'error') {
+                setChats((prevChats) =>
+                  prevChats.map((chat) =>
+                    chat.id === currentChatId
+                      ? {
+                          ...chat,
+                          messages: chat.messages.map(msg => 
+                            msg.messageId === messageId 
+                              ? { ...msg, content: `Ошибка: ${error}`, pending: false }
+                              : msg
+                          ),
+                          updatedAt: Date.now()
+                        }
+                      : chat
+                  )
+                );
+              }
+            });
+
+          } catch (asyncError) {
+            console.error("Async message error:", asyncError);
+            const errorMessage: IMessage = {
+              id: uuidv4(),
+              content: `Ошибка: ${asyncError.message}`,
+              role: "bot",
+              timestamp: Date.now(),
+            };
+            
+            const messagesWithError = [...updatedMessages, errorMessage];
+            setChats((prevChats) =>
+              prevChats.map((chat) =>
+                chat.id === currentChatId
+                  ? { ...chat, messages: messagesWithError, updatedAt: Date.now() }
+                  : chat
+              )
+            );
+          }
+        } else if (currentChat.is_group_chat && currentChat.bots_ids && currentChat.bots_ids.length > 0) {
             console.log("Processing group chat message for bots:", currentChat.bots_ids);
             console.log("Specific bot ID for first response:", specificBotId);
             
@@ -478,44 +560,6 @@ export function useChat() {
               );
             }
           }
-        } catch (apiError) {
-          console.error("API error:", apiError);
-          
-          const errorMessage: IMessage = {
-            id: uuidv4(),
-            content: `Ошибка: ${apiError.message || "Не удалось получить ответ от бота."}`,
-            role: "bot",
-            timestamp: Date.now(),
-          };
-          
-          const messagesWithError = [...updatedMessages, errorMessage];
-          
-          await supabase
-            .from("protalk_chats")
-            .update({ 
-              messages: messagesWithError as unknown as Json,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", currentChatId);
-            
-          setChats((prevChats) =>
-            prevChats.map((chat) =>
-              chat.id === currentChatId
-                ? {
-                    ...chat,
-                    messages: messagesWithError,
-                    updatedAt: Date.now(),
-                  }
-                : chat
-            )
-          );
-          
-          toast({
-            title: "Ошибка при отправке сообщения",
-            description: apiError.message || "Не удалось получить ответ от бота.",
-            variant: "destructive",
-          });
-        }
       } catch (error) {
         console.error("Error in message flow:", error);
         toast({
@@ -523,8 +567,6 @@ export function useChat() {
           description: "Не удалось отправить сообщение",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
       }
     },
     [chats, currentChatId, toast]
