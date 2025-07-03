@@ -1,5 +1,5 @@
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Create a Supabase client with the Auth context of the function
 export const getSupabaseClient = () => {

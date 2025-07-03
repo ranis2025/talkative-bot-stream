@@ -59,6 +59,4 @@ export interface IMessage {
   bot_id?: string;
   bot_name?: string;
   files?: IFile[];
-  pending?: boolean;
-  messageId?: string;
 }
