@@ -46,68 +46,6 @@ export async function uploadFiles(files: File[]): Promise<{ name: string; size: 
   }
 }
 
-// Helper function to check if bot uses ProTalk API (has bot_token)
-async function isBotProTalkAPI(botId: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase
-      .from('chat_bots')
-      .select('bot_token, openai_key')
-      .eq('bot_id', botId)
-      .single();
-    
-    if (error || !data) {
-      console.error("Error checking bot type:", error);
-      return false;
-    }
-    
-    return !!data.bot_token && !data.openai_key;
-  } catch (error) {
-    console.error("Error checking bot type:", error);
-    return false;
-  }
-}
-
-// Helper function to poll for ProTalk API reply
-async function pollForReply(replyId: string, botId: string, maxAttempts: number = 60): Promise<string> {
-  let attempts = 0;
-  
-  while (attempts < maxAttempts) {
-    try {
-      console.log(`Polling attempt ${attempts + 1}/${maxAttempts} for reply ID: ${replyId}`);
-      
-      const { data, error } = await supabase.functions.invoke('get-reply', {
-        body: { reply_id: replyId, bot_id: botId }
-      });
-      
-      if (error) {
-        console.error("Error polling for reply:", error);
-        throw new Error(`Polling error: ${error.message}`);
-      }
-      
-      if (data?.ok && data?.ready && data?.message) {
-        console.log("Reply received successfully!");
-        return data.message;
-      }
-      
-      // Wait 5 seconds before next poll
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      attempts++;
-    } catch (error) {
-      console.error(`Polling attempt ${attempts + 1} failed:`, error);
-      attempts++;
-      
-      if (attempts >= maxAttempts) {
-        throw error;
-      }
-      
-      // Wait 5 seconds before retry
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  }
-  
-  throw new Error("Timeout waiting for bot response");
-}
-
 export async function sendMessage(chatId: string, message: string, files?: { name: string; size: number; type: string; url: string; file?: File }[], specificBotId?: string | null): Promise<string> {
   try {
     const urlParams = new URLSearchParams(window.location.search);
@@ -116,6 +54,11 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     
     if (!botId) {
       console.error("No bot ID found in URL or provided as parameter");
+      toast({
+        title: "Ошибка",
+        description: "ID бота не указан. Пожалуйста, проверьте URL или настройки.",
+        variant: "destructive",
+      });
       throw new Error("Bot ID is required");
     }
     
@@ -133,90 +76,122 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     
     console.log(`Prepared message content with files:`, messageContent);
     
-    // Check if this bot uses ProTalk API
-    const isProTalkBot = await isBotProTalkAPI(botId);
-    
-    if (isProTalkBot) {
-      // Use asynchronous ProTalk API approach
-      console.log("Using asynchronous ProTalk API approach");
-      
-      // Step 1: Send message and get reply ID
-      const sendPayload = {
-        bot_id: botId,
-        chat_id: chatId,
-        message: messageContent
-      };
+    const payload: ApiRequest = {
+      bot_id: botId,
+      chat_id: chatId,
+      message: messageContent
+    };
 
-      console.log(`Sending message payload:`, sendPayload);
-      const { data: sendData, error: sendError } = await supabase.functions.invoke('send-message', {
-        body: sendPayload
+    console.log(`Sending payload to edge function:`, payload);
+    const { data, error } = await supabase.functions.invoke('chat', {
+      body: payload
+    });
+
+    if (error) {
+      console.error("Error calling chat function:", error);
+      
+      if (error.message?.includes("Failed to fetch") || 
+          error.message?.includes("Network error") ||
+          error.message?.includes("timeout")) {
+        toast({
+          title: "Ошибка сети",
+          description: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
+          variant: "destructive",
+        });
+        return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
+      }
+      
+      if (error.message?.includes("Edge Function returned a non-2xx status code")) {
+        console.error("Edge Function returned an error status. Check the logs in the Supabase dashboard for more details.");
+        toast({
+          title: "Ошибка сервера",
+          description: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.",
+          variant: "destructive",
+        });
+        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
+      }
+      
+      toast({
+        title: "Ошибка",
+        description: error.message || "Неизвестная ошибка",
+        variant: "destructive",
       });
-
-      if (sendError) {
-        console.error("Error sending message:", sendError);
-        throw new Error(`Failed to send message: ${sendError.message}`);
-      }
-
-      if (!sendData?.ok || !sendData?.reply_id) {
-        console.error("Invalid send response:", sendData);
-        throw new Error("Failed to send message - invalid response");
-      }
-
-      console.log(`Message sent, reply ID: ${sendData.reply_id}`);
-      
-      // Step 2: Poll for reply
-      try {
-        const reply = await pollForReply(sendData.reply_id, botId);
-        return reply;
-      } catch (pollError) {
-        console.error("Error polling for reply:", pollError);
-        return "Не удалось получить ответ от бота в установленное время. Попробуйте позже.";
-      }
-    } else {
-      // Use traditional synchronous approach for OpenAI bots
-      console.log("Using synchronous approach for OpenAI bot");
-      
-      const payload: ApiRequest = {
-        bot_id: botId,
-        chat_id: chatId,
-        message: messageContent
-      };
-
-      console.log(`Sending payload to chat function:`, payload);
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: payload
-      });
-
-      if (error) {
-        console.error("Error calling chat function:", error);
-        throw new Error(`Edge function error: ${error.message}`);
-      }
-
-      console.log("Chat function response:", data);
-
-      if (!data || typeof data !== 'object') {
-        console.error("Invalid response format:", data);
-        throw new Error("Received invalid response format from server");
-      }
-
-      if (!data.ok) {
-        const errorMessage = data.done || "Unknown error";
-        console.error("API returned error:", errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      if (typeof data.done !== 'string') {
-        console.error("Invalid 'done' field format:", data.done);
-        throw new Error("Response format error");
-      }
-
-      return data.done;
+      throw new Error(`Edge function error: ${error.message}`);
     }
+
+    console.log("Edge function response:", data);
+
+    if (!data || typeof data !== 'object') {
+      console.error("Invalid response format:", data);
+      toast({
+        title: "Ошибка формата данных",
+        description: "Получен недопустимый формат ответа от сервера",
+        variant: "destructive",
+      });
+      throw new Error("Received invalid response format from server");
+    }
+
+    if (!data.ok) {
+      const errorMessage = data.done || "Unknown error";
+      console.error("API returned error:", errorMessage);
+      
+      toast({
+        title: "Ошибка сервера",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      if (errorMessage.includes("Bot not found") || errorMessage.includes("Bot with ID")) {
+        return "Бот не найден. Пожалуйста, проверьте ID бота и попробуйте снова.";
+      }
+      
+      if (errorMessage.includes("Bot is not properly configured")) {
+        return "Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.";
+      }
+      
+      if (errorMessage.includes("OpenAI API")) {
+        return "Ошибка при обработке запроса AI моделью. Пожалуйста, попробуйте позже.";
+      }
+      
+      if (errorMessage.includes("Pro-Talk API")) {
+        return "Ошибка при обработке запроса внешним API. Пожалуйста, попробуйте позже.";
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    if (typeof data.done !== 'string') {
+      console.error("Invalid 'done' field format:", data.done);
+      toast({
+        title: "Ошибка формата данных",
+        description: "Ответ сервера в неправильном формате",
+        variant: "destructive",
+      });
+      throw new Error("Ответ сервера в неправильном формате");
+    }
+
+    return data.done;
   } catch (error) {
     console.error("Error sending message:", error);
     
     if (error instanceof Error) {
       const errorMessage = error.message;
+      
+      toast({
+        title: "Ошибка",
+        description: errorMessage || "Произошла ошибка при обраб��тке запроса",
+        variant: "destructive",
+      });
+      
+      if (errorMessage.includes("Edge Function returned a non-2xx status code")) {
+        console.error("Edge Function returned a non-2xx status code. This could be due to a server-side issue.");
+        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
+      }
+      
+      if (error instanceof SyntaxError && errorMessage.includes("JSON")) {
+        console.error("JSON parse error - Got non-JSON response from server");
+        return "Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.";
+      }
       
       if (errorMessage.includes("Bot ID is required")) {
         return "Ошибка: ID бота не указан. Пожалуйста, проверьте URL или настройки.";
@@ -228,10 +203,6 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       
       if (errorMessage.includes("Bot is not properly configured")) {
         return "Ошибка: Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.";
-      }
-      
-      if (errorMessage.includes("Timeout waiting for bot response")) {
-        return "Время ожидания ответа от бота истекло. Попробуйте позже.";
       }
     }
     
@@ -321,62 +292,61 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
     
     for (const botId of orderedBotIds) {
       try {
-        // Check if this bot uses ProTalk API for group messages too
-        const isProTalkBot = await isBotProTalkAPI(botId);
-        let response: string;
-        
-        if (isProTalkBot) {
-          // Use asynchronous approach for ProTalk bots
-          const sendPayload = {
-            bot_id: botId,
-            chat_id: chatId,
-            message: messageContent
-          };
-
-          const { data: sendData, error: sendError } = await supabase.functions.invoke('send-message', {
-            body: sendPayload
+        const payload: ApiRequest = {
+          bot_id: botId,
+          chat_id: chatId,
+          message: messageContent
+        };
+  
+        console.log(`Sending payload to bot ${botId}:`, payload);
+        const { data, error } = await supabase.functions.invoke('chat', {
+          body: payload
+        });
+  
+        if (error) {
+          console.error(`Error calling chat function for bot ${botId}:`, error);
+          responses.push({
+            botId,
+            response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`,
+            botName: botsMap.get(botId) || "Бот"
           });
-
-          if (sendError || !sendData?.ok || !sendData?.reply_id) {
-            throw new Error(`Failed to send message to bot ${botId}`);
-          }
-
-          try {
-            response = await pollForReply(sendData.reply_id, botId, 30); // Shorter timeout for group chats
-          } catch (pollError) {
-            response = `Время ожидания ответа от бота ${botsMap.get(botId) || 'Бот'} истекло.`;
-          }
-        } else {
-          // Use synchronous approach for OpenAI bots
-          const payload: ApiRequest = {
-            bot_id: botId,
-            chat_id: chatId,
-            message: messageContent
-          };
-
-          const { data, error } = await supabase.functions.invoke('chat', {
-            body: payload
-          });
-
-          if (error) {
-            throw new Error(`Error calling chat function for bot ${botId}: ${error.message}`);
-          }
-
-          if (!data || typeof data !== 'object' || !data.ok) {
-            const errorMessage = data?.done || "Unknown error";
-            throw new Error(`API returned error for bot ${botId}: ${errorMessage}`);
-          }
-
-          if (typeof data.done !== 'string') {
-            throw new Error(`Invalid response format for bot ${botId}`);
-          }
-
-          response = data.done;
+          continue;
         }
-
+  
+        if (!data || typeof data !== 'object') {
+          console.error(`Invalid response format for bot ${botId}:`, data);
+          responses.push({
+            botId,
+            response: `Получен недопустимый формат ответа от бота ${botId}`,
+            botName: botsMap.get(botId) || "Бот"
+          });
+          continue;
+        }
+  
+        if (!data.ok) {
+          const errorMessage = data.done || "Unknown error";
+          console.error(`API returned error for bot ${botId}:`, errorMessage);
+          responses.push({
+            botId,
+            response: `Ошибка бота ${botId}: ${errorMessage}`,
+            botName: botsMap.get(botId) || "Бот"
+          });
+          continue;
+        }
+  
+        if (typeof data.done !== 'string') {
+          console.error(`Invalid 'done' field format for bot ${botId}:`, data.done);
+          responses.push({
+            botId,
+            response: `Ответ бота ${botId} в неправильном формате`,
+            botName: botsMap.get(botId) || "Бот"
+          });
+          continue;
+        }
+  
         responses.push({
           botId,
-          response,
+          response: data.done,
           botName: botsMap.get(botId) || "Бот"
         });
         
