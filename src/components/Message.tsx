@@ -1,11 +1,10 @@
-
 import { IMessage } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { FileIcon, ImageIcon, FileTextIcon, CheckCircle, Clock, User, Bot, Images, Link, Play, Pause, Volume2, Copy, CheckCheck } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { toast } from "@/hooks/use-toast";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface MessageProps {
   message: IMessage;
@@ -20,44 +19,17 @@ export function Message({ message }: MessageProps) {
   const [extractedFileLinks, setExtractedFileLinks] = useState<{url: string, text: string}[]>([]);
   const [extractedAudioLinks, setExtractedAudioLinks] = useState<string[]>([]);
   const [audioPlaying, setAudioPlaying] = useState<{[key: string]: boolean}>({});
-  const [isCopied, setIsCopied] = useState(false);
+  const { copyToClipboard, isCopied } = useCopyToClipboard();
   const audioRefs = useRef<{[key: string]: HTMLAudioElement | null}>({});
   
-  // Reset copy state after 2 seconds
-  useEffect(() => {
-    let copyTimeout: number | null = null;
-    if (isCopied) {
-      copyTimeout = window.setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
-    }
-    return () => {
-      if (copyTimeout) {
-        clearTimeout(copyTimeout);
-      }
-    };
-  }, [isCopied]);
-  
   // Function to copy message content to clipboard
-  const copyMessageContent = () => {
+  const handleCopyMessage = async () => {
     if (!message.content) return;
     
-    navigator.clipboard.writeText(message.content)
-      .then(() => {
-        setIsCopied(true);
-        toast({
-          title: "Скопировано",
-          description: "Текст сообщения скопирован в буфер обмена",
-        });
-      })
-      .catch((error) => {
-        console.error("Error copying text:", error);
-        toast({
-          title: "Ошибка",
-          description: "Не удалось скопировать текст",
-          variant: "destructive",
-        });
-      });
+    const result = await copyToClipboard(message.content);
+    
+    // Log result for debugging
+    console.log("Copy result:", result);
   };
   
   // Function to determine file type icon
@@ -201,7 +173,7 @@ export function Message({ message }: MessageProps) {
           
           <div className="flex items-center justify-end gap-1 mt-2">
             <button
-              onClick={copyMessageContent}
+              onClick={handleCopyMessage}
               className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
               title="Копировать текст"
             >
@@ -266,7 +238,7 @@ export function Message({ message }: MessageProps) {
           
           <div className="flex items-center justify-end gap-1 mt-2">
             <button
-              onClick={copyMessageContent}
+              onClick={handleCopyMessage}
               className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
               title="Копировать текст"
             >
@@ -350,7 +322,7 @@ export function Message({ message }: MessageProps) {
           
           <div className="flex items-center justify-end gap-1 mt-2">
             <button
-              onClick={copyMessageContent}
+              onClick={handleCopyMessage}
               className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
               title="Копировать текст"
             >
@@ -463,7 +435,7 @@ export function Message({ message }: MessageProps) {
             
             <div className="flex items-center justify-end gap-1 mt-2">
               <button
-                onClick={copyMessageContent}
+                onClick={handleCopyMessage}
                 className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50 opacity-0 group-hover:opacity-100"
                 title="Копировать текст"
               >
