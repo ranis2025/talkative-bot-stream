@@ -32,7 +32,8 @@ export async function sendMessageAsync(chatId: string, message: string, files?: 
       .from("chat_bots")
       .select("bot_token")
       .eq("bot_id", botId)
-      .single();
+      .limit(1)
+      .maybeSingle();
     
     if (botError || !botData?.bot_token) {
       console.error("Bot token not found:", botError);
@@ -91,7 +92,8 @@ export async function pollForReply(messageId: string, botId: string, chatId: str
       .from("chat_bots")
       .select("bot_token")
       .eq("bot_id", botId)
-      .single();
+      .limit(1)
+      .maybeSingle();
     
     if (botError || !botData?.bot_token) {
       console.error("Bot token not found:", botError);
