@@ -86,55 +86,27 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
     console.log(`Supabase client initialized`);
     console.log(`Attempting to call chat edge function...`);
     
-    const { data, error } = await supabase.functions.invoke('chat', {
-      body: payload
+    // Use direct fetch to bypass proxy issues
+    const edgeFunctionUrl = `https://isxqxbysfsdyhmjcxfsm.supabase.co/functions/v1/chat`;
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzeHF4YnlzZnNkeWhtamN4ZnNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2NTUzNjUsImV4cCI6MjA1ODIzMTM2NX0.OSmh005slZWbm1BwEPsDDYKzkjwZgPs4q4VoRLXs0H0`,
+        'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzeHF4YnlzZnNkeWhtamN4ZnNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2NTUzNjUsImV4cCI6MjA1ODIzMTM2NX0.OSmh005slZWbm1BwEPsDDYKzkjwZgPs4q4VoRLXs0H0`
+      },
+      body: JSON.stringify(payload)
     });
 
-    console.log(`Edge function response:`, { data, error });
-
-    if (error) {
-      console.error("Error calling chat function:", error);
-      console.error("Error details:", {
-        message: error.message,
-        name: error.name,
-        cause: error.cause,
-        stack: error.stack
-      });
-      
-      // More specific error handling
-      if (error.message?.includes("Failed to send a request to the Edge Function") ||
-          error.message?.includes("Failed to fetch") || 
-          error.message?.includes("Network error") ||
-          error.message?.includes("timeout") ||
-          error.message?.includes("NetworkError")) {
-        console.error("Network connectivity issue detected");
-        toast({
-          title: "Ошибка сети",
-          description: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
-          variant: "destructive",
-        });
-        return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
-      }
-      
-      if (error.message?.includes("Edge Function returned a non-2xx status code")) {
-        console.error("Edge Function returned an error status. Check the logs in the Supabase dashboard for more details.");
-        toast({
-          title: "Ошибка сервера",
-          description: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.",
-          variant: "destructive",
-        });
-        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
-      }
-      
-      // For debugging - don't show this error to user, log it and return a generic message
-      console.error("Unhandled edge function error:", error);
-      toast({
-        title: "Ошибка",
-        description: "Временная проблема с сервером. Пожалуйста, попробуйте позже.",
-        variant: "destructive",
-      });
-      return "Временная проблема с сервером. Пожалуйста, попробуйте позже.";
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Edge function error: ${response.status} - ${errorText}`);
+      throw new Error(`Edge function returned ${response.status}: ${errorText}`);
     }
+
+    const data = await response.json();
+
+    console.log(`Edge function response:`, { data, error: null });
 
     console.log("Edge function response:", data);
 
