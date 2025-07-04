@@ -36,7 +36,7 @@ const GroupChats = () => {
     chats,
     currentChat,
     currentChatId,
-    loading,
+    getChatLoading,
     isInitialized,
     setCurrentChatId,
     createGroupChat,
@@ -564,7 +564,7 @@ const GroupChats = () => {
               <GroupChat 
                 chat={currentChat} 
                 onSendMessage={sendChatMessage}
-                isLoading={loading}
+                isLoading={getChatLoading(currentChat.id)}
                 userBots={userBots}
                 onAddBotToChat={addBotToGroupChat}
                 onRemoveBotFromChat={removeBotFromGroupChat}

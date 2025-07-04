@@ -9,13 +9,30 @@ import { sendMessage, sendGroupMessage, uploadFiles } from "@/lib/chatApi";
 export function useChat() {
   const [chats, setChats] = useState<IChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [chatLoadingStates, setChatLoadingStates] = useState<Map<string, boolean>>(new Map());
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
   const [currentBot, setCurrentBot] = useState<string | null>(null);
   const [userBots, setUserBots] = useState<ChatBot[]>([]);
   const [chatView, setChatView] = useState<'individual' | 'group'>('individual');
+
+  // Helper functions for chat loading states
+  const setChatLoading = useCallback((chatId: string, loading: boolean) => {
+    setChatLoadingStates(prev => {
+      const newMap = new Map(prev);
+      if (loading) {
+        newMap.set(chatId, true);
+      } else {
+        newMap.delete(chatId);
+      }
+      return newMap;
+    });
+  }, []);
+
+  const getChatLoading = useCallback((chatId: string) => {
+    return chatLoadingStates.get(chatId) || false;
+  }, [chatLoadingStates]);
 
   const fetchUserBots = useCallback(async () => {
     if (!token) return;
@@ -266,7 +283,7 @@ export function useChat() {
     async (message: string, files?: IFile[], specificBotId?: string | null) => {
       if (!currentChatId) return;
 
-      setLoading(true);
+      setChatLoading(currentChatId, true);
 
       try {
         const currentChat = chats.find((chat) => chat.id === currentChatId);
@@ -296,7 +313,7 @@ export function useChat() {
               description: "Не удалось загрузить файлы. Попробуйте снова.",
               variant: "destructive",
             });
-            setLoading(false);
+            setChatLoading(currentChatId, false);
             return;
           }
         }
@@ -524,7 +541,7 @@ export function useChat() {
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        setChatLoading(currentChatId, false);
       }
     },
     [chats, currentChatId, toast]
@@ -722,7 +739,7 @@ export function useChat() {
     chats,
     currentChat,
     currentChatId,
-    loading,
+    getChatLoading,
     isInitialized,
     setCurrentChatId,
     createChat,

@@ -17,7 +17,7 @@ const Index = () => {
     chats,
     currentChat,
     currentChatId,
-    loading,
+    getChatLoading,
     isInitialized,
     setCurrentChatId,
     createChat,
@@ -134,7 +134,7 @@ const Index = () => {
         </div>
 
         <div className={cn("flex-1 flex flex-col overflow-hidden", isMobileView && sidebarOpen && "hidden")}>
-          {currentChat && <Chat chat={currentChat} onSendMessage={sendChatMessage} isLoading={loading} />}
+          {currentChat && <Chat chat={currentChat} onSendMessage={sendChatMessage} isLoading={getChatLoading(currentChat.id)} />}
           
           {!currentChat && <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
               <div className="max-w-md space-y-4">
