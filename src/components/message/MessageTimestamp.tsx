@@ -43,8 +43,8 @@ export const MessageTimestamp: React.FC<MessageTimestampProps> = ({ message }) =
         )}
       </button>
       
-      {/* Кнопка просмотра логов сервера (только для сообщений бота) */}
-      {isBot && message.server_logs && (
+      {/* Кнопка просмотра логов сервера (всегда для сообщений бота) */}
+      {isBot && (
         <Dialog open={isLogsOpen} onOpenChange={setIsLogsOpen}>
           <DialogTrigger asChild>
             <button
@@ -60,7 +60,7 @@ export const MessageTimestamp: React.FC<MessageTimestampProps> = ({ message }) =
             </DialogHeader>
             <div className="mt-4">
               <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
-                {message.server_logs}
+                {message.server_logs || 'Логи сервера отсутствуют для данного сообщения'}
               </pre>
             </div>
           </DialogContent>

@@ -183,14 +183,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Prepare server logs
     const serverLogs = {
       timestamp: new Date().toISOString(),
       botId: bot_id,
       chatId: chat_id,
       method: botData.openai_key ? 'OpenAI' : 'Pro-Talk API',
       responseLength: response.length,
-      success: true
+      success: true,
+      botName: botData.name
     };
+    
+    // Add polling logs for Pro-Talk API
+    if (botData.bot_token && (globalThis as any).pollingLogs) {
+      serverLogs.pollingDetails = (globalThis as any).pollingLogs;
+      // Clear the global logs
+      delete (globalThis as any).pollingLogs;
+    }
     
     console.log("Sending successful response with data:", { responseLength: response.length });
     
@@ -268,6 +277,8 @@ async function sendToOpenAI(message: string, apiKey: string): Promise<string> {
 }
 
 async function sendToExternalAPI(botId: string, chatId: string, message: string, botToken: string): Promise<string> {
+  const pollingLogs = [];
+  
   try {
     const numericBotId = parseInt(botId);
     if (isNaN(numericBotId)) {
@@ -277,6 +288,7 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     // Step 1: Send message async
     const sendUrl = `${API_BASE_URL}/send_message_async`;
     console.log(`Sending async message to Pro-Talk API: ${sendUrl}`);
+    pollingLogs.push(`${new Date().toISOString()}: Отправка сообщения на ${sendUrl}`);
     
     const sendPayload = {
       bot_id: numericBotId,
@@ -286,6 +298,7 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     };
     
     console.log(`Send payload: ${JSON.stringify(sendPayload)}`);
+    pollingLogs.push(`${new Date().toISOString()}: Payload: ${JSON.stringify(sendPayload)}`);
     
     const sendResponse = await fetch(sendUrl, {
       method: "POST",
@@ -298,10 +311,12 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     if (!sendResponse.ok) {
       const errorText = await sendResponse.text();
       console.error(`Pro-Talk send API error: ${sendResponse.status} - ${errorText}`);
+      pollingLogs.push(`${new Date().toISOString()}: ОШИБКА отправки: ${sendResponse.status} - ${errorText}`);
       throw new Error(`Failed to send message: ${sendResponse.status} - ${errorText}`);
     }
 
     console.log("Message sent successfully, starting polling for reply");
+    pollingLogs.push(`${new Date().toISOString()}: Сообщение отправлено успешно, начинаем опрос ответа`);
 
     // Step 2: Poll for reply
     const replyUrl = `${API_BASE_URL}/get_last_reply`;
@@ -314,9 +329,11 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     let reply = '';
     let attempts = 0;
     const maxAttempts = 60; // 5 minutes max wait time
+    pollingLogs.push(`${new Date().toISOString()}: Начинаем опрос (максимум ${maxAttempts} попыток)`);
     
     while (reply === '' && attempts < maxAttempts) {
       console.log(`Polling attempt ${attempts + 1}/${maxAttempts}`);
+      pollingLogs.push(`${new Date().toISOString()}: Попытка опроса ${attempts + 1}/${maxAttempts}`);
       
       // Wait 5 seconds between attempts
       await new Promise(resolve => setTimeout(resolve, 5000));
@@ -332,28 +349,42 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
 
         if (replyResponse.ok) {
           const replyData = await replyResponse.json();
+          pollingLogs.push(`${new Date().toISOString()}: Ответ сервера: ${JSON.stringify(replyData)}`);
+          
           if (replyData.message && replyData.message !== '') {
             reply = replyData.message;
             console.log("Received reply from Pro-Talk API");
+            pollingLogs.push(`${new Date().toISOString()}: Получен ответ: "${reply}"`);
             break;
+          } else {
+            pollingLogs.push(`${new Date().toISOString()}: Ответ пустой или отсутствует`);
           }
         } else {
           console.warn(`Reply polling attempt ${attempts + 1} failed with status: ${replyResponse.status}`);
+          pollingLogs.push(`${new Date().toISOString()}: Ошибка опроса: статус ${replyResponse.status}`);
         }
       } catch (pollError) {
         console.warn(`Reply polling attempt ${attempts + 1} failed:`, pollError);
+        pollingLogs.push(`${new Date().toISOString()}: Ошибка опроса: ${pollError.message}`);
       }
       
       attempts++;
     }
     
     if (reply === '') {
+      pollingLogs.push(`${new Date().toISOString()}: Таймаут - ответ не получен за ${maxAttempts} попыток`);
       throw new Error("Timeout waiting for reply from Pro-Talk API");
     }
 
+    pollingLogs.push(`${new Date().toISOString()}: Опрос завершен успешно`);
+    
+    // Store polling logs globally to be accessible in the main function
+    (globalThis as any).pollingLogs = pollingLogs;
+    
     return reply;
   } catch (error) {
     console.error("Error in sendToExternalAPI function:", error);
+    pollingLogs.push(`${new Date().toISOString()}: Критическая ошибка: ${error.message}`);
+    (globalThis as any).pollingLogs = pollingLogs;
     throw error;
   }
-}
