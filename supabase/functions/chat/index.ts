@@ -183,10 +183,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    const serverLogs = {
+      timestamp: new Date().toISOString(),
+      botId: bot_id,
+      chatId: chat_id,
+      method: botData.openai_key ? 'OpenAI' : 'Pro-Talk API',
+      responseLength: response.length,
+      success: true
+    };
+    
     console.log("Sending successful response with data:", { responseLength: response.length });
     
     return new Response(
-      JSON.stringify({ ok: true, done: response }),
+      JSON.stringify({ 
+        ok: true, 
+        done: response, 
+        server_logs: JSON.stringify(serverLogs) 
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -194,10 +207,18 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Unhandled error in Edge Function:", error);
+    const errorLogs = {
+      timestamp: new Date().toISOString(),
+      error: "Unhandled server error",
+      details: error.message || "Unknown error",
+      stack: error.stack
+    };
+    
     return new Response(
       JSON.stringify({ 
         ok: false, 
-        done: `Unhandled server error: ${error.message || "Unknown error"}` 
+        done: `Unhandled server error: ${error.message || "Unknown error"}`,
+        server_logs: JSON.stringify(errorLogs)
       }),
       { 
         status: 500, 

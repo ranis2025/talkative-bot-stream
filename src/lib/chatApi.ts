@@ -46,7 +46,7 @@ export async function uploadFiles(files: File[]): Promise<{ name: string; size: 
   }
 }
 
-export async function sendMessage(chatId: string, message: string, files?: { name: string; size: number; type: string; url: string; file?: File }[], specificBotId?: string | null): Promise<string> {
+export async function sendMessage(chatId: string, message: string, files?: { name: string; size: number; type: string; url: string; file?: File }[], specificBotId?: string | null): Promise<{response: string, serverLogs?: string}> {
   try {
     const urlParams = new URLSearchParams(window.location.search);
     const urlBotId = urlParams.get('bot_id');
@@ -113,7 +113,12 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
           description: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.",
           variant: "destructive",
         });
-        return "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.";
+        const errorLogs = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          error: "Network connectivity issue",
+          details: error.message
+        });
+        return { response: "Проблема с сетевым подключением. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.", serverLogs: errorLogs };
       }
       
       if (error.message?.includes("Edge Function returned a non-2xx status code")) {
@@ -123,7 +128,12 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
           description: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.",
           variant: "destructive",
         });
-        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
+        const errorLogs = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          error: "Edge Function non-2xx status",
+          details: error.message
+        });
+        return { response: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.", serverLogs: errorLogs };
       }
       
       // For debugging - don't show this error to user, log it and return a generic message
@@ -133,7 +143,12 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
         description: "Временная проблема с сервером. Пожалуйста, попробуйте позже.",
         variant: "destructive",
       });
-      return "Временная проблема с сервером. Пожалуйста, попробуйте позже.";
+      const errorLogs = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        error: "Unhandled edge function error",
+        details: error.message
+      });
+      return { response: "Временная проблема с сервером. Пожалуйста, попробуйте позже.", serverLogs: errorLogs };
     }
 
     console.log("Edge function response:", data);
@@ -152,6 +167,12 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       const errorMessage = data.done || "Unknown error";
       console.error("API returned error:", errorMessage);
       
+      const errorLogs = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        error: "API returned error",
+        details: errorMessage
+      });
+      
       toast({
         title: "Ошибка сервера",
         description: errorMessage,
@@ -159,19 +180,19 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       });
       
       if (errorMessage.includes("Bot not found") || errorMessage.includes("Bot with ID")) {
-        return "Бот не найден. Пожалуйста, проверьте ID бота и попробуйте снова.";
+        return { response: "Бот не найден. Пожалуйста, проверьте ID бота и попробуйте снова.", serverLogs: errorLogs };
       }
       
       if (errorMessage.includes("Bot is not properly configured")) {
-        return "Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.";
+        return { response: "Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.", serverLogs: errorLogs };
       }
       
       if (errorMessage.includes("OpenAI API")) {
-        return "Ошибка при обработке запроса AI моделью. Пожалуйста, попробуйте позже.";
+        return { response: "Ошибка при обработке запроса AI моделью. Пожалуйста, попробуйте позже.", serverLogs: errorLogs };
       }
       
       if (errorMessage.includes("Pro-Talk API")) {
-        return "Ошибка при обработке запроса внешним API. Пожалуйста, попробуйте позже.";
+        return { response: "Ошибка при обработке запроса внешним API. Пожалуйста, попробуйте позже.", serverLogs: errorLogs };
       }
       
       throw new Error(errorMessage);
@@ -187,7 +208,7 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
       throw new Error("Ответ сервера в неправильном формате");
     }
 
-    return data.done;
+    return { response: data.done, serverLogs: data.server_logs };
   } catch (error) {
     console.error("Error sending message:", error);
     
@@ -200,34 +221,45 @@ export async function sendMessage(chatId: string, message: string, files?: { nam
         variant: "destructive",
       });
       
+      const errorLogs = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        error: "Catch block error",
+        details: errorMessage
+      });
+      
       if (errorMessage.includes("Edge Function returned a non-2xx status code")) {
         console.error("Edge Function returned a non-2xx status code. This could be due to a server-side issue.");
-        return "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.";
+        return { response: "Сервер временно недоступен. Пожалуйста, попробуйте позже или обратитесь в службу поддержки.", serverLogs: errorLogs };
       }
       
       if (error instanceof SyntaxError && errorMessage.includes("JSON")) {
         console.error("JSON parse error - Got non-JSON response from server");
-        return "Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.";
+        return { response: "Сервер вернул неверный формат данных. Возможно, это связано с проблемами сети или настройками сервера.", serverLogs: errorLogs };
       }
       
       if (errorMessage.includes("Bot ID is required")) {
-        return "Ошибка: ID бота не указан. Пожалуйста, проверьте URL или настройки.";
+        return { response: "Ошибка: ID бота не указан. Пожалуйста, проверьте URL или настройки.", serverLogs: errorLogs };
       }
       
       if (errorMessage.includes("Bot not found") || errorMessage.includes("Bot with ID")) {
-        return "Ошибка: Указанный бот не найден. Пожалуйста, проверьте ID бота.";
+        return { response: "Ошибка: Указанный бот не найден. Пожалуйста, проверьте ID бота.", serverLogs: errorLogs };
       }
       
       if (errorMessage.includes("Bot is not properly configured")) {
-        return "Ошибка: Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.";
+        return { response: "Ошибка: Бот не настроен должным образом. Пожалуйста, обратитесь к администратору.", serverLogs: errorLogs };
       }
     }
     
-    return "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.";
+    const errorLogs = JSON.stringify({
+      timestamp: new Date().toISOString(),
+      error: "Generic error",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+    return { response: "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.", serverLogs: errorLogs };
   }
 }
 
-export async function sendGroupMessage(chatId: string, message: string, botIds: string[], files?: { name: string; size: number; type: string; url: string; }[], specificBotId?: string | null): Promise<{botId: string, response: string, botName: string}[]> {
+export async function sendGroupMessage(chatId: string, message: string, botIds: string[], files?: { name: string; size: number; type: string; url: string; }[], specificBotId?: string | null): Promise<{botId: string, response: string, botName: string, serverLogs?: string}[]> {
   try {
     if (!botIds || botIds.length === 0) {
       toast({
@@ -322,20 +354,34 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
   
         if (error) {
           console.error(`Error calling chat function for bot ${botId}:`, error);
+          const errorLogs = JSON.stringify({
+            timestamp: new Date().toISOString(),
+            botId,
+            error: "Chat function error",
+            details: error.message
+          });
           responses.push({
             botId,
             response: `Ошибка при взаимодействии с ботом: ${error.message || "Неизвестная ошибка"}`,
-            botName: botsMap.get(botId) || "Бот"
+            botName: botsMap.get(botId) || "Бот",
+            serverLogs: errorLogs
           });
           continue;
         }
   
         if (!data || typeof data !== 'object') {
           console.error(`Invalid response format for bot ${botId}:`, data);
+          const errorLogs = JSON.stringify({
+            timestamp: new Date().toISOString(),
+            botId,
+            error: "Invalid response format",
+            details: "Received non-object response"
+          });
           responses.push({
             botId,
             response: `Получен недопустимый формат ответа от бота ${botId}`,
-            botName: botsMap.get(botId) || "Бот"
+            botName: botsMap.get(botId) || "Бот",
+            serverLogs: errorLogs
           });
           continue;
         }
@@ -343,20 +389,34 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
         if (!data.ok) {
           const errorMessage = data.done || "Unknown error";
           console.error(`API returned error for bot ${botId}:`, errorMessage);
+          const errorLogs = JSON.stringify({
+            timestamp: new Date().toISOString(),
+            botId,
+            error: "API returned error",
+            details: errorMessage
+          });
           responses.push({
             botId,
             response: `Ошибка бота ${botId}: ${errorMessage}`,
-            botName: botsMap.get(botId) || "Бот"
+            botName: botsMap.get(botId) || "Бот",
+            serverLogs: errorLogs
           });
           continue;
         }
   
         if (typeof data.done !== 'string') {
           console.error(`Invalid 'done' field format for bot ${botId}:`, data.done);
+          const errorLogs = JSON.stringify({
+            timestamp: new Date().toISOString(),
+            botId,
+            error: "Invalid done field format",
+            details: "Done field is not a string"
+          });
           responses.push({
             botId,
             response: `Ответ бота ${botId} в неправильном формате`,
-            botName: botsMap.get(botId) || "Бот"
+            botName: botsMap.get(botId) || "Бот",
+            serverLogs: errorLogs
           });
           continue;
         }
@@ -364,17 +424,25 @@ export async function sendGroupMessage(chatId: string, message: string, botIds: 
         responses.push({
           botId,
           response: data.done,
-          botName: botsMap.get(botId) || "Бот"
+          botName: botsMap.get(botId) || "Бот",
+          serverLogs: data.server_logs
         });
         
         const lastResponse = responses[responses.length - 1];
         messageContent = `${conversationHistoryText}${message}\n\n${lastResponse.botName}: ${lastResponse.response}`;
       } catch (botError) {
         console.error(`Error processing response from bot ${botId}:`, botError);
+        const errorLogs = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          botId,
+          error: "Bot processing error",
+          details: botError.message
+        });
         responses.push({
           botId,
           response: `Ошибка при обработке ответа от бота ${botId}: ${botError.message || "Неизвестная ошибка"}`,
-          botName: botsMap.get(botId) || "Бот"
+          botName: botsMap.get(botId) || "Бот",
+          serverLogs: errorLogs
         });
       }
     }

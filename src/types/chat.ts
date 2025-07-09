@@ -2,6 +2,7 @@
 export interface ApiResponse {
   ok: boolean;
   done: string;
+  server_logs?: string;
 }
 
 export type Json =

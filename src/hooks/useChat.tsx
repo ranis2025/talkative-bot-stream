@@ -375,7 +375,8 @@ export function useChat() {
                 role: "bot",
                 timestamp: Date.now(),
                 bot_id: response.botId,
-                bot_name: response.botName
+                bot_name: response.botName,
+                server_logs: response.serverLogs
               };
             });
 
@@ -433,13 +434,14 @@ export function useChat() {
               );
             }
           } else {
-            const botResponse = await sendMessage(currentChatId, message, uploadedFiles, currentChat.bot_id);
+            const apiResponse = await sendMessage(currentChatId, message, uploadedFiles, currentChat.bot_id);
             
             const botMessage: IMessage = {
               id: uuidv4(),
-              content: botResponse,
+              content: apiResponse.response,
               role: "bot",
               timestamp: Date.now(),
+              server_logs: apiResponse.serverLogs,
             };
 
             const messagesWithBotResponse = [...updatedMessages, botMessage];
@@ -498,11 +500,18 @@ export function useChat() {
         } catch (apiError) {
           console.error("API error:", apiError);
           
+          const errorLogs = JSON.stringify({
+            timestamp: new Date().toISOString(),
+            error: "API error in useChat",
+            details: apiError.message
+          });
+          
           const errorMessage: IMessage = {
             id: uuidv4(),
             content: `Ошибка: ${apiError.message || "Не удалось получить ответ от бота."}`,
             role: "bot",
             timestamp: Date.now(),
+            server_logs: errorLogs,
           };
           
           const messagesWithError = [...updatedMessages, errorMessage];
