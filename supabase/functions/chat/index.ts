@@ -318,7 +318,7 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     console.log("Message sent successfully, starting polling for reply");
     pollingLogs.push(`${new Date().toISOString()}: Сообщение отправлено успешно, начинаем опрос ответа`);
 
-    // Step 2: Poll for reply
+    // Step 2: Poll for reply with exponential backoff
     const replyUrl = `${API_BASE_URL}/get_last_reply`;
     const replyPayload = {
       bot_id: numericBotId,
@@ -328,15 +328,25 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     
     let reply = '';
     let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max wait time
-    pollingLogs.push(`${new Date().toISOString()}: Начинаем опрос (максимум ${maxAttempts} попыток)`);
+    const maxAttempts = 25; // Reduced from 60 to 25 (2-3 minutes max)
+    const baseDelay = 2000; // 2 seconds base delay
+    const maxDelay = 30000; // 30 seconds max delay
+    let consecutiveErrors = 0;
+    
+    pollingLogs.push(`${new Date().toISOString()}: Начинаем опрос с экспоненциальной задержкой (максимум ${maxAttempts} попыток)`);
     
     while (reply === '' && attempts < maxAttempts) {
-      console.log(`Polling attempt ${attempts + 1}/${maxAttempts}`);
-      pollingLogs.push(`${new Date().toISOString()}: Попытка опроса ${attempts + 1}/${maxAttempts}`);
+      attempts++;
+      console.log(`Polling attempt ${attempts}/${maxAttempts}`);
+      pollingLogs.push(`${new Date().toISOString()}: Попытка опроса ${attempts}/${maxAttempts}`);
       
-      // Wait 5 seconds between attempts
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Calculate delay with exponential backoff and jitter
+      const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempts - 1), maxDelay);
+      const jitter = Math.random() * 1000; // Add up to 1 second of jitter
+      const delay = exponentialDelay + jitter;
+      
+      pollingLogs.push(`${new Date().toISOString()}: Ожидание ${Math.round(delay)}мс (экспоненциальная задержка)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
       
       try {
         const replyResponse = await fetch(replyUrl, {
@@ -347,7 +357,11 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
           body: JSON.stringify(replyPayload),
         });
 
-        if (replyResponse.ok) {
+        const status = replyResponse.status;
+        pollingLogs.push(`${new Date().toISOString()}: HTTP статус: ${status}`);
+
+        // Handle different HTTP status codes
+        if (status === 200) {
           const replyData = await replyResponse.json();
           pollingLogs.push(`${new Date().toISOString()}: Ответ сервера: ${JSON.stringify(replyData)}`);
           
@@ -357,18 +371,58 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
             pollingLogs.push(`${new Date().toISOString()}: Получен ответ: "${reply}"`);
             break;
           } else {
-            pollingLogs.push(`${new Date().toISOString()}: Ответ пустой или отсутствует`);
+            pollingLogs.push(`${new Date().toISOString()}: Ответ пустой или отсутствует - продолжаем опрос`);
+            consecutiveErrors = 0; // Reset error counter on successful response
           }
+        } else if (status === 202 || status === 204) {
+          // Response not ready yet - continue polling
+          pollingLogs.push(`${new Date().toISOString()}: Ответ не готов (${status}) - продолжаем опрос`);
+          consecutiveErrors = 0;
+        } else if (status === 429) {
+          // Rate limiting - increase delay
+          pollingLogs.push(`${new Date().toISOString()}: Rate limiting (429) - увеличиваем задержку`);
+          consecutiveErrors++;
+          await new Promise(resolve => setTimeout(resolve, 5000 + consecutiveErrors * 2000));
+        } else if (status >= 500 && status <= 503) {
+          // Server errors - retry with backoff
+          consecutiveErrors++;
+          pollingLogs.push(`${new Date().toISOString()}: Серверная ошибка (${status}) - повтор с экспоненциальной задержкой (ошибки подряд: ${consecutiveErrors})`);
+          
+          if (consecutiveErrors >= 5) {
+            pollingLogs.push(`${new Date().toISOString()}: Слишком много серверных ошибок подряд - прерываем опрос`);
+            throw new Error(`Too many consecutive server errors (${consecutiveErrors})`);
+          }
+        } else if (status === 404 || status === 401 || status === 403) {
+          // Critical errors - stop polling
+          const errorText = await replyResponse.text();
+          pollingLogs.push(`${new Date().toISOString()}: Критическая ошибка (${status}) - прерываем опрос: ${errorText}`);
+          throw new Error(`Critical error ${status}: ${errorText}`);
         } else {
-          console.warn(`Reply polling attempt ${attempts + 1} failed with status: ${replyResponse.status}`);
-          pollingLogs.push(`${new Date().toISOString()}: Ошибка опроса: статус ${replyResponse.status}`);
+          // Other errors - log and continue
+          consecutiveErrors++;
+          pollingLogs.push(`${new Date().toISOString()}: Неожиданный статус (${status}) - продолжаем опрос (ошибки: ${consecutiveErrors})`);
         }
+        
       } catch (pollError) {
-        console.warn(`Reply polling attempt ${attempts + 1} failed:`, pollError);
-        pollingLogs.push(`${new Date().toISOString()}: Ошибка опроса: ${pollError.message}`);
+        consecutiveErrors++;
+        const isNetworkError = pollError.name === 'TypeError' || pollError.message.includes('fetch');
+        const errorType = isNetworkError ? 'Сетевая ошибка' : 'Ошибка обработки';
+        
+        console.warn(`Reply polling attempt ${attempts} failed:`, pollError);
+        pollingLogs.push(`${new Date().toISOString()}: ${errorType}: ${pollError.message} (ошибки подряд: ${consecutiveErrors})`);
+        
+        // More aggressive retry for network errors
+        if (isNetworkError && consecutiveErrors >= 3) {
+          const networkDelay = Math.min(5000 * consecutiveErrors, 20000);
+          pollingLogs.push(`${new Date().toISOString()}: Множественные сетевые ошибки - дополнительная задержка ${networkDelay}мс`);
+          await new Promise(resolve => setTimeout(resolve, networkDelay));
+        }
+        
+        if (consecutiveErrors >= 8) {
+          pollingLogs.push(`${new Date().toISOString()}: Слишком много ошибок подряд - прерываем опрос`);
+          throw new Error(`Too many consecutive errors (${consecutiveErrors}): ${pollError.message}`);
+        }
       }
-      
-      attempts++;
     }
     
     if (reply === '') {
