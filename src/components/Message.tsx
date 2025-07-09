@@ -2,8 +2,9 @@ import { IMessage } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FileIcon, ImageIcon, FileTextIcon, CheckCircle, Clock, User, Bot, Images, Link, Play, Pause, Volume2, Copy, CheckCheck } from "lucide-react";
+import { FileIcon, ImageIcon, FileTextIcon, CheckCircle, Clock, User, Bot, Images, Link, Play, Pause, Volume2, Copy, CheckCheck, FileText } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface MessageProps {
@@ -13,7 +14,7 @@ interface MessageProps {
 export function Message({ message }: MessageProps) {
   const isBot = message.role === "bot";
   const timestamp = new Date(message.timestamp);
-  const formattedTime = format(timestamp, "HH:mm", { locale: ru });
+  const formattedTime = format(timestamp, "dd.MM.yyyy HH:mm", { locale: ru });
   const [imageLoaded, setImageLoaded] = useState<{[key: string]: boolean}>({});
   const [extractedImageLinks, setExtractedImageLinks] = useState<string[]>([]);
   const [extractedFileLinks, setExtractedFileLinks] = useState<{url: string, text: string}[]>([]);
@@ -21,6 +22,7 @@ export function Message({ message }: MessageProps) {
   const [audioPlaying, setAudioPlaying] = useState<{[key: string]: boolean}>({});
   const { copyToClipboard, isCopied } = useCopyToClipboard();
   const audioRefs = useRef<{[key: string]: HTMLAudioElement | null}>({});
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
   
   // Function to copy message content to clipboard
   const handleCopyMessage = async () => {
@@ -183,6 +185,31 @@ export function Message({ message }: MessageProps) {
                 <Copy className="h-3.5 w-3.5" />
               )}
             </button>
+            
+            {/* Кнопка просмотра логов сервера */}
+            {message.server_logs && (
+              <Dialog open={isLogsOpen} onOpenChange={setIsLogsOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
+                    title="Посмотреть логи сервера"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Логи ответа сервера</DialogTitle>
+                  </DialogHeader>
+                  <div className="mt-4">
+                    <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
+                      {message.server_logs}
+                    </pre>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+            
             <div className="text-xs text-muted-foreground flex items-center">
               <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
               {formattedTime}
@@ -248,6 +275,31 @@ export function Message({ message }: MessageProps) {
                 <Copy className="h-3.5 w-3.5" />
               )}
             </button>
+            
+            {/* Кнопка просмотра логов сервера */}
+            {message.server_logs && (
+              <Dialog open={isLogsOpen} onOpenChange={setIsLogsOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
+                    title="Посмотреть логи сервера"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Логи ответа сервера</DialogTitle>
+                  </DialogHeader>
+                  <div className="mt-4">
+                    <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
+                      {message.server_logs}
+                    </pre>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+            
             <div className="text-xs text-muted-foreground flex items-center">
               <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
               {formattedTime}
@@ -332,6 +384,31 @@ export function Message({ message }: MessageProps) {
                 <Copy className="h-3.5 w-3.5" />
               )}
             </button>
+            
+            {/* Кнопка просмотра логов сервера */}
+            {message.server_logs && (
+              <Dialog open={isLogsOpen} onOpenChange={setIsLogsOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50"
+                    title="Посмотреть логи сервера"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Логи ответа сервера</DialogTitle>
+                  </DialogHeader>
+                  <div className="mt-4">
+                    <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
+                      {message.server_logs}
+                    </pre>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+            
             <div className="text-xs text-muted-foreground flex items-center">
               <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />
               {formattedTime}
@@ -445,6 +522,31 @@ export function Message({ message }: MessageProps) {
                   <Copy className="h-3.5 w-3.5" />
                 )}
               </button>
+              
+              {/* Кнопка просмотра логов сервера (только для сообщений бота) */}
+              {isBot && message.server_logs && (
+                <Dialog open={isLogsOpen} onOpenChange={setIsLogsOpen}>
+                  <DialogTrigger asChild>
+                    <button
+                      className="text-xs text-muted-foreground flex items-center mr-2 hover:text-primary transition-colors p-1 rounded hover:bg-muted/50 opacity-0 group-hover:opacity-100"
+                      title="Посмотреть логи сервера"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Логи ответа сервера</DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4">
+                      <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
+                        {message.server_logs}
+                      </pre>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              
               <div className="text-xs text-muted-foreground flex items-center">
                 {isBot ? (
                   <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" />

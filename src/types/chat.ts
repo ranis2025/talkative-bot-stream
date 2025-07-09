@@ -59,4 +59,5 @@ export interface IMessage {
   bot_id?: string;
   bot_name?: string;
   files?: IFile[];
+  server_logs?: string; // Логи ответа с сервера
 }
