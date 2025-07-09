@@ -388,3 +388,4 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
     (globalThis as any).pollingLogs = pollingLogs;
     throw error;
   }
+}
