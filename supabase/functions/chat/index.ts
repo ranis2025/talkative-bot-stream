@@ -343,7 +343,8 @@ async function sendToExternalAPI(botId: string, chatId: string, message: string,
       // Calculate delay with exponential backoff and jitter
       const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempts - 1), maxDelay);
       const jitter = Math.random() * 1000; // Add up to 1 second of jitter
-      const delay = exponentialDelay + jitter;
+      //const delay = exponentialDelay + jitter;
+      const delay = baseDelay;
       
       pollingLogs.push(`${new Date().toISOString()}: Ожидание ${Math.round(delay)}мс (экспоненциальная задержка)`);
       await new Promise(resolve => setTimeout(resolve, delay));
