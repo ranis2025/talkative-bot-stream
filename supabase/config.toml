@@ -1,4 +1,1 @@
 project_id = "isxqxbysfsdyhmjcxfsm"
-
-[functions.get_ruid_bots]
-verify_jwt = false
