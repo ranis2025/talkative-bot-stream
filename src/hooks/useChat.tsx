@@ -40,6 +40,58 @@ export function useChat() {
     try {
       console.log("Fetching bots for token:", token);
       
+      // Handle ruid tokens
+      if (token.startsWith("ruid:")) {
+        const ruid = token.split(':')[1];
+        
+        // Check cache first
+        const cacheKey = `ruid_bots_${ruid}`;
+        const cachedData = localStorage.getItem(cacheKey);
+        const cacheExpiry = localStorage.getItem(`${cacheKey}_expiry`);
+        
+        if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
+          console.log("Using cached ruid bots data");
+          const cachedBots = JSON.parse(cachedData);
+          setUserBots(cachedBots);
+          if (!currentBot && cachedBots.length > 0) {
+            setCurrentBot(cachedBots[0].bot_id);
+          }
+          return;
+        }
+        
+        // Fetch from external API via edge function
+        const { data: ruidBots, error: ruidError } = await supabase.functions.invoke('get_ruid_bots', {
+          body: { ruid }
+        });
+        
+        if (ruidError) {
+          console.error("Error fetching ruid bots:", ruidError);
+          // Try to use cached data as fallback
+          if (cachedData) {
+            const cachedBots = JSON.parse(cachedData);
+            setUserBots(cachedBots);
+            if (!currentBot && cachedBots.length > 0) {
+              setCurrentBot(cachedBots[0].bot_id);
+            }
+          }
+          return;
+        }
+        
+        if (ruidBots && ruidBots.length > 0) {
+          setUserBots(ruidBots);
+          if (!currentBot) {
+            setCurrentBot(ruidBots[0].bot_id);
+          }
+          
+          // Cache the result for 1 hour
+          localStorage.setItem(cacheKey, JSON.stringify(ruidBots));
+          localStorage.setItem(`${cacheKey}_expiry`, (Date.now() + 3600000).toString());
+        }
+        
+        return;
+      }
+      
+      // Original logic for regular tokens
       // First, get the token ID from access_tokens
       const { data: tokenData, error: tokenError } = await supabase
         .from("access_tokens")

@@ -56,6 +56,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    // Handle ruid tokens
+    if (token.startsWith("ruid:")) {
+      const ruid = token.split(':')[1];
+      if (ruid) {
+        // ruid tokens are valid if they contain a valid ruid
+        await checkOrCreateUserSettings(token);
+        setToken(token);
+        localStorage.setItem("auth_token", token);
+        console.log("ruid token validated and set:", token);
+        setIsLoading(false);
+        return;
+      } else {
+        // Invalid ruid token format
+        console.log("Invalid ruid token format, redirecting to auth page");
+        if (window.location.pathname !== "/auth") {
+          navigate("/auth");
+        }
+        setToken(null);
+        localStorage.removeItem("auth_token");
+        setIsLoading(false);
+        return;
+      }
+    }
+    
     try {
       // Check if token exists in the database
       const { data: tokenExists, error: tokenError } = await supabase
@@ -93,6 +117,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const validateToken = async (token: string): Promise<boolean> => {
     if (token.startsWith("demo-")) {
       return true;
+    }
+    
+    // Handle ruid tokens
+    if (token.startsWith("ruid:")) {
+      const ruid = token.split(':')[1];
+      return !!ruid; // Basic validation - ruid must exist
     }
     
     try {
